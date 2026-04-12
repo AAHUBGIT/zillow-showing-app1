@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-canvas text-slate-800 antialiased;
+  background-image:
+    radial-gradient(circle at top left, rgba(219, 234, 254, 0.9), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(254, 240, 138, 0.6), transparent 28%);
+}
+
+a {
+  @apply transition-colors;
+}
+
+input,
+select,
+textarea {
+  @apply outline-none;
+}
