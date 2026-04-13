@@ -1,35 +1,61 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { getSessionUser } from "./auth";
+import { getDemoLeads } from "./demo-leads";
+import { canUseDatabase } from "./deployment";
+import { sortLeads } from "./lead-utils";
+import { prisma } from "./prisma";
 import { Lead } from "./types";
 
-const leadsFilePath = path.join(process.cwd(), "data", "leads.json");
-
-async function ensureLeadsFile() {
-  const directory = path.dirname(leadsFilePath);
-  await fs.mkdir(directory, { recursive: true });
-
-  try {
-    await fs.access(leadsFilePath);
-  } catch {
-    await fs.writeFile(leadsFilePath, JSON.stringify([], null, 2), "utf8");
-  }
-}
-
 export async function getLeads() {
-  await ensureLeadsFile();
-  const file = await fs.readFile(leadsFilePath, "utf8");
-  const leads = JSON.parse(file) as Lead[];
-  return leads.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  if (!canUseDatabase()) {
+    return sortLeads(getDemoLeads());
+  }
+
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return [];
+  }
+
+  const leads = await prisma.lead.findMany({
+    where: {
+      userId: sessionUser.id
+    }
+  });
+
+  return sortLeads(leads as Lead[]);
 }
 
 export async function getLeadById(id: string) {
-  const leads = await getLeads();
-  return leads.find((lead) => lead.id === id);
+  if (!canUseDatabase()) {
+    return getDemoLeads().find((lead) => lead.id === id) ?? null;
+  }
+
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    return null;
+  }
+
+  const lead = await prisma.lead.findUnique({
+    where: { id }
+  });
+
+  if (!lead || lead.userId !== sessionUser.id) {
+    return null;
+  }
+
+  return lead as Lead;
 }
 
 export async function saveLeads(leads: Lead[]) {
-  await ensureLeadsFile();
-  await fs.writeFile(leadsFilePath, JSON.stringify(leads, null, 2), "utf8");
+  if (!canUseDatabase()) {
+    return;
+  }
+
+  await prisma.$transaction([
+    prisma.lead.deleteMany(),
+    prisma.lead.createMany({
+      data: leads
+    })
+  ]);
 }
 
 export function buildGoogleMapsDirectionsLink(addresses: string[]) {
