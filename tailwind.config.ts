@@ -9,14 +9,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#14213d",
-        canvas: "#f4f1ea",
-        accent: "#0f766e",
-        warm: "#f59e0b",
-        mist: "#dbeafe"
+        ink: "#0f172a",
+        canvas: "#f6f8fb",
+        accent: "#2563eb",
+        accentSoft: "#dbeafe",
+        successSoft: "#dcfce7",
+        warningSoft: "#fef3c7",
+        roseSoft: "#ffe4e6",
+        panel: "#ffffff",
+        line: "#e2e8f0"
       },
       boxShadow: {
-        panel: "0 16px 40px -24px rgba(20, 33, 61, 0.35)"
+        panel: "0 24px 60px -28px rgba(15, 23, 42, 0.24)",
+        soft: "0 10px 30px -18px rgba(15, 23, 42, 0.16)"
       },
       borderRadius: {
         "4xl": "2rem"
