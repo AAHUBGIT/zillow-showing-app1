@@ -1,7 +1,7 @@
 "use client";
 
 import { ButtonHTMLAttributes } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { InlineSpinner } from "@/components/inline-spinner";
 
@@ -20,7 +20,6 @@ export function LoadingLink({
   loadingLabel?: string;
   ariaLabel?: string;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
-  const router = useRouter();
   const pathname = usePathname();
   const [isPending, setIsPending] = useState(false);
   const isCurrentPath = pathname === href;
@@ -48,7 +47,10 @@ export function LoadingLink({
         }
 
         setIsPending(true);
-        router.push(href);
+
+        // Use a full document navigation for reliability across protected routes,
+        // auth redirects, and Vercel deployment aliases.
+        window.location.assign(href);
       }}
       className={`${className} ${isCurrentPath ? "cursor-default" : ""} disabled:cursor-progress disabled:opacity-75`}
     >
