@@ -104,9 +104,12 @@ export function AppHeader({
                 </form>
               </>
             ) : isLoginPage ? (
-              <div className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-500 shadow-sm">
-                Sign in below
-              </div>
+              <a
+                href="#login-form"
+                className="app-button-primary px-4 py-2.5"
+              >
+                Go To Sign In
+              </a>
             ) : (
               <LoadingLink href="/login" className="app-button-primary px-4 py-2.5">
                 Login

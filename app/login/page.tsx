@@ -21,7 +21,7 @@ export default function LoginPage({
             </p>
           </div>
 
-          <form action={loginUser} className="mt-8 grid gap-5">
+          <form id="login-form" action={loginUser} className="mt-8 grid gap-5">
             <input type="hidden" name="next" value={next} />
 
             <label className="flex flex-col gap-2">
