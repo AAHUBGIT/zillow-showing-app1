@@ -23,6 +23,7 @@ export function LoadingLink({
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, setIsPending] = useState(false);
+  const isCurrentPath = pathname === href;
 
   useEffect(() => {
     setIsPending(false);
@@ -42,14 +43,14 @@ export function LoadingLink({
           return;
         }
 
-        if (isPending) {
+        if (isPending || isCurrentPath) {
           return;
         }
 
         setIsPending(true);
         router.push(href);
       }}
-      className={`${className} disabled:cursor-progress disabled:opacity-75`}
+      className={`${className} ${isCurrentPath ? "cursor-default" : ""} disabled:cursor-progress disabled:opacity-75`}
     >
       {isPending ? <InlineSpinner /> : null}
       <span>{isPending ? loadingLabel || "Opening..." : children}</span>
