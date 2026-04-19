@@ -23,6 +23,7 @@ export function AppHeader({
 }) {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
+  const isLoginPage = pathname === "/login";
 
   function isActive(href: string) {
     if (href === "/") {
@@ -102,6 +103,10 @@ export function AppHeader({
                   <LogoutButton />
                 </form>
               </>
+            ) : isLoginPage ? (
+              <div className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-500 shadow-sm">
+                Sign in below
+              </div>
             ) : (
               <LoadingLink href="/login" className="app-button-primary px-4 py-2.5">
                 Login
