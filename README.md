@@ -77,8 +77,8 @@ A premium, investor-demo-ready real estate CRM for rental showing agents and lea
 - Routes page with grouped daily showings
 - Copy route link and Google Maps route open action
 - Toast notifications for important actions
-- Prisma + SQLite local database
-- Vercel-safe demo-data preview fallback
+- Prisma with SQLite local mode and hosted Postgres production mode
+- Explicit preview/demo mode for read-only public demos
 - Intelligent lead sorting based on urgency and schedule timing
 - Inline form validation with accessible error states
 
@@ -87,7 +87,8 @@ A premium, investor-demo-ready real estate CRM for rental showing agents and lea
 - Next.js App Router
 - Tailwind CSS
 - Prisma ORM
-- SQLite
+- SQLite for local development
+- Hosted Postgres for editable production deployments
 - Simple cookie-based authentication
 - Beginner-friendly server actions
 
@@ -121,11 +122,12 @@ npm install
 3. Make sure your local auth/database settings exist in `.env` or `.env.local`:
 
 ```text
-DATABASE_URL="file:../dev.db"
+APP_RUNTIME_MODE="local"
+SQLITE_DATABASE_URL="file:../dev.db"
+POSTGRES_DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
 AUTH_EMAIL="demo@showingscrm.com"
 AUTH_PASSWORD="changeme123"
 AUTH_SECRET="replace-this-with-a-long-random-secret"
-APP_PREVIEW_MODE="off"
 ```
 
 4. Generate the Prisma client:
@@ -160,18 +162,51 @@ http://localhost:3000
 
 9. Sign in using the demo credentials shown above.
 
-## Preview Mode Toggle
+## Environment Modes
 
-Use `APP_PREVIEW_MODE` to simulate the hosted preview experience locally.
+Use `APP_RUNTIME_MODE` to choose exactly how the app runs:
 
 ```text
-APP_PREVIEW_MODE="off"
+APP_RUNTIME_MODE="local"
 ```
 
-- `off`: normal local mode with Prisma + SQLite writes enabled
-- `readonly`: forces preview mode locally so create/update actions are disabled and preview banners appear
+- `local`: uses SQLite through `SQLITE_DATABASE_URL` and keeps local development editable
+- `preview`: uses bundled demo data only and disables writes for public demos
+- `production`: uses hosted Postgres through `POSTGRES_DATABASE_URL` and enables real edits
 
-If `APP_PREVIEW_MODE` is unset, the app still automatically falls back to read-only preview mode on Vercel when no hosted database is configured.
+Preview mode is now explicit. The app only uses demo/read-only mode when you set `APP_RUNTIME_MODE="preview"`.
+
+## Environment Variables
+
+Local development:
+
+```text
+APP_RUNTIME_MODE="local"
+SQLITE_DATABASE_URL="file:../dev.db"
+POSTGRES_DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
+AUTH_EMAIL="demo@showingscrm.com"
+AUTH_PASSWORD="changeme123"
+AUTH_SECRET="replace-this-with-a-long-random-secret"
+```
+
+Hosted production on Vercel:
+
+```text
+APP_RUNTIME_MODE="production"
+POSTGRES_DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
+AUTH_EMAIL="demo@showingscrm.com"
+AUTH_PASSWORD="changeme123"
+AUTH_SECRET="replace-this-with-a-long-random-secret"
+```
+
+Explicit read-only preview:
+
+```text
+APP_RUNTIME_MODE="preview"
+AUTH_EMAIL="demo@showingscrm.com"
+AUTH_PASSWORD="changeme123"
+AUTH_SECRET="replace-this-with-a-long-random-secret"
+```
 
 ## Prisma Commands
 
@@ -179,18 +214,36 @@ If `APP_PREVIEW_MODE` is unset, the app still automatically falls back to read-o
 npm run prisma:generate
 npm run prisma:migrate
 npm run prisma:seed
+npm run prisma:push:postgres
+npm run prisma:seed:postgres
 ```
 
-## Free Vercel Preview Mode
+## Hosted Postgres Setup
 
-This app is prepared for a simple free public preview on Vercel.
+This app now supports a real editable production deployment with hosted Postgres while keeping local SQLite development.
 
-- Local development uses Prisma + SQLite
-- Free Vercel preview uses demo-data fallback when no hosted database is configured
-- The app still renders and can be demoed publicly
-- Search, filters, routes, and Google Calendar links still work
-- Write actions show a friendly read-only toast instead of crashing
-- The dashboard and lead forms also show a persistent preview banner when writes are disabled
+1. Create a hosted Postgres database.
+   Good beginner-friendly options: Vercel Postgres, Neon, Supabase, or any standard Postgres provider.
+2. Copy the direct Postgres connection string.
+3. Set `APP_RUNTIME_MODE="production"`.
+4. Set `POSTGRES_DATABASE_URL` to that hosted connection string.
+5. Generate both Prisma clients:
+
+```powershell
+npm run prisma:generate
+```
+
+6. Push the Prisma schema to the hosted database:
+
+```powershell
+npm run prisma:push:postgres
+```
+
+7. Seed demo data into hosted Postgres if you want a preloaded editable CRM:
+
+```powershell
+npm run prisma:seed:postgres
+```
 
 ## Vercel Deployment Steps
 
@@ -200,17 +253,34 @@ This app is prepared for a simple free public preview on Vercel.
 4. Add these environment variables in Vercel:
 
 ```text
+APP_RUNTIME_MODE=production
+POSTGRES_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require
 AUTH_EMAIL=demo@showingscrm.com
 AUTH_PASSWORD=changeme123
 AUTH_SECRET=replace-this-with-a-long-random-secret
 ```
 
-5. Deploy.
-6. Open the preview URL and sign in with the same credentials.
+5. Before or after the first deploy, run the hosted database setup from your local terminal:
+
+```powershell
+cd "C:\Users\ProBo\OneDrive\Documents\New project"
+npm run prisma:generate
+npm run prisma:push:postgres
+npm run prisma:seed:postgres
+```
+
+6. Deploy.
+7. Open the deployed URL and sign in with the same credentials.
+
+With `APP_RUNTIME_MODE=production`, the deployed app is editable:
+- lead creation and lead updates save
+- property interest changes save
+- status and scheduling updates save
+- route completion and route notes save
 
 ## Preview-Mode Limitations
 
-- Public preview mode is read-only when no hosted database is connected
+- Preview mode is read-only only when `APP_RUNTIME_MODE="preview"`
 - Lead creation, lead-detail updates, and property saves are disabled in preview mode
 - Dashboard status changes still explain that preview mode is read-only instead of silently failing
 - The UI still works normally for demo and evaluation
@@ -270,7 +340,7 @@ npm run dev
 6. Confirm the save button stays disabled until the form becomes valid.
 7. Confirm notes fields grow as you type instead of forcing a tiny fixed box.
 8. Confirm header links, record buttons, and save buttons show a loading state and do not double-submit.
-9. Set `APP_PREVIEW_MODE="readonly"` in `.env`, restart the dev server, and confirm:
+9. Set `APP_RUNTIME_MODE="preview"` in `.env`, restart the dev server, and confirm:
    - the preview banner appears on the dashboard and lead form pages
    - `Create Lead`, `Update Lead`, and property save buttons are disabled
    - the disabled buttons explain why on hover or keyboard focus
@@ -295,19 +365,20 @@ npm run dev
 - Scheduling input UX: `components/date-time-picker-fields.tsx`
 - Prisma access: `lib/prisma.ts`
 - Lead query helpers and route logic: `lib/storage.ts`
-- Prisma schema: `prisma/schema.prisma`
+- Prisma schema (SQLite local): `prisma/schema.prisma`
+- Prisma schema (Postgres hosted): `prisma/schema.postgres.prisma`
 - Prisma seed script: `prisma/seed.js`
 - Demo seed data: `data/leads.json`
 
 ## Notes
 
-- Runtime lead data is stored in SQLite through Prisma
-- Each lead owns many related `PropertyInterest` records in SQLite through Prisma
+- Runtime lead data is stored through Prisma with SQLite in local mode and hosted Postgres in production mode
+- Each lead owns many related `PropertyInterest` records through Prisma in both local and production modes
 - `data/leads.json` is the seed source for demo leads and preview fallback data
 - Leads are sorted by priority, follow-up urgency, upcoming showing, and recent activity
 - Property cards are sorted with active listings first, then stronger-rated options, then most recent updates
-- Priority, source, and next follow-up date are stored in SQLite through Prisma
-- Preview mode can be toggled locally with `APP_PREVIEW_MODE`
+- Priority, source, and next follow-up date are stored in Prisma-backed lead records in both SQLite and Postgres
+- Preview mode can be toggled explicitly with `APP_RUNTIME_MODE="preview"`
 - The app was verified successfully with `npm run build`
 
 ## Multi-Property Workflow Test

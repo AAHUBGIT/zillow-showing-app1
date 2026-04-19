@@ -1,0 +1,57 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma-postgres"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_DATABASE_URL")
+}
+
+model Lead {
+  id                String @id
+  userId            String
+  fullName          String
+  phone             String
+  email             String
+  propertyAddress   String
+  desiredMoveInDate String
+  notes             String
+  status            String
+  priority          String
+  source            String
+  nextFollowUpDate  String
+  showingDate       String
+  showingTime       String
+  routeStopOrder    Int     @default(0)
+  routeCompleted    Boolean @default(false)
+  routeNote         String  @default("")
+  agentNotes        String
+  createdAt         String
+  updatedAt         String
+  propertyInterests PropertyInterest[]
+}
+
+model PropertyInterest {
+  id             String @id
+  leadId         String
+  address        String
+  listingTitle   String
+  source         String
+  listingUrl     String
+  rent           String
+  beds           String
+  baths          String
+  neighborhood   String
+  status         String
+  rating         Int
+  clientFeedback String
+  pros           String
+  cons           String
+  agentNotes     String
+  showingDate    String
+  showingTime    String
+  createdAt      String
+  updatedAt      String
+  lead           Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+}

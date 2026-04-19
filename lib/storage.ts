@@ -1,18 +1,24 @@
 import { getSessionUser } from "./auth";
 import { getDemoLeads } from "./demo-leads";
-import { canUseDatabase } from "./deployment";
+import { canUseDatabase, shouldUseDemoData } from "./deployment";
 import { sortLeads } from "./lead-utils";
 import {
   buildGoogleMapsSearchLink,
   syncLeadShowingToPropertyInterests
 } from "./property-interest-utils";
-import { prisma } from "./prisma";
+import { getPrismaClient } from "./prisma";
 import { LeadWithProperties, PropertyInterest } from "./types";
 
 export async function getLeads(): Promise<LeadWithProperties[]> {
-  if (!canUseDatabase()) {
+  if (shouldUseDemoData()) {
     return sortLeads(getDemoLeads());
   }
+
+  if (!canUseDatabase()) {
+    return [];
+  }
+
+  const prisma = getPrismaClient();
 
   const sessionUser = await getSessionUser();
   if (!sessionUser) {
@@ -42,9 +48,15 @@ export async function getLeads(): Promise<LeadWithProperties[]> {
 }
 
 export async function getLeadById(id: string): Promise<LeadWithProperties | null> {
-  if (!canUseDatabase()) {
+  if (shouldUseDemoData()) {
     return getDemoLeads().find((lead) => lead.id === id) ?? null;
   }
+
+  if (!canUseDatabase()) {
+    return null;
+  }
+
+  const prisma = getPrismaClient();
 
   const sessionUser = await getSessionUser();
   if (!sessionUser) {
@@ -89,6 +101,8 @@ export async function saveLeads(leads: LeadWithProperties[]) {
   if (!canUseDatabase()) {
     return;
   }
+
+  const prisma = getPrismaClient();
 
   await prisma.$transaction([
     prisma.propertyInterest.deleteMany(),

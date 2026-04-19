@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && prisma generate --schema prisma/schema.postgres.prisma",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "prisma:generate": "prisma generate",
+    "prisma:generate": "prisma generate && prisma generate --schema prisma/schema.postgres.prisma",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "prisma db seed"
+    "prisma:push:postgres": "prisma db push --schema prisma/schema.postgres.prisma",
+    "prisma:seed": "prisma db seed",
+    "prisma:seed:postgres": "node prisma/seed.js --target=postgres"
   },
   "dependencies": {
     "@prisma/client": "6.6.0",

@@ -6,7 +6,7 @@ import { clearSessionCookie, getDemoUser, getSessionUser, isValidLogin, setSessi
 import { getEmailError, getNumericError, getPhoneError, getRequiredSelectError, getRequiredTextError } from "./form-validation";
 import { canUseDatabase, isPreviewReadonlyMode } from "./deployment";
 import { leadPriorityOptions, leadSourceOptions, leadStatusOptions } from "./lead-utils";
-import { prisma } from "./prisma";
+import { getPrismaClient } from "./prisma";
 import { propertyInterestStatusOptions } from "./property-interest-utils";
 import { sortRouteStops } from "./route-planner";
 import {
@@ -117,6 +117,8 @@ export async function createLead(formData: FormData) {
     );
   }
 
+  const prisma = getPrismaClient();
+
   const now = new Date().toISOString();
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
@@ -199,6 +201,8 @@ export async function updateLeadSchedule(formData: FormData) {
     );
   }
 
+  const prisma = getPrismaClient();
+
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
   const nextStatus = getStatus(formData);
@@ -263,6 +267,8 @@ export async function updateLeadStatus(formData: FormData) {
     redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
   }
 
+  const prisma = getPrismaClient();
+
   if (!leadStatusOptions.includes(status)) {
     redirectValidation(redirectTo);
   }
@@ -304,6 +310,8 @@ export async function createPropertyInterest(formData: FormData) {
       withToast(`/leads/${leadId}`, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
     );
   }
+
+  const prisma = getPrismaClient();
 
   const listingTitle = getString(formData, "listingTitle");
   const address = getString(formData, "address");
@@ -401,6 +409,8 @@ export async function updatePropertyInterest(formData: FormData) {
     );
   }
 
+  const prisma = getPrismaClient();
+
   const listingTitle = getString(formData, "listingTitle");
   const address = getString(formData, "address");
   const source = getSource(formData);
@@ -491,6 +501,8 @@ export async function quickUpdatePropertyInterest(formData: FormData) {
   if (!canUseDatabase()) {
     redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
   }
+
+  const prisma = getPrismaClient();
 
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
@@ -591,6 +603,8 @@ export async function toggleRouteStopCompleted(formData: FormData) {
     redirect(withToast("/routes", isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
   }
 
+  const prisma = getPrismaClient();
+
   let result;
 
   try {
@@ -627,6 +641,8 @@ export async function updateRouteStopNote(formData: FormData) {
     redirect(withToast("/routes", isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
   }
 
+  const prisma = getPrismaClient();
+
   let result;
 
   try {
@@ -662,6 +678,8 @@ export async function moveRouteStop(formData: FormData) {
   if (!canUseDatabase()) {
     redirect(withToast("/routes", isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
   }
+
+  const prisma = getPrismaClient();
 
   if (!showingDate || !["up", "down"].includes(direction)) {
     redirectValidation("/routes");

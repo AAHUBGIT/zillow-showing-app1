@@ -1,8 +1,29 @@
-const { PrismaClient } = require("../generated/prisma");
 const fs = require("fs");
 const path = require("path");
 
-const prisma = new PrismaClient();
+function getSeedTarget() {
+  const targetArg = process.argv.find((argument) => argument.startsWith("--target="));
+
+  if (targetArg) {
+    return targetArg.split("=")[1];
+  }
+
+  return process.env.APP_RUNTIME_MODE === "production" ? "postgres" : "sqlite";
+}
+
+function getPrismaClient() {
+  const target = getSeedTarget();
+
+  if (target === "postgres") {
+    const { PrismaClient } = require("../generated/prisma-postgres");
+    return new PrismaClient();
+  }
+
+  const { PrismaClient } = require("../generated/prisma");
+  return new PrismaClient();
+}
+
+const prisma = getPrismaClient();
 
 function normalizePropertyStatus(status) {
   if (status === "closed") {
@@ -95,7 +116,7 @@ async function main() {
     }
   }
 
-  console.log(`Seeded ${leads.length} leads into SQLite.`);
+  console.log(`Seeded ${leads.length} leads into ${getSeedTarget()} database.`);
 }
 
 main()
