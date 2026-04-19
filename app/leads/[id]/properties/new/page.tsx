@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LoadingLink } from "@/components/loading-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PropertyInterestForm } from "@/components/property-interest-form";
 import { createPropertyInterest } from "@/lib/actions";
@@ -38,9 +38,9 @@ export default async function NewPropertyInterestPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href={`/leads/${lead.id}`} className="app-button-secondary">
+            <LoadingLink href={`/leads/${lead.id}`} className="app-button-secondary">
               Back to Customer
-            </Link>
+            </LoadingLink>
           </div>
         </div>
 

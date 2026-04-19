@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LoadingLink } from "@/components/loading-link";
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import { getSourceLabel } from "@/lib/lead-utils";
 import { getPropertyInterestCountLabel } from "@/lib/property-interest-utils";
@@ -9,7 +9,13 @@ import { PriorityBadge } from "./priority-badge";
 import { LeadStatusBadge } from "./lead-status-badge";
 import { SourceBadge } from "./source-badge";
 
-export function LeadCard({ lead }: { lead: LeadWithProperties }) {
+export function LeadCard({
+  lead,
+  isPreviewReadonly = false
+}: {
+  lead: LeadWithProperties;
+  isPreviewReadonly?: boolean;
+}) {
   const propertyCount = lead.propertyInterests.length;
 
   return (
@@ -80,16 +86,20 @@ export function LeadCard({ lead }: { lead: LeadWithProperties }) {
       </div>
 
       <div className="mt-5">
-        <LeadStatusForm leadId={lead.id} currentStatus={lead.status} />
+        <LeadStatusForm
+          leadId={lead.id}
+          currentStatus={lead.status}
+          isPreviewReadonly={isPreviewReadonly}
+        />
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3">
-        <Link href={`/leads/${lead.id}`} className="app-button-primary">
+        <LoadingLink href={`/leads/${lead.id}`} className="app-button-primary">
           Open Details
-        </Link>
-        <Link href={`/leads/${lead.id}`} className="app-button-secondary">
+        </LoadingLink>
+        <LoadingLink href={`/leads/${lead.id}`} className="app-button-secondary">
           Schedule Showing
-        </Link>
+        </LoadingLink>
       </div>
     </article>
   );

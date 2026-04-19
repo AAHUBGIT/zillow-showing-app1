@@ -26,8 +26,10 @@ a {
 
 input,
 select,
-textarea {
+textarea,
+button {
   @apply outline-none;
+  touch-action: manipulation;
 }
 
 ::selection {
@@ -66,19 +68,19 @@ textarea {
   }
 
   .app-input {
-    @apply rounded-2xl border border-line bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-accent focus:ring-4 focus:ring-accent/10;
+    @apply min-h-[48px] w-full min-w-0 rounded-2xl border border-line bg-white px-4 py-3 text-[15px] text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-accent focus:ring-4 focus:ring-accent/10 sm:text-sm;
   }
 
   .app-textarea {
-    @apply rounded-3xl border border-line bg-white px-4 py-3 text-sm text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-accent focus:ring-4 focus:ring-accent/10;
+    @apply min-h-[120px] w-full min-w-0 rounded-3xl border border-line bg-white px-4 py-3 text-[15px] text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-accent focus:ring-4 focus:ring-accent/10 sm:text-sm;
   }
 
   .app-button-primary {
-    @apply inline-flex items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-900 hover:shadow-panel;
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:-translate-y-0.5 hover:bg-slate-900 hover:shadow-panel;
   }
 
   .app-button-secondary {
-    @apply inline-flex items-center justify-center rounded-full border border-line bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-accent hover:text-accent;
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full border border-line bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-accent hover:text-accent;
   }
 
   .app-chip {

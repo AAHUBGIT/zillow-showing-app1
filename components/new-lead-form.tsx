@@ -1,10 +1,21 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { createLead } from "@/lib/actions";
+import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { DateTimePickerFields, DateTimePickerHandle } from "@/components/date-time-picker-fields";
+import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
+import { emitAppToast } from "@/lib/client-toast";
+import { createLead } from "@/lib/actions";
+import {
+  fieldMaxLengths,
+  getEmailError,
+  getMaxLengthError,
+  getPhoneError,
+  getRequiredSelectError,
+  getRequiredTextError
+} from "@/lib/form-validation";
 import {
   getPriorityLabel,
   getSourceLabel,
@@ -16,6 +27,34 @@ import {
 
 type FieldErrors = Partial<Record<string, string>>;
 
+type LeadFormValues = {
+  fullName: string;
+  phone: string;
+  email: string;
+  propertyAddress: string;
+  desiredMoveInDate: string;
+  nextFollowUpDate: string;
+  status: string;
+  priority: string;
+  source: string;
+  notes: string;
+  agentNotes: string;
+};
+
+const initialFormValues: LeadFormValues = {
+  fullName: "",
+  phone: "",
+  email: "",
+  propertyAddress: "",
+  desiredMoveInDate: "",
+  nextFollowUpDate: "",
+  status: "new",
+  priority: "medium",
+  source: "other",
+  notes: "",
+  agentNotes: ""
+};
+
 const fieldOrder = [
   "fullName",
   "phone",
@@ -24,47 +63,71 @@ const fieldOrder = [
   "desiredMoveInDate",
   "status",
   "priority",
-  "source"
+  "source",
+  "notes",
+  "agentNotes"
 ];
 
-function validateEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+function getFieldError(name: keyof LeadFormValues, value: string) {
+  switch (name) {
+    case "fullName":
+      return getRequiredTextError(value) || getMaxLengthError(value, fieldMaxLengths.fullName);
+    case "phone":
+      return getPhoneError(value) || getMaxLengthError(value, fieldMaxLengths.phone);
+    case "email":
+      return getEmailError(value) || getMaxLengthError(value, fieldMaxLengths.email);
+    case "propertyAddress":
+      return (
+        getRequiredTextError(value) || getMaxLengthError(value, fieldMaxLengths.propertyAddress)
+      );
+    case "desiredMoveInDate":
+      return getRequiredTextError(value);
+    case "status":
+    case "priority":
+    case "source":
+      return getRequiredSelectError(value);
+    case "notes":
+      return getMaxLengthError(value, fieldMaxLengths.notes);
+    case "agentNotes":
+      return getMaxLengthError(value, fieldMaxLengths.agentNotes);
+    default:
+      return "";
+  }
 }
 
-function validatePhone(value: string) {
-  return value.replace(/\D/g, "").length >= 10;
-}
+function buildErrors(values: LeadFormValues) {
+  return Object.entries(values).reduce<FieldErrors>((current, [name, value]) => {
+    const nextError = getFieldError(name as keyof LeadFormValues, value);
 
-function getFieldError(name: string, value: string) {
-  const trimmed = value.trim();
+    if (!nextError) {
+      return current;
+    }
 
-  if (["fullName", "phone", "email", "propertyAddress", "desiredMoveInDate"].includes(name) && !trimmed) {
-    return "This field is required.";
-  }
-
-  if (["status", "priority", "source"].includes(name) && !trimmed) {
-    return "Please choose an option.";
-  }
-
-  if (name === "email" && trimmed && !validateEmail(trimmed)) {
-    return "Enter a valid email address.";
-  }
-
-  if (name === "phone" && trimmed && !validatePhone(trimmed)) {
-    return "Enter a valid phone number.";
-  }
-
-  return "";
+    return { ...current, [name]: nextError };
+  }, {});
 }
 
 export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?: boolean }) {
   const formRef = useRef<HTMLFormElement>(null);
   const scheduleRef = useRef<DateTimePickerHandle>(null);
+  const [values, setValues] = useState<LeadFormValues>(initialFormValues);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [scheduleState, setScheduleState] = useState({
+    date: "",
+    time: "",
+    isValid: true,
+    isPastDate: false
+  });
 
-  function setFieldError(name: string, value: string) {
+  const isFormValid = useMemo(
+    () => Object.keys(buildErrors(values)).length === 0 && scheduleState.isValid,
+    [scheduleState.isValid, values]
+  );
+
+  function updateField(name: keyof LeadFormValues, value: string) {
+    setValues((current) => ({ ...current, [name]: value }));
+
     const nextError = getFieldError(name, value);
-
     setErrors((current) => {
       if (!nextError) {
         const { [name]: _ignored, ...rest } = current;
@@ -88,32 +151,19 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
   }
 
   function validateForm() {
-    const formElement = formRef.current;
-    if (!formElement) {
-      return true;
-    }
-
-    const formData = new FormData(formElement);
-    const nextErrors: FieldErrors = {};
-
-    for (const name of fieldOrder) {
-      const value = String(formData.get(name) ?? "");
-      const nextError = getFieldError(name, value);
-
-      if (nextError) {
-        nextErrors[name] = nextError;
-      }
-    }
-
+    const nextErrors = buildErrors(values);
     const isScheduleValid = scheduleRef.current?.validate() ?? true;
+
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
+      emitAppToast({ toastKey: "validation-error" });
       focusFirstInvalid(nextErrors);
       return false;
     }
 
     if (!isScheduleValid) {
+      emitAppToast({ toastKey: "validation-error" });
       scheduleRef.current?.focusDate();
       return false;
     }
@@ -138,87 +188,97 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
         name="fullName"
         type="text"
         required
-        errors={errors}
-        onBlur={setFieldError}
         autoComplete="name"
+        value={values.fullName}
+        error={errors.fullName}
+        maxLength={fieldMaxLengths.fullName}
+        onChange={updateField}
       />
       <ValidatedField
         label="Phone"
         name="phone"
         type="tel"
         required
-        errors={errors}
-        onBlur={setFieldError}
         autoComplete="tel"
+        value={values.phone}
+        error={errors.phone}
+        maxLength={fieldMaxLengths.phone}
+        onChange={updateField}
       />
       <ValidatedField
         label="Email"
         name="email"
         type="email"
         required
-        errors={errors}
-        onBlur={setFieldError}
         autoComplete="email"
+        value={values.email}
+        error={errors.email}
+        maxLength={fieldMaxLengths.email}
+        onChange={updateField}
       />
       <ValidatedField
         label="Property address"
         name="propertyAddress"
         type="text"
         required
-        errors={errors}
-        onBlur={setFieldError}
         autoComplete="street-address"
+        value={values.propertyAddress}
+        error={errors.propertyAddress}
+        maxLength={fieldMaxLengths.propertyAddress}
+        onChange={updateField}
       />
       <ValidatedField
         label="Desired move-in date"
         name="desiredMoveInDate"
         type="date"
         required
-        errors={errors}
-        onBlur={setFieldError}
+        value={values.desiredMoveInDate}
+        error={errors.desiredMoveInDate}
+        onChange={updateField}
       />
       <ValidatedField
         label="Next follow-up date"
         name="nextFollowUpDate"
         type="date"
-        errors={errors}
-        onBlur={setFieldError}
+        value={values.nextFollowUpDate}
+        error={errors.nextFollowUpDate}
+        onChange={updateField}
       />
 
       <ValidatedSelect
         label="Status"
         name="status"
-        defaultValue="new"
+        value={values.status}
         options={leadStatusOptions.map((option) => ({
           value: option,
           label: getStatusLabel(option)
         }))}
-        errors={errors}
-        onBlur={setFieldError}
+        error={errors.status}
+        onChange={updateField}
       />
 
       <ValidatedSelect
         label="Priority"
         name="priority"
-        defaultValue="medium"
+        value={values.priority}
         options={leadPriorityOptions.map((option) => ({
           value: option,
           label: getPriorityLabel(option)
         }))}
-        errors={errors}
-        onBlur={setFieldError}
+        error={errors.priority}
+        onChange={updateField}
       />
 
       <ValidatedSelect
         label="Lead source"
         name="source"
-        defaultValue="other"
+        value={values.source}
         options={leadSourceOptions.map((option) => ({
           value: option,
           label: getSourceLabel(option)
         }))}
-        errors={errors}
-        onBlur={setFieldError}
+        error={errors.source}
+        onChange={updateField}
       />
 
       <div className="rounded-3xl border border-line/70 bg-slate-50/80 px-4 py-4">
@@ -235,8 +295,10 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
           name="notes"
           rows={4}
           placeholder="Example: Prefers first-floor units, works downtown, wants parking."
-          errors={errors}
-          onBlur={setFieldError}
+          value={values.notes}
+          error={errors.notes}
+          maxLength={fieldMaxLengths.notes}
+          onChange={updateField}
         />
       </div>
 
@@ -260,6 +322,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
             timeLabel="Showing time"
             dateAriaLabel="showing date"
             timeAriaLabel="showing time"
+            onValueChange={setScheduleState}
           />
         </div>
 
@@ -269,8 +332,10 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
             name="agentNotes"
             rows={3}
             placeholder="Lockbox code, parking tips, pet policy reminders, and so on."
-            errors={errors}
-            onBlur={setFieldError}
+            value={values.agentNotes}
+            error={errors.agentNotes}
+            maxLength={fieldMaxLengths.agentNotes}
+            onChange={updateField}
           />
         </div>
       </div>
@@ -282,12 +347,19 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
             Priority, source, and follow-up timing help the dashboard rank the lead intelligently.
           </p>
         </div>
-        <TooltipShell
-          disabled={isPreviewReadonly}
-          message="Preview mode is read-only. Disable preview mode or use a live database to create leads."
-        >
-          <CreateLeadButton disabled={isPreviewReadonly} />
-        </TooltipShell>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          {!isFormValid ? (
+            <p className="text-xs font-medium text-slate-500">
+              Complete the required fields and fix any errors to enable save.
+            </p>
+          ) : null}
+          <TooltipShell
+            disabled={isPreviewReadonly}
+            message="Preview mode is read-only. Disable preview mode or use a live database to create leads."
+          >
+            <CreateLeadButton disabled={isPreviewReadonly || !isFormValid} />
+          </TooltipShell>
+        </div>
       </div>
     </form>
   );
@@ -302,7 +374,14 @@ function CreateLeadButton({ disabled = false }: { disabled?: boolean }) {
       disabled={disabled || pending}
       className="app-button-primary disabled:cursor-not-allowed disabled:opacity-55"
     >
-      {pending ? "Saving..." : "Create Lead"}
+      {pending ? (
+        <>
+          <InlineSpinner />
+          <span>Saving Lead...</span>
+        </>
+      ) : (
+        "Create Lead"
+      )}
     </button>
   );
 }
@@ -312,35 +391,40 @@ function ValidatedField({
   name,
   type = "text",
   required = false,
-  errors,
-  onBlur,
-  autoComplete
+  value,
+  error,
+  onChange,
+  autoComplete,
+  maxLength
 }: {
   label: string;
-  name: string;
+  name: keyof LeadFormValues;
   type?: string;
   required?: boolean;
-  errors: FieldErrors;
-  onBlur: (name: string, value: string) => void;
+  value: string;
+  error?: string;
+  onChange: (name: keyof LeadFormValues, value: string) => void;
   autoComplete?: string;
+  maxLength?: number;
 }) {
-  const error = errors[name];
   const helpId = `${name}-help`;
   const errorId = `${name}-error`;
 
   return (
-    <label className="flex flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-2">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <input
         type={type}
         name={name}
         required={required}
         autoComplete={autoComplete}
+        maxLength={maxLength}
+        value={value}
         data-field={name}
         aria-label={label}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
-        onBlur={(event) => onBlur(name, event.target.value)}
+        onChange={(event) => onChange(name, event.target.value)}
         className={`app-input ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       />
       <p id={helpId} className="text-xs text-slate-500">
@@ -354,33 +438,32 @@ function ValidatedField({
 function ValidatedSelect({
   label,
   name,
-  defaultValue,
+  value,
   options,
-  errors,
-  onBlur
+  error,
+  onChange
 }: {
   label: string;
-  name: string;
-  defaultValue: string;
+  name: keyof LeadFormValues;
+  value: string;
   options: Array<{ value: string; label: string }>;
-  errors: FieldErrors;
-  onBlur: (name: string, value: string) => void;
+  error?: string;
+  onChange: (name: keyof LeadFormValues, value: string) => void;
 }) {
-  const error = errors[name];
   const helpId = `${name}-help`;
   const errorId = `${name}-error`;
 
   return (
-    <label className="flex flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-2">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <select
         name={name}
-        defaultValue={defaultValue}
+        value={value}
         data-field={name}
         aria-label={label}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
-        onBlur={(event) => onBlur(name, event.target.value)}
+        onChange={(event) => onChange(name, event.target.value)}
         className={`app-input ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       >
         {options.map((option) => (
@@ -402,32 +485,37 @@ function ValidatedTextarea({
   name,
   rows,
   placeholder,
-  errors,
-  onBlur
+  value,
+  error,
+  onChange,
+  maxLength
 }: {
   label: string;
-  name: string;
+  name: keyof LeadFormValues;
   rows: number;
   placeholder: string;
-  errors: FieldErrors;
-  onBlur: (name: string, value: string) => void;
+  value: string;
+  error?: string;
+  onChange: (name: keyof LeadFormValues, value: string) => void;
+  maxLength: number;
 }) {
-  const error = errors[name];
   const helpId = `${name}-help`;
   const errorId = `${name}-error`;
 
   return (
-    <label className="flex flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-2">
       <span className="text-sm font-medium text-slate-700">{label}</span>
-      <textarea
+      <AutoResizeTextarea
         name={name}
         rows={rows}
+        value={value}
+        maxLength={maxLength}
         placeholder={placeholder}
         data-field={name}
         aria-label={label}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
-        onBlur={(event) => onBlur(name, event.target.value)}
+        onChange={(event) => onChange(name, event.target.value)}
         className={`app-textarea ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       />
       <p id={helpId} className="text-xs text-slate-500">

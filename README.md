@@ -43,6 +43,10 @@ A premium, investor-demo-ready real estate CRM for rental showing agents and lea
 - Next follow-up date tracking
 - Overdue/today/upcoming follow-up indicators
 - Browser-picker-friendly showing date/time inputs with manual entry validation
+- Strong client-side validation with inline error messages
+- Disabled save actions until forms are valid
+- Loading states for navigation, form saves, logout, and inline status updates
+- Auto-resizing notes fields and safer text limits for CRM inputs
 - Professional CRM lead cards with quick actions:
   - Call
   - Text
@@ -59,9 +63,17 @@ A premium, investor-demo-ready real estate CRM for rental showing agents and lea
   - Google Calendar link
 - Multi-property customer workflow:
   - each lead can track multiple interested properties
-  - customer page shows property cards
+  - customer page groups active properties at the top
+  - rejected properties stay available in a collapsed section
+  - top-rated property is highlighted on the customer record
+  - property cards show rent, layout, neighborhood, status, rating, and feedback
   - add-property flow for expanding the shortlist
-  - property report page with status, notes, rating, listing link, and Google Maps
+  - property report page with status, rating, feedback, schedule, listing link, and Google Maps
+  - quick property actions:
+    - mark toured
+    - mark rejected
+    - mark applying
+    - schedule showing with a suggested date/time
 - Routes page with grouped daily showings
 - Copy route link and Google Maps route open action
 - Toast notifications for important actions
@@ -199,11 +211,39 @@ AUTH_SECRET=replace-this-with-a-long-random-secret
 ## Preview-Mode Limitations
 
 - Public preview mode is read-only when no hosted database is connected
-- Lead creation and lead-detail updates are disabled in preview mode
+- Lead creation, lead-detail updates, and property saves are disabled in preview mode
 - Dashboard status changes still explain that preview mode is read-only instead of silently failing
 - The UI still works normally for demo and evaluation
 - Google Calendar links still work from demo data
 - Routes still work from demo data
+- A persistent banner appears on dashboard and form pages: `Preview mode — changes are not saved`
+
+## Validation And Input Rules
+
+- Required lead fields:
+  - full name
+  - email
+  - phone
+  - property address
+  - desired move-in date
+  - status
+  - priority
+  - source
+- Email must be in a normal email format like `name@example.com`
+- Phone accepts common US-friendly formatting, but it still needs a valid 10-digit US number
+- Property `rent`, `beds`, and `baths` must be numeric if you fill them in
+- Showing time uses `h:mm AM/PM`
+- Showing date uses `MM/DD/YYYY` in the visible field and the browser date picker behind the scenes
+- Past showing dates trigger a warning and require explicit confirmation before save
+- Save buttons stay disabled until the form is valid
+- Notes, agent notes, names, addresses, and other text fields now have max-length protection to prevent oversized entries
+- Property status now supports:
+  - interested
+  - scheduled
+  - toured
+  - rejected
+  - applying
+  - approved
 
 ## Testing Date, Time, And Validation Locally
 
@@ -214,15 +254,25 @@ cd "C:\Users\ProBo\OneDrive\Documents\New project"
 npm run dev
 ```
 
-2. Open `/leads/new` and `/leads/[id]`.
+2. Open `/leads/new`, any lead details page, and any property form page.
 3. In the showing date and time fields:
-   - click `Use picker` to open the browser-native picker
+   - click into the field and confirm the browser picker opens
+   - click the calendar or time icon and confirm the picker opens
    - type `MM/DD/YYYY` for date input
    - type `h:mm AM/PM` for time input, like `9:30 AM`
-4. Leave required fields empty to see inline validation errors.
-5. Set `APP_PREVIEW_MODE="readonly"` in `.env`, restart the dev server, and confirm:
+   - try an invalid time like `25:61` and confirm the inline error appears
+   - try a past date and confirm the warning/confirmation appears
+4. Leave required fields empty to see inline validation errors under the field.
+5. Try invalid values:
+   - bad email
+   - short phone number
+   - letters in `rent`, `beds`, or `baths`
+6. Confirm the save button stays disabled until the form becomes valid.
+7. Confirm notes fields grow as you type instead of forcing a tiny fixed box.
+8. Confirm header links, record buttons, and save buttons show a loading state and do not double-submit.
+9. Set `APP_PREVIEW_MODE="readonly"` in `.env`, restart the dev server, and confirm:
    - the preview banner appears on the dashboard and lead form pages
-   - `Create Lead` and `Update Lead` are disabled
+   - `Create Lead`, `Update Lead`, and property save buttons are disabled
    - the disabled buttons explain why on hover or keyboard focus
 
 ## Main App Areas
@@ -272,13 +322,20 @@ npm run dev
 2. Sign in with the demo credentials.
 3. Open any lead from the dashboard.
 4. On the customer detail page:
-   - confirm the `Interested Properties` section shows multiple property cards
+   - confirm the `Interested Properties` section now separates active properties from rejected ones
+   - confirm the top-rated property is highlighted
    - click `Add Property`
-5. Add a new property with title, address, status, source, and notes.
-6. Return to the customer page and confirm the new property appears in the shortlist.
+5. Add a new property with title, address, source, rating, and optional showing date/time.
+6. Return to the customer page and confirm the new property appears in the active shortlist.
 7. Open a property report and confirm you can:
    - open the listing link
    - open the address in Google Maps
    - mark the property as toured
-   - update the status, rating, pros, cons, and notes
-8. Return to the customer page and confirm active properties remain near the top while rejected and closed properties fall lower.
+   - mark the property as rejected
+   - move the property to applying
+   - schedule a showing with the suggested date/time button
+   - update status, client feedback, agent feedback, rating, pros, cons, and schedule from the form
+8. Return to the customer page and confirm:
+   - active properties stay at the top
+   - rejected properties move into the collapsed rejected section
+   - approved and scheduled properties still remain easy to scan in the active group

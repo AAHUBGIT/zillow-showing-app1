@@ -1,5 +1,5 @@
 import leads from "@/data/leads.json";
-import { sortPropertyInterests } from "./property-interest-utils";
+import { syncLeadShowingToPropertyInterests } from "./property-interest-utils";
 import { LeadWithProperties } from "./types";
 
 export function getDemoLeads() {
@@ -7,7 +7,15 @@ export function getDemoLeads() {
     .map((lead) => ({
       ...lead,
       userId: lead.userId || "demo-user",
-      propertyInterests: sortPropertyInterests(lead.propertyInterests || [])
+      routeStopOrder: Number(lead.routeStopOrder || 0),
+      routeCompleted: Boolean(lead.routeCompleted || false),
+      routeNote: lead.routeNote || "",
+      propertyInterests: syncLeadShowingToPropertyInterests(
+        lead.propertyInterests || [],
+        lead.propertyAddress,
+        lead.showingDate,
+        lead.showingTime
+      )
     }))
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }

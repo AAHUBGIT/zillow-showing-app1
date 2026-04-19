@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { LeadCard } from "@/components/lead-card";
+import { LoadingLink } from "@/components/loading-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import {
   followUpFilterOptions,
@@ -185,15 +185,15 @@ export function DashboardClient({
             </div>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <Link href="/leads/new" className="app-button-primary flex-1">
+              <LoadingLink href="/leads/new" className="app-button-primary flex-1">
                 Add New Lead
-              </Link>
-              <Link href="/routes" className="app-button-secondary flex-1">
+              </LoadingLink>
+              <LoadingLink href="/routes" className="app-button-secondary flex-1">
                 Open Routes
-              </Link>
-              <Link href="/leads/new" className="app-button-secondary flex-1">
+              </LoadingLink>
+              <LoadingLink href="/leads/new" className="app-button-secondary flex-1">
                 Capture Inquiry
-              </Link>
+              </LoadingLink>
             </div>
           </div>
         </div>
@@ -205,9 +205,9 @@ export function DashboardClient({
               Start your pipeline with a new lead and the dashboard will immediately organize
               follow-ups, priorities, and showings for you.
             </p>
-            <Link href="/leads/new" className="app-button-primary mt-6">
+            <LoadingLink href="/leads/new" className="app-button-primary mt-6">
               Add your first lead
-            </Link>
+            </LoadingLink>
           </div>
         ) : (
           <>
@@ -382,7 +382,7 @@ export function DashboardClient({
 
                 <div id="dashboard-lead-list" className="grid gap-4 xl:grid-cols-2">
                   {filteredLeads.map((lead) => (
-                    <LeadCard key={lead.id} lead={lead} />
+                    <LeadCard key={lead.id} lead={lead} isPreviewReadonly={isPreviewReadonly} />
                   ))}
                 </div>
               </div>

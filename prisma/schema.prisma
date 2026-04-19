@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -22,6 +23,9 @@ model Lead {
   nextFollowUpDate  String
   showingDate       String
   showingTime       String
+  routeStopOrder    Int    @default(0)
+  routeCompleted    Boolean @default(false)
+  routeNote         String @default("")
   agentNotes        String
   createdAt         String
   updatedAt         String
@@ -41,9 +45,12 @@ model PropertyInterest {
   neighborhood String
   status       String
   rating       Int
+  clientFeedback String
   pros         String
   cons         String
   agentNotes   String
+  showingDate  String
+  showingTime  String
   createdAt    String
   updatedAt    String
   lead         Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)

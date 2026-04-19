@@ -1,8 +1,16 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient } = require("../generated/prisma");
 const fs = require("fs");
 const path = require("path");
 
 const prisma = new PrismaClient();
+
+function normalizePropertyStatus(status) {
+  if (status === "closed") {
+    return "approved";
+  }
+
+  return status || "interested";
+}
 
 async function main() {
   const leadsFilePath = path.join(process.cwd(), "data", "leads.json");
@@ -30,28 +38,57 @@ async function main() {
           nextFollowUpDate: lead.nextFollowUpDate || "",
           showingDate: lead.showingDate || "",
           showingTime: lead.showingTime || "",
+          routeStopOrder: Number(lead.routeStopOrder || 0),
+          routeCompleted: Boolean(lead.routeCompleted || false),
+          routeNote: lead.routeNote || "",
           agentNotes: lead.agentNotes || "",
           createdAt: lead.createdAt,
           updatedAt: lead.updatedAt,
           propertyInterests: {
-            create: (lead.propertyInterests || []).map((propertyInterest) => ({
-              id: propertyInterest.id,
-              address: propertyInterest.address,
-              listingTitle: propertyInterest.listingTitle,
-              source: propertyInterest.source || "other",
-              listingUrl: propertyInterest.listingUrl || "",
-              rent: propertyInterest.rent || "",
-              beds: propertyInterest.beds || "",
-              baths: propertyInterest.baths || "",
-              neighborhood: propertyInterest.neighborhood || "",
-              status: propertyInterest.status || "interested",
-              rating: propertyInterest.rating || 3,
-              pros: propertyInterest.pros || "",
-              cons: propertyInterest.cons || "",
-              agentNotes: propertyInterest.agentNotes || "",
-              createdAt: propertyInterest.createdAt,
-              updatedAt: propertyInterest.updatedAt
-            }))
+            create: (lead.propertyInterests || []).map((propertyInterest) => {
+              const normalizedStatus = normalizePropertyStatus(propertyInterest.status);
+              const showingDate =
+                propertyInterest.showingDate ||
+                (lead.showingDate &&
+                lead.showingTime &&
+                propertyInterest.address === lead.propertyAddress &&
+                normalizedStatus === "interested"
+                  ? lead.showingDate
+                  : "");
+              const showingTime =
+                propertyInterest.showingTime ||
+                (lead.showingDate &&
+                lead.showingTime &&
+                propertyInterest.address === lead.propertyAddress &&
+                normalizedStatus === "interested"
+                  ? lead.showingTime
+                  : "");
+
+              return {
+                id: propertyInterest.id,
+                address: propertyInterest.address,
+                listingTitle: propertyInterest.listingTitle,
+                source: propertyInterest.source || "other",
+                listingUrl: propertyInterest.listingUrl || "",
+                rent: propertyInterest.rent || "",
+                beds: propertyInterest.beds || "",
+                baths: propertyInterest.baths || "",
+                neighborhood: propertyInterest.neighborhood || "",
+                status:
+                  normalizedStatus === "interested" && showingDate && showingTime
+                    ? "scheduled"
+                    : normalizedStatus,
+                rating: propertyInterest.rating || 3,
+                clientFeedback: propertyInterest.clientFeedback || "",
+                pros: propertyInterest.pros || "",
+                cons: propertyInterest.cons || "",
+                agentNotes: propertyInterest.agentNotes || "",
+                showingDate,
+                showingTime,
+                createdAt: propertyInterest.createdAt,
+                updatedAt: propertyInterest.updatedAt
+              };
+            })
           }
         }
       });

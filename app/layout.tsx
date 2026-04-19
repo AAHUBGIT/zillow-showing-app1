@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { Suspense } from "react";
 import { AppHeader } from "@/components/app-header";
+import { KeyboardShortcutsGuard } from "@/components/keyboard-shortcuts-guard";
 import { ToastViewport } from "@/components/toast-viewport";
 import { getSessionUser } from "@/lib/auth";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
@@ -28,6 +29,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={manrope.className}>
+        <KeyboardShortcutsGuard />
         <div className="app-shell">
           <a
             href="#main-content"

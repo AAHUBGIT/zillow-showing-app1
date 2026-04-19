@@ -2,7 +2,10 @@ import { getSessionUser } from "./auth";
 import { getDemoLeads } from "./demo-leads";
 import { canUseDatabase } from "./deployment";
 import { sortLeads } from "./lead-utils";
-import { buildGoogleMapsSearchLink, sortPropertyInterests } from "./property-interest-utils";
+import {
+  buildGoogleMapsSearchLink,
+  syncLeadShowingToPropertyInterests
+} from "./property-interest-utils";
 import { prisma } from "./prisma";
 import { LeadWithProperties, PropertyInterest } from "./types";
 
@@ -28,7 +31,12 @@ export async function getLeads(): Promise<LeadWithProperties[]> {
   return sortLeads(
     (leads as unknown as LeadWithProperties[]).map((lead) => ({
       ...lead,
-      propertyInterests: sortPropertyInterests(lead.propertyInterests || [])
+      propertyInterests: syncLeadShowingToPropertyInterests(
+        lead.propertyInterests || [],
+        lead.propertyAddress,
+        lead.showingDate,
+        lead.showingTime
+      )
     }))
   );
 }
@@ -56,7 +64,12 @@ export async function getLeadById(id: string): Promise<LeadWithProperties | null
 
   return {
     ...(lead as unknown as LeadWithProperties),
-    propertyInterests: sortPropertyInterests((lead as any).propertyInterests || [])
+    propertyInterests: syncLeadShowingToPropertyInterests(
+      (lead as any).propertyInterests || [],
+      lead.propertyAddress,
+      lead.showingDate,
+      lead.showingTime
+    )
   };
 }
 
@@ -97,6 +110,9 @@ export async function saveLeads(leads: LeadWithProperties[]) {
           nextFollowUpDate: lead.nextFollowUpDate,
           showingDate: lead.showingDate,
           showingTime: lead.showingTime,
+          routeStopOrder: lead.routeStopOrder || 0,
+          routeCompleted: lead.routeCompleted || false,
+          routeNote: lead.routeNote || "",
           agentNotes: lead.agentNotes,
           createdAt: lead.createdAt,
           updatedAt: lead.updatedAt,
@@ -113,9 +129,12 @@ export async function saveLeads(leads: LeadWithProperties[]) {
               neighborhood: propertyInterest.neighborhood,
               status: propertyInterest.status,
               rating: propertyInterest.rating,
+              clientFeedback: propertyInterest.clientFeedback || "",
               pros: propertyInterest.pros,
               cons: propertyInterest.cons,
               agentNotes: propertyInterest.agentNotes,
+              showingDate: propertyInterest.showingDate || "",
+              showingTime: propertyInterest.showingTime || "",
               createdAt: propertyInterest.createdAt,
               updatedAt: propertyInterest.updatedAt
             }))

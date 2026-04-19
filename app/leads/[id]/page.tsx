@@ -1,8 +1,10 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarLinkButton } from "@/components/calendar-link-button";
 import { FollowUpBadge } from "@/components/follow-up-badge";
+import { LeadAiInsights } from "@/components/lead-ai-insights";
 import { LeadScheduleForm } from "@/components/lead-schedule-form";
+import { LoadingLink } from "@/components/loading-link";
+import { PropertyComparisonTable } from "@/components/property-comparison-table";
 import { PropertyInterestCard } from "@/components/property-interest-card";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PriorityBadge } from "@/components/priority-badge";
@@ -15,7 +17,12 @@ import {
   getStatusLabel
 } from "@/lib/lead-utils";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
-import { getPropertyInterestCountLabel } from "@/lib/property-interest-utils";
+import {
+  getPropertyInterestCountLabel,
+  getTopRatedProperty,
+  isActivePropertyInterest,
+  isRejectedPropertyInterest
+} from "@/lib/property-interest-utils";
 import { getLeadById } from "@/lib/storage";
 
 export default async function LeadDetailsPage({
@@ -32,9 +39,14 @@ export default async function LeadDetailsPage({
 
   const calendarUrl = buildGoogleCalendarUrl(lead);
   const isPreviewReadonly = isPreviewReadonlyMode();
-  const activePropertyCount = lead.propertyInterests.filter(
-    (propertyInterest) => propertyInterest.status !== "rejected" && propertyInterest.status !== "closed"
-  ).length;
+  const activeProperties = lead.propertyInterests.filter(isActivePropertyInterest);
+  const rejectedProperties = lead.propertyInterests.filter(isRejectedPropertyInterest);
+  const activePropertyCount = activeProperties.length;
+  const topRatedProperty = getTopRatedProperty(activeProperties);
+  const comparisonProperties =
+    activeProperties.length > 0
+      ? [...activeProperties, ...rejectedProperties]
+      : lead.propertyInterests;
 
   return (
     <main className="space-y-6">
@@ -57,9 +69,9 @@ export default async function LeadDetailsPage({
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-3">
-                <Link href="/" className="app-button-secondary">
+                <LoadingLink href="/" className="app-button-secondary">
                   Back to Dashboard
-                </Link>
+                </LoadingLink>
                 <CalendarLinkButton
                   calendarUrl={calendarUrl}
                   missingMessage="Add a showing date and time before creating a Google Calendar event."
@@ -113,6 +125,8 @@ export default async function LeadDetailsPage({
             </div>
           </div>
 
+          <LeadAiInsights lead={lead} />
+
           <div className="app-panel p-5 sm:p-6">
             <p className="app-eyebrow">Showing Snapshot</p>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -155,9 +169,9 @@ export default async function LeadDetailsPage({
                   <div className="app-chip">{getPropertyInterestCountLabel(lead.propertyInterests.length)}</div>
                   <div className="app-chip">{activePropertyCount} active</div>
                 </div>
-                <Link href={`/leads/${lead.id}/properties/new`} className="app-button-primary">
+                <LoadingLink href={`/leads/${lead.id}/properties/new`} className="app-button-primary">
                   Add Property
-                </Link>
+                </LoadingLink>
               </div>
             </div>
 
@@ -168,19 +182,93 @@ export default async function LeadDetailsPage({
                   Add the listings this customer is considering so you can compare options, capture
                   pros and cons, and keep touring decisions in one place.
                 </p>
-                <Link href={`/leads/${lead.id}/properties/new`} className="app-button-primary mt-6">
+                <LoadingLink
+                  href={`/leads/${lead.id}/properties/new`}
+                  className="app-button-primary mt-6"
+                >
                   Add First Property
-                </Link>
+                </LoadingLink>
               </div>
             ) : (
-              <div className="mt-6 grid gap-4 xl:grid-cols-2">
-                {lead.propertyInterests.map((propertyInterest) => (
-                  <PropertyInterestCard
-                    key={propertyInterest.id}
-                    leadId={lead.id}
-                    propertyInterest={propertyInterest}
-                  />
-                ))}
+              <div className="mt-6 space-y-6">
+                {topRatedProperty ? (
+                  <div className="rounded-4xl border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(255,255,255,0.96))] p-5 shadow-soft">
+                    <p className="app-kicker text-amber-700">Top Rated Property</p>
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-lg font-semibold tracking-tight text-ink">
+                          {topRatedProperty.listingTitle}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-600">{topRatedProperty.address}</p>
+                      </div>
+                      <LoadingLink
+                        href={`/leads/${lead.id}/properties/${topRatedProperty.id}`}
+                        className="app-button-secondary"
+                      >
+                        Open Top Property
+                      </LoadingLink>
+                    </div>
+                  </div>
+                ) : null}
+
+                {comparisonProperties.length > 0 ? (
+                  <div>
+                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="app-kicker">Compare Properties</p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Review pricing, layout, neighborhood, status, rating, and tradeoffs side by side.
+                        </p>
+                      </div>
+                      <div className="app-chip">Scroll sideways on mobile</div>
+                    </div>
+                    <PropertyComparisonTable propertyInterests={comparisonProperties} />
+                  </div>
+                ) : null}
+
+                {activeProperties.length > 0 ? (
+                  <div>
+                    <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="app-kicker">Active Properties</p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Listings still in the decision pipeline, sorted with the strongest options first.
+                        </p>
+                      </div>
+                      <div className="app-chip">{activeProperties.length} active</div>
+                    </div>
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      {activeProperties.map((propertyInterest) => (
+                        <PropertyInterestCard
+                          key={propertyInterest.id}
+                          leadId={lead.id}
+                          propertyInterest={propertyInterest}
+                          isTopRated={topRatedProperty?.id === propertyInterest.id}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {rejectedProperties.length > 0 ? (
+                  <details className="rounded-4xl border border-line/80 bg-white/80 p-5 shadow-soft">
+                    <summary className="cursor-pointer list-none text-sm font-semibold text-slate-700">
+                      Rejected Properties ({rejectedProperties.length})
+                    </summary>
+                    <p className="mt-3 text-sm text-slate-500">
+                      Keep past no-go listings here for context without letting them crowd the active shortlist.
+                    </p>
+                    <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                      {rejectedProperties.map((propertyInterest) => (
+                        <PropertyInterestCard
+                          key={propertyInterest.id}
+                          leadId={lead.id}
+                          propertyInterest={propertyInterest}
+                        />
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
               </div>
             )}
           </div>

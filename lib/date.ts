@@ -129,3 +129,14 @@ export function parseManualTimeInput(value: string) {
 
   return `${padDatePart(normalizedHours)}:${padDatePart(minutes)}`;
 }
+
+export function isPastDate(dateString: string) {
+  if (!dateString) {
+    return false;
+  }
+
+  const today = new Date();
+  const todayAtMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const candidate = new Date(`${dateString}T00:00:00`);
+  return candidate.getTime() < todayAtMidnight.getTime();
+}

@@ -10,9 +10,11 @@ export type LeadSource =
 export type FollowUpState = "overdue" | "today" | "upcoming" | "none";
 export type PropertyInterestStatus =
   | "interested"
+  | "scheduled"
   | "toured"
   | "rejected"
   | "applying"
+  | "approved"
   | "closed";
 
 export type Lead = {
@@ -30,6 +32,9 @@ export type Lead = {
   nextFollowUpDate: string;
   showingDate: string;
   showingTime: string;
+  routeStopOrder: number;
+  routeCompleted: boolean;
+  routeNote: string;
   agentNotes: string;
   createdAt: string;
   updatedAt: string;
@@ -48,9 +53,12 @@ export type PropertyInterest = {
   neighborhood: string;
   status: PropertyInterestStatus;
   rating: number;
+  clientFeedback: string;
   pros: string;
   cons: string;
   agentNotes: string;
+  showingDate: string;
+  showingTime: string;
   createdAt: string;
   updatedAt: string;
 };

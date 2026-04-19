@@ -1,15 +1,18 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LoadingLink } from "@/components/loading-link";
 import { PropertyInterestForm } from "@/components/property-interest-form";
+import { PropertyInterestQuickActions } from "@/components/property-interest-quick-actions";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PropertyRatingStars } from "@/components/property-rating-stars";
 import { PropertyInterestStatusBadge } from "@/components/property-interest-status-badge";
 import { TooltipShell } from "@/components/tooltip-shell";
-import { markPropertyInterestToured, updatePropertyInterest } from "@/lib/actions";
+import { updatePropertyInterest } from "@/lib/actions";
+import { formatDateTimeLabel } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
 import {
   buildGoogleMapsSearchLink,
-  getPropertyInterestSourceLabel
+  getPropertyInterestSourceLabel,
+  getSuggestedPropertyShowing
 } from "@/lib/property-interest-utils";
 import { getLeadById, getPropertyInterestById } from "@/lib/storage";
 
@@ -30,6 +33,11 @@ export default async function PropertyInterestDetailsPage({
 
   const isPreviewReadonly = isPreviewReadonlyMode();
   const mapsLink = buildGoogleMapsSearchLink(propertyInterest.address);
+  const suggestedShowing = getSuggestedPropertyShowing(
+    propertyInterest,
+    lead.showingDate,
+    lead.showingTime
+  );
 
   return (
     <main className="space-y-6">
@@ -54,9 +62,9 @@ export default async function PropertyInterestDetailsPage({
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Link href={`/leads/${lead.id}`} className="app-button-secondary">
+                <LoadingLink href={`/leads/${lead.id}`} className="app-button-secondary">
                   Back to Customer
-                </Link>
+                </LoadingLink>
                 <a href={mapsLink} target="_blank" rel="noreferrer" className="app-button-secondary">
                   Open in Google Maps
                 </a>
@@ -82,6 +90,15 @@ export default async function PropertyInterestDetailsPage({
               <InfoCard label="Layout" value={`${propertyInterest.beds || "?"} bd / ${propertyInterest.baths || "?"} ba`} />
               <InfoCard label="Neighborhood" value={propertyInterest.neighborhood || "Not set"} />
               <InfoCard label="Customer" value={lead.fullName} />
+              <InfoCard label="Client Rating" value={`${propertyInterest.rating}/5`} />
+              <InfoCard
+                label="Showing"
+                value={
+                  propertyInterest.showingDate && propertyInterest.showingTime
+                    ? formatDateTimeLabel(propertyInterest.showingDate, propertyInterest.showingTime)
+                    : "Not scheduled"
+                }
+              />
             </div>
           </div>
 
@@ -91,39 +108,35 @@ export default async function PropertyInterestDetailsPage({
               <div className="mt-5 grid gap-4">
                 <TextCard label="Pros" value={propertyInterest.pros || "No pros recorded yet."} />
                 <TextCard label="Cons" value={propertyInterest.cons || "No cons recorded yet."} />
+                <TextCard
+                  label="Client feedback"
+                  value={propertyInterest.clientFeedback || "No client feedback recorded yet."}
+                />
               </div>
             </div>
 
             <div className="app-panel p-5 sm:p-6">
-              <p className="app-eyebrow">Agent Perspective</p>
+              <p className="app-eyebrow">Workflow Actions</p>
               <div className="mt-5 grid gap-4">
                 <TextCard
-                  label="Agent notes"
-                  value={propertyInterest.agentNotes || "No agent notes recorded yet."}
+                  label="Agent feedback"
+                  value={propertyInterest.agentNotes || "No agent feedback recorded yet."}
                 />
                 <div className="rounded-3xl border border-line/70 bg-slate-50 px-4 py-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Quick action</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Quick actions</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Mark the property as toured after a visit so active listings stay organized in
-                    the customer record.
+                    Move the listing through the workflow fast, or schedule a showing using the
+                    next best suggested date and time.
                   </p>
                   <div className="mt-4">
-                    <TooltipShell
-                      disabled={isPreviewReadonly}
-                      message="Preview mode is read-only. Disable preview mode or use a live database to update property status."
-                    >
-                      <form action={markPropertyInterestToured}>
-                        <input type="hidden" name="leadId" value={lead.id} />
-                        <input type="hidden" name="propertyInterestId" value={propertyInterest.id} />
-                        <button
-                          type="submit"
-                          disabled={isPreviewReadonly || propertyInterest.status === "toured"}
-                          className="app-button-secondary disabled:cursor-not-allowed disabled:opacity-55"
-                        >
-                          {propertyInterest.status === "toured" ? "Already Toured" : "Mark Toured"}
-                        </button>
-                      </form>
-                    </TooltipShell>
+                    <PropertyInterestQuickActions
+                      leadId={lead.id}
+                      propertyInterestId={propertyInterest.id}
+                      currentStatus={propertyInterest.status}
+                      suggestedShowingDate={suggestedShowing.date}
+                      suggestedShowingTime={suggestedShowing.time}
+                      isPreviewReadonly={isPreviewReadonly}
+                    />
                   </div>
                 </div>
               </div>

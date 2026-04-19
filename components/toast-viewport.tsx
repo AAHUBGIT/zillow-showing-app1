@@ -11,11 +11,20 @@ const toastMessages: Record<string, string> = {
   "property-added": "Property added to this customer.",
   "property-updated": "Property details updated.",
   "property-toured": "Property marked as toured.",
+  "property-scheduled": "Property showing scheduled.",
+  "property-rejected": "Property marked as rejected.",
+  "property-applying": "Property moved to applying.",
+  "route-stop-completed": "Route stop marked as completed.",
+  "route-stop-reopened": "Route stop moved back into the active route.",
+  "route-note-saved": "Route note saved.",
+  "route-order-updated": "Route order updated.",
   "login-success": "Logged in successfully.",
   "logout-success": "Logged out successfully.",
   "login-error": "That email or password did not match.",
   "preview-readonly": "Public preview is using demo data, so changes are disabled.",
-  "database-unavailable": "Database is unavailable right now, so changes could not be saved."
+  "database-unavailable": "Database is unavailable right now, so changes could not be saved.",
+  "save-error": "Something went wrong while saving. Please try again.",
+  "validation-error": "Please fix the highlighted fields before saving."
 };
 
 export function ToastViewport() {

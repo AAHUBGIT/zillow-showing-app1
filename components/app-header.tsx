@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { InlineSpinner } from "@/components/inline-spinner";
+import { LoadingLink } from "@/components/loading-link";
 import { logoutUser } from "@/lib/actions";
 import { SessionUser } from "@/lib/auth";
 
@@ -65,7 +67,7 @@ export function AppHeader({
           <div className="flex flex-wrap items-center gap-2">
             <nav className="flex flex-wrap gap-2" aria-label="Primary navigation">
               {navItems.map((item) => (
-                <Link
+                <LoadingLink
                   key={item.href}
                   href={item.href}
                   aria-current={isActive(item.href) ? "page" : undefined}
@@ -76,7 +78,7 @@ export function AppHeader({
                   }`}
                 >
                   {item.label}
-                </Link>
+                </LoadingLink>
               ))}
             </nav>
 
@@ -93,19 +95,17 @@ export function AppHeader({
                     <span className="text-sm font-medium text-slate-600">{sessionUser.email}</span>
                   </div>
                 </div>
-                <Link href="/leads/new" className="app-button-primary px-4 py-2.5">
+                <LoadingLink href="/leads/new" className="app-button-primary px-4 py-2.5">
                   Add Lead
-                </Link>
+                </LoadingLink>
                 <form action={logoutUser}>
-                  <button type="submit" className="app-button-secondary">
-                    Logout
-                  </button>
+                  <LogoutButton />
                 </form>
               </>
             ) : (
-              <Link href="/login" className="app-button-primary px-4 py-2.5">
+              <LoadingLink href="/login" className="app-button-primary px-4 py-2.5">
                 Login
-              </Link>
+              </LoadingLink>
             )}
           </div>
         </div>
@@ -149,18 +149,18 @@ export function AppHeader({
                     </p>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
-                    <Link
+                    <LoadingLink
                       href="/leads/new"
                       className="app-button-primary bg-white px-6 text-ink hover:bg-slate-100"
                     >
                       Add New Lead
-                    </Link>
-                    <Link
+                    </LoadingLink>
+                    <LoadingLink
                       href="/routes"
                       className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15"
                     >
                       View Daily Routes
-                    </Link>
+                    </LoadingLink>
                   </div>
                 </div>
               </div>
@@ -188,5 +188,26 @@ export function AppHeader({
         </div>
       </div>
     </>
+  );
+}
+
+function LogoutButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="app-button-secondary disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {pending ? (
+        <>
+          <InlineSpinner />
+          <span>Logging Out...</span>
+        </>
+      ) : (
+        "Logout"
+      )}
+    </button>
   );
 }
