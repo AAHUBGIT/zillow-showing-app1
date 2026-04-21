@@ -3,7 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { clearSessionCookie, getDemoUser, getSessionUser, isValidLogin, setSessionCookie } from "./auth";
-import { getEmailError, getNumericError, getPhoneError, getRequiredSelectError, getRequiredTextError } from "./form-validation";
+import {
+  getEmailError,
+  getNumericError,
+  getPhoneError,
+  getRequiredSelectError,
+  getRequiredTextError,
+  isIsoDate,
+  isPastIsoDate,
+  isTwentyFourHourTime
+} from "./form-validation";
 import { canUseDatabase, isPreviewReadonlyMode } from "./deployment";
 import { leadPriorityOptions, leadSourceOptions, leadStatusOptions } from "./lead-utils";
 import { getPrismaClient } from "./prisma";
@@ -21,6 +30,10 @@ import {
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
+}
+
+function getBoolean(formData: FormData, key: string) {
+  return getString(formData, key) === "true";
 }
 
 function withToast(path: string, toastKey: string) {
@@ -58,16 +71,12 @@ function getPropertyInterestRating(formData: FormData) {
   return Math.max(1, Math.min(5, value));
 }
 
-function isIsoDate(value: string) {
-  return !value || /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-function isTwentyFourHourTime(value: string) {
-  return !value || /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
-}
-
 function hasScheduleMismatch(showingDate: string, showingTime: string) {
   return (showingDate && !showingTime) || (showingTime && !showingDate);
+}
+
+function hasBlockedPastShowingDate(showingDate: string, allowPastOverride: boolean) {
+  return Boolean(showingDate) && isPastIsoDate(showingDate) && !allowPastOverride;
 }
 
 function getNormalizedPropertyStatus(status: PropertyInterestStatus, showingDate: string, showingTime: string) {
@@ -122,11 +131,13 @@ export async function createLead(formData: FormData) {
   const now = new Date().toISOString();
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
+  const allowPastShowingDate = getBoolean(formData, "showingDateAllowPastOverride");
   const fullName = getString(formData, "fullName");
   const phone = getString(formData, "phone");
   const email = getString(formData, "email");
   const propertyAddress = getString(formData, "propertyAddress");
   const desiredMoveInDate = getString(formData, "desiredMoveInDate");
+  const nextFollowUpDate = getString(formData, "nextFollowUpDate");
   const status = getStatus(formData);
   const priority = getPriority(formData);
   const source = getSource(formData);
@@ -141,9 +152,11 @@ export async function createLead(formData: FormData) {
     getRequiredSelectError(priority) ||
     getRequiredSelectError(source) ||
     !isIsoDate(desiredMoveInDate) ||
+    !isIsoDate(nextFollowUpDate) ||
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||
-    hasScheduleMismatch(showingDate, showingTime)
+    hasScheduleMismatch(showingDate, showingTime) ||
+    hasBlockedPastShowingDate(showingDate, allowPastShowingDate)
   ) {
     redirectValidation("/leads/new");
   }
@@ -160,7 +173,7 @@ export async function createLead(formData: FormData) {
     status,
     priority,
     source,
-    nextFollowUpDate: getString(formData, "nextFollowUpDate"),
+    nextFollowUpDate,
     showingDate,
     showingTime,
     routeStopOrder: 0,
@@ -205,18 +218,21 @@ export async function updateLeadSchedule(formData: FormData) {
 
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
+  const allowPastShowingDate = getBoolean(formData, "showingDateAllowPastOverride");
   const nextStatus = getStatus(formData);
   const priority = getPriority(formData);
   const source = getSource(formData);
+  const nextFollowUpDate = getString(formData, "nextFollowUpDate");
 
   if (
     getRequiredSelectError(nextStatus) ||
     getRequiredSelectError(priority) ||
     getRequiredSelectError(source) ||
-    !isIsoDate(getString(formData, "nextFollowUpDate")) ||
+    !isIsoDate(nextFollowUpDate) ||
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||
-    hasScheduleMismatch(showingDate, showingTime)
+    hasScheduleMismatch(showingDate, showingTime) ||
+    hasBlockedPastShowingDate(showingDate, allowPastShowingDate)
   ) {
     redirectValidation(`/leads/${id}`);
   }
@@ -230,7 +246,7 @@ export async function updateLeadSchedule(formData: FormData) {
         status: showingDate && showingTime && nextStatus === "new" ? "scheduled" : nextStatus,
         priority,
         source,
-        nextFollowUpDate: getString(formData, "nextFollowUpDate"),
+        nextFollowUpDate,
         showingDate,
         showingTime,
         routeCompleted: false,
@@ -321,6 +337,7 @@ export async function createPropertyInterest(formData: FormData) {
   const baths = getString(formData, "baths");
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
+  const allowPastShowingDate = getBoolean(formData, "showingDateAllowPastOverride");
   const status = getNormalizedPropertyStatus(getPropertyInterestStatus(formData), showingDate, showingTime);
 
   if (
@@ -329,11 +346,12 @@ export async function createPropertyInterest(formData: FormData) {
     getRequiredSelectError(source) ||
     getRequiredSelectError(status) ||
     getNumericError(rent) ||
-    getNumericError(beds) ||
+    getNumericError(beds, false) ||
     getNumericError(baths) ||
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||
     hasScheduleMismatch(showingDate, showingTime) ||
+    hasBlockedPastShowingDate(showingDate, allowPastShowingDate) ||
     (status === "scheduled" && (!showingDate || !showingTime))
   ) {
     redirectValidation(`/leads/${leadId}/properties/new`);
@@ -419,6 +437,7 @@ export async function updatePropertyInterest(formData: FormData) {
   const baths = getString(formData, "baths");
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
+  const allowPastShowingDate = getBoolean(formData, "showingDateAllowPastOverride");
   const status = getNormalizedPropertyStatus(getPropertyInterestStatus(formData), showingDate, showingTime);
 
   if (
@@ -427,11 +446,12 @@ export async function updatePropertyInterest(formData: FormData) {
     getRequiredSelectError(source) ||
     getRequiredSelectError(status) ||
     getNumericError(rent) ||
-    getNumericError(beds) ||
+    getNumericError(beds, false) ||
     getNumericError(baths) ||
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||
     hasScheduleMismatch(showingDate, showingTime) ||
+    hasBlockedPastShowingDate(showingDate, allowPastShowingDate) ||
     (status === "scheduled" && (!showingDate || !showingTime))
   ) {
     redirectValidation(`/leads/${leadId}/properties/${propertyInterestId}`);
@@ -506,11 +526,13 @@ export async function quickUpdatePropertyInterest(formData: FormData) {
 
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
+  const allowPastShowingDate = getBoolean(formData, "showingDateAllowPastOverride");
 
   if (
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||
-    hasScheduleMismatch(showingDate, showingTime)
+    hasScheduleMismatch(showingDate, showingTime) ||
+    hasBlockedPastShowingDate(showingDate, allowPastShowingDate)
   ) {
     redirectValidation(redirectTo);
   }

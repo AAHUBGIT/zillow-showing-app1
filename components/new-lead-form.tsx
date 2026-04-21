@@ -3,15 +3,18 @@
 import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
+import { CalendarLinkButton } from "@/components/calendar-link-button";
 import { DateTimePickerFields, DateTimePickerHandle } from "@/components/date-time-picker-fields";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { emitAppToast } from "@/lib/client-toast";
 import { createLead } from "@/lib/actions";
+import { buildGoogleCalendarUrlFromDraft } from "@/lib/calendar";
 import {
   fieldMaxLengths,
   getEmailError,
   getMaxLengthError,
+  getOptionalDateError,
   getPhoneError,
   getRequiredSelectError,
   getRequiredTextError
@@ -24,6 +27,7 @@ import {
   leadSourceOptions,
   leadStatusOptions
 } from "@/lib/lead-utils";
+import { Lead } from "@/lib/types";
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -61,6 +65,7 @@ const fieldOrder = [
   "email",
   "propertyAddress",
   "desiredMoveInDate",
+  "nextFollowUpDate",
   "status",
   "priority",
   "source",
@@ -82,6 +87,8 @@ function getFieldError(name: keyof LeadFormValues, value: string) {
       );
     case "desiredMoveInDate":
       return getRequiredTextError(value);
+    case "nextFollowUpDate":
+      return getOptionalDateError(value);
     case "status":
     case "priority":
     case "source":
@@ -123,6 +130,17 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
     () => Object.keys(buildErrors(values)).length === 0 && scheduleState.isValid,
     [scheduleState.isValid, values]
   );
+  const calendarUrl =
+    scheduleState.date && scheduleState.time && scheduleState.isValid
+      ? buildGoogleCalendarUrlFromDraft({
+          ...values,
+          status: values.status as Lead["status"],
+          priority: values.priority as Lead["priority"],
+          source: values.source as Lead["source"],
+          showingDate: scheduleState.date,
+          showingTime: scheduleState.time
+        })
+      : null;
 
   function updateField(name: keyof LeadFormValues, value: string) {
     setValues((current) => ({ ...current, [name]: value }));
@@ -318,6 +336,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
             ref={scheduleRef}
             dateName="showingDate"
             timeName="showingTime"
+            allowPastDateOverrideName="showingDateAllowPastOverride"
             dateLabel="Showing date"
             timeLabel="Showing time"
             dateAriaLabel="showing date"
@@ -353,6 +372,10 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
               Complete the required fields and fix any errors to enable save.
             </p>
           ) : null}
+          <CalendarLinkButton
+            calendarUrl={calendarUrl}
+            missingMessage="Add the lead name, phone, email, property address, showing date, and showing time to open Google Calendar before saving."
+          />
           <TooltipShell
             disabled={isPreviewReadonly}
             message="Preview mode is read-only. Disable preview mode or use a live database to create leads."

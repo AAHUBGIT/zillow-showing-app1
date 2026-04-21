@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type InputHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { DateTimePickerFields, DateTimePickerHandle } from "@/components/date-time-picker-fields";
@@ -12,7 +12,8 @@ import {
   getMaxLengthError,
   getNumericError,
   getRequiredSelectError,
-  getRequiredTextError
+  getRequiredTextError,
+  sanitizeNumericInput
 } from "@/lib/form-validation";
 import { leadSourceOptions } from "@/lib/lead-utils";
 import {
@@ -45,10 +46,13 @@ const fieldOrder = [
   "listingTitle",
   "address",
   "source",
+  "listingUrl",
   "rent",
+  "neighborhood",
   "beds",
   "baths",
   "status",
+  "rating",
   "clientFeedback",
   "pros",
   "cons",
@@ -69,17 +73,19 @@ function getFieldError(name: keyof PropertyFormValues, value: string) {
     case "rent":
       return getNumericError(value) || getMaxLengthError(value, fieldMaxLengths.rent);
     case "beds":
-      return getNumericError(value) || getMaxLengthError(value, fieldMaxLengths.beds);
+      return getNumericError(value, false) || getMaxLengthError(value, fieldMaxLengths.beds);
     case "baths":
       return getNumericError(value) || getMaxLengthError(value, fieldMaxLengths.baths);
     case "neighborhood":
       return getMaxLengthError(value, fieldMaxLengths.neighborhood);
+    case "rating":
+      return getRequiredSelectError(value);
+    case "clientFeedback":
+      return getMaxLengthError(value, fieldMaxLengths.notes);
     case "pros":
       return getMaxLengthError(value, fieldMaxLengths.pros);
     case "cons":
       return getMaxLengthError(value, fieldMaxLengths.cons);
-    case "clientFeedback":
-      return getMaxLengthError(value, fieldMaxLengths.notes);
     case "agentNotes":
       return getMaxLengthError(value, fieldMaxLengths.agentNotes);
     default:
@@ -147,9 +153,18 @@ export function PropertyInterestForm({
   );
 
   function updateField(name: keyof PropertyFormValues, value: string) {
-    setValues((current) => ({ ...current, [name]: value }));
+    const nextValue =
+      name === "rent"
+        ? sanitizeNumericInput(value)
+        : name === "beds"
+          ? sanitizeNumericInput(value, false)
+          : name === "baths"
+            ? sanitizeNumericInput(value)
+            : value;
 
-    const nextError = getFieldError(name, value);
+    setValues((current) => ({ ...current, [name]: nextValue }));
+
+    const nextError = getFieldError(name, nextValue);
     setErrors((current) => {
       if (!nextError) {
         const { [name]: _ignored, ...rest } = current;
@@ -253,6 +268,7 @@ export function PropertyInterestForm({
           name="rent"
           value={values.rent}
           placeholder="2640"
+          inputMode="decimal"
           maxLength={fieldMaxLengths.rent}
           error={errors.rent}
           onChange={updateField}
@@ -270,6 +286,7 @@ export function PropertyInterestForm({
           name="beds"
           value={values.beds}
           placeholder="2"
+          inputMode="numeric"
           maxLength={fieldMaxLengths.beds}
           error={errors.beds}
           onChange={updateField}
@@ -279,6 +296,7 @@ export function PropertyInterestForm({
           name="baths"
           value={values.baths}
           placeholder="2"
+          inputMode="decimal"
           maxLength={fieldMaxLengths.baths}
           error={errors.baths}
           onChange={updateField}
@@ -323,6 +341,7 @@ export function PropertyInterestForm({
             ref={scheduleRef}
             dateName="showingDate"
             timeName="showingTime"
+            allowPastDateOverrideName="showingDateAllowPastOverride"
             dateLabel="Property showing date"
             timeLabel="Property showing time"
             dateAriaLabel="property showing date"
@@ -445,6 +464,7 @@ function Field({
   type = "text",
   placeholder,
   required = false,
+  inputMode,
   maxLength,
   error,
   onChange
@@ -455,6 +475,7 @@ function Field({
   type?: string;
   placeholder?: string;
   required?: boolean;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
   maxLength?: number;
   error?: string;
   onChange: (name: keyof PropertyFormValues, value: string) => void;
@@ -469,6 +490,7 @@ function Field({
         type={type}
         name={name}
         value={value}
+        inputMode={inputMode}
         maxLength={maxLength}
         placeholder={placeholder}
         required={required}

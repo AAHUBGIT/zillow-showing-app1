@@ -39,7 +39,8 @@ export default async function RoutesPage() {
             </h2>
             <p className="app-copy mt-2">
               Scheduled showings are grouped by day. Each day includes a Google Maps directions
-              link built from the property addresses in showing order.
+              link built from the property addresses in showing order, with light same-time
+              address clustering to make daily planning more practical.
             </p>
           </div>
 
@@ -97,6 +98,7 @@ export default async function RoutesPage() {
                         {dayLeads.filter((lead) => lead.priority === "urgent" || lead.priority === "high").length} priority stops
                       </div>
                       <div className="app-chip">{routeSummary.totalDriveLabel}</div>
+                      <div className="app-chip">Manual reorder available</div>
                     </div>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row">

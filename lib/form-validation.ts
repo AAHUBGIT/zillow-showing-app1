@@ -17,6 +17,8 @@ export const fieldMaxLengths = {
 } as const;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+const twentyFourHourTimePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function normalizePhoneDigits(value: string) {
   return value.replace(/\D/g, "");
@@ -43,6 +45,38 @@ export function isValidNumericValue(value: string, allowDecimal = true) {
   }
 
   return allowDecimal ? /^\d+(\.\d+)?$/.test(normalized) : /^\d+$/.test(normalized);
+}
+
+export function sanitizeNumericInput(value: string, allowDecimal = true) {
+  const cleaned = value.replace(/[^\d.]/g, "");
+
+  if (!allowDecimal) {
+    return cleaned.replace(/\./g, "");
+  }
+
+  const [whole = "", ...fractionParts] = cleaned.split(".");
+  const fraction = fractionParts.join("");
+
+  return fraction ? `${whole}.${fraction}` : whole;
+}
+
+export function isIsoDate(value: string) {
+  return !value || isoDatePattern.test(value);
+}
+
+export function isTwentyFourHourTime(value: string) {
+  return !value || twentyFourHourTimePattern.test(value);
+}
+
+export function isPastIsoDate(value: string) {
+  if (!value || !isIsoDate(value)) {
+    return false;
+  }
+
+  const today = new Date();
+  const todayAtMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const candidate = new Date(`${value}T00:00:00`);
+  return candidate.getTime() < todayAtMidnight.getTime();
 }
 
 export function getRequiredTextError(value: string) {
@@ -75,6 +109,22 @@ export function getNumericError(value: string, allowDecimal = true) {
   }
 
   return isValidNumericValue(value, allowDecimal) ? "" : "Enter numbers only.";
+}
+
+export function getOptionalDateError(value: string) {
+  if (!value.trim()) {
+    return "";
+  }
+
+  return isIsoDate(value) ? "" : "Choose a valid date.";
+}
+
+export function getOptionalTimeError(value: string) {
+  if (!value.trim()) {
+    return "";
+  }
+
+  return isTwentyFourHourTime(value) ? "" : "Choose a valid time.";
 }
 
 export function getMaxLengthError(value: string, maxLength: number) {

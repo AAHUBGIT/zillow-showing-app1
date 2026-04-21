@@ -12,9 +12,9 @@ import {
   formatDateForManualEntry,
   formatTimeForManualEntry,
   isPastDate,
-  parseManualDateInput,
-  parseManualTimeInput
+  parseManualDateInput
 } from "@/lib/date";
+import { isTwentyFourHourTime } from "@/lib/form-validation";
 
 export type DateTimePickerHandle = {
   validate: () => boolean;
@@ -32,6 +32,7 @@ type DateTimePickerState = {
 type DateTimePickerFieldsProps = {
   dateName: string;
   timeName: string;
+  allowPastDateOverrideName?: string;
   dateLabel: string;
   timeLabel: string;
   dateAriaLabel: string;
@@ -39,6 +40,7 @@ type DateTimePickerFieldsProps = {
   initialDate?: string;
   initialTime?: string;
   helperText?: string;
+  timeStep?: number;
   onValueChange?: (values: DateTimePickerState) => void;
 };
 
@@ -47,6 +49,7 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
     {
       dateName,
       timeName,
+      allowPastDateOverrideName = `${dateName}AllowPastOverride`,
       dateLabel,
       timeLabel,
       dateAriaLabel,
@@ -54,6 +57,7 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
       initialDate = "",
       initialTime = "",
       helperText = "Type the value or use the browser picker.",
+      timeStep = 300,
       onValueChange
     },
     ref
@@ -70,7 +74,6 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
     const openedDatePickerRef = useRef(false);
     const openedTimePickerRef = useRef(false);
     const [dateText, setDateText] = useState(formatDateForManualEntry(initialDate));
-    const [timeText, setTimeText] = useState(formatTimeForManualEntry(initialTime));
     const [dateValue, setDateValue] = useState(initialDate);
     const [timeValue, setTimeValue] = useState(initialTime);
     const [dateError, setDateError] = useState("");
@@ -80,8 +83,9 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
     const isDateInPast = Boolean(dateValue) && isPastDate(dateValue);
     const showPastDateWarning = isDateInPast && !allowPastDateOverride;
     const isSchedulePairValid =
-      (!dateValue && !timeValue && !dateText.trim() && !timeText.trim()) ||
+      (!dateValue && !timeValue && !dateText.trim()) ||
       (Boolean(dateValue) && Boolean(timeValue) && !dateError && !timeError && !showPastDateWarning);
+    const timePreview = formatTimeForManualEntry(timeValue);
 
     useEffect(() => {
       onValueChange?.({
@@ -110,18 +114,18 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
       return true;
     }
 
-    function commitTime(nextText = timeText) {
-      const parsed = parseManualTimeInput(nextText);
+    function commitTime(nextValue = timeValue) {
+      if (!nextValue) {
+        setTimeError("");
+        return true;
+      }
 
-      if (parsed === null) {
-        setTimeValue("");
-        setTimeError("Use h:mm AM/PM.");
+      if (!isTwentyFourHourTime(nextValue)) {
+        setTimeError("Choose a valid time from the time picker.");
         return false;
       }
 
-      setTimeValue(parsed);
       setTimeError("");
-      setTimeText(formatTimeForManualEntry(parsed));
       return true;
     }
 
@@ -129,7 +133,7 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
       const isDateValid = commitDate();
       const isTimeValid = commitTime();
       const nextDateValue = parseManualDateInput(dateText);
-      const nextTimeValue = parseManualTimeInput(timeText);
+      const nextTimeValue = timeValue;
       const hasDate = Boolean(nextDateValue);
       const hasTime = Boolean(nextTimeValue);
       let isValid = isDateValid && isTimeValid;
@@ -182,7 +186,7 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
         getValues: () => ({ date: dateValue, time: timeValue }),
         focusDate: () => manualDateRef.current?.focus()
       }),
-      [allowPastDateOverride, dateText, dateValue, timeText, timeValue]
+      [allowPastDateOverride, dateText, dateValue, timeValue]
     );
 
     return (
@@ -256,6 +260,11 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
             className="sr-only"
             aria-hidden="true"
           />
+          <input
+            type="hidden"
+            name={allowPastDateOverrideName}
+            value={allowPastDateOverride ? "true" : "false"}
+          />
           <p id={dateHelperId} className="text-xs text-slate-500">
             {helperText}
           </p>
@@ -292,12 +301,12 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
           </div>
           <div className="relative">
             <input
+              ref={nativeTimeRef}
               id={timeInputId}
-              type="text"
-              inputMode="text"
-              autoComplete="off"
-              placeholder="9:30 AM"
-              value={timeText}
+              type="time"
+              name={timeName}
+              step={timeStep}
+              value={timeValue}
               onFocus={() => {
                 if (!openedTimePickerRef.current) {
                   openedTimePickerRef.current = true;
@@ -305,19 +314,12 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
                 }
               }}
               onChange={(event) => {
-                setTimeText(event.target.value);
-                if (timeError) {
-                  setTimeError("");
-                }
+                setTimeValue(event.target.value);
+                setTimeError("");
               }}
-              onBlur={() => {
+              onBlur={(event) => {
                 openedTimePickerRef.current = false;
-                if (timeText.trim()) {
-                  commitTime();
-                } else {
-                  setTimeValue("");
-                  setTimeError("");
-                }
+                commitTime(event.target.value);
               }}
               aria-label={timeAriaLabel}
               aria-invalid={Boolean(timeError)}
@@ -336,25 +338,12 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
               </svg>
             </button>
           </div>
-          <input
-            ref={nativeTimeRef}
-            type="time"
-            step={60}
-            tabIndex={-1}
-            value={timeValue}
-            onChange={(event) => {
-              const nextValue = event.target.value;
-              setTimeValue(nextValue);
-              setTimeText(formatTimeForManualEntry(nextValue));
-              setTimeError("");
-            }}
-            name={timeName}
-            className="sr-only"
-            aria-hidden="true"
-          />
           <p id={timeHelperId} className="text-xs text-slate-500">
-            Type h:mm AM/PM or use the time picker icon.
+            Use the browser time picker or type directly. Invalid times like 25:61 are blocked.
           </p>
+          {timePreview ? (
+            <p className="text-xs font-medium text-slate-500">Selected time: {timePreview}</p>
+          ) : null}
           <p id={timeErrorId} className="min-h-[1.25rem] text-xs font-medium text-rose-600" aria-live="polite">
             {timeError}
           </p>

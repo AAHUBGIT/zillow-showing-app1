@@ -9,8 +9,13 @@ import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { emitAppToast } from "@/lib/client-toast";
 import { updateLeadSchedule } from "@/lib/actions";
-import { buildGoogleCalendarUrl } from "@/lib/calendar";
-import { fieldMaxLengths, getMaxLengthError, getRequiredSelectError } from "@/lib/form-validation";
+import { buildGoogleCalendarUrlFromDraft } from "@/lib/calendar";
+import {
+  fieldMaxLengths,
+  getMaxLengthError,
+  getOptionalDateError,
+  getRequiredSelectError
+} from "@/lib/form-validation";
 import {
   getPriorityLabel,
   getSourceLabel,
@@ -31,7 +36,7 @@ type ScheduleFormValues = {
   agentNotes: string;
 };
 
-const scheduleFieldOrder = ["status", "priority", "source", "agentNotes"];
+const scheduleFieldOrder = ["status", "priority", "source", "nextFollowUpDate", "agentNotes"];
 
 function getFieldError(name: keyof ScheduleFormValues, value: string) {
   switch (name) {
@@ -39,6 +44,8 @@ function getFieldError(name: keyof ScheduleFormValues, value: string) {
     case "priority":
     case "source":
       return getRequiredSelectError(value);
+    case "nextFollowUpDate":
+      return getOptionalDateError(value);
     case "agentNotes":
       return getMaxLengthError(value, fieldMaxLengths.agentNotes);
     default:
@@ -84,7 +91,7 @@ export function LeadScheduleForm({
 
   const calendarUrl =
     scheduleState.date && scheduleState.time && scheduleState.isValid
-      ? buildGoogleCalendarUrl({
+      ? buildGoogleCalendarUrlFromDraft({
           ...lead,
           showingDate: scheduleState.date,
           showingTime: scheduleState.time,
@@ -204,6 +211,7 @@ export function LeadScheduleForm({
         ref={scheduleRef}
         dateName="showingDate"
         timeName="showingTime"
+        allowPastDateOverrideName="showingDateAllowPastOverride"
         dateLabel="Showing date"
         timeLabel="Showing time"
         dateAriaLabel="showing date"
@@ -221,10 +229,27 @@ export function LeadScheduleForm({
           value={values.nextFollowUpDate}
           data-field="nextFollowUpDate"
           aria-label="Next follow-up date"
+          aria-invalid={Boolean(errors.nextFollowUpDate)}
+          aria-describedby={
+            errors.nextFollowUpDate
+              ? "nextFollowUpDate-help nextFollowUpDate-error"
+              : "nextFollowUpDate-help"
+          }
           onChange={(event) => updateField("nextFollowUpDate", event.target.value)}
-          className="app-input"
+          className={`app-input ${
+            errors.nextFollowUpDate ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""
+          }`}
         />
-        <p className="text-xs text-slate-500">Optional. Keeps the dashboard follow-up badges current.</p>
+        <p id="nextFollowUpDate-help" className="text-xs text-slate-500">
+          Optional. Keeps the dashboard follow-up badges current.
+        </p>
+        <p
+          id="nextFollowUpDate-error"
+          className="min-h-[1.25rem] text-xs font-medium text-rose-600"
+          aria-live="polite"
+        >
+          {errors.nextFollowUpDate || ""}
+        </p>
       </label>
 
       <label className="flex min-w-0 flex-col gap-2">

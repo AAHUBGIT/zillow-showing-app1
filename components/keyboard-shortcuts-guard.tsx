@@ -7,11 +7,19 @@ function isTextInputTarget(target: EventTarget | null) {
     return false;
   }
 
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  ) {
     return true;
   }
 
-  return target.isContentEditable;
+  if (target.closest("input, textarea, select, [role='textbox']")) {
+    return true;
+  }
+
+  return target.isContentEditable || Boolean(target.closest("[contenteditable='true']"));
 }
 
 export function KeyboardShortcutsGuard() {

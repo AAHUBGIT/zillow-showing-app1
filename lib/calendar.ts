@@ -6,19 +6,43 @@ function toGoogleCalendarDateTime(dateString: string, timeString: string, offset
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
 
-export function buildGoogleCalendarUrl(lead: Lead) {
-  if (!lead.showingDate || !lead.showingTime) {
+export type LeadCalendarDraft = Pick<
+  Lead,
+  | "fullName"
+  | "propertyAddress"
+  | "phone"
+  | "email"
+  | "notes"
+  | "status"
+  | "priority"
+  | "source"
+  | "desiredMoveInDate"
+  | "nextFollowUpDate"
+  | "agentNotes"
+  | "showingDate"
+  | "showingTime"
+>;
+
+export function buildGoogleCalendarUrlFromDraft(lead: LeadCalendarDraft) {
+  if (
+    !lead.fullName.trim() ||
+    !lead.propertyAddress.trim() ||
+    !lead.phone.trim() ||
+    !lead.email.trim() ||
+    !lead.showingDate ||
+    !lead.showingTime
+  ) {
     return null;
   }
 
-  const title = `${lead.fullName} showing`;
+  const title = lead.fullName;
   const details = [
     `Property: ${lead.propertyAddress}`,
     `Lead: ${lead.fullName}`,
-    `Priority: ${lead.priority}`,
-    `Source: ${lead.source}`,
     `Phone: ${lead.phone}`,
     `Email: ${lead.email}`,
+    `Priority: ${lead.priority}`,
+    `Source: ${lead.source}`,
     `Desired move-in: ${lead.desiredMoveInDate}`,
     lead.nextFollowUpDate ? `Next follow-up: ${lead.nextFollowUpDate}` : "",
     lead.notes ? `Lead notes: ${lead.notes}` : "",
@@ -40,4 +64,8 @@ export function buildGoogleCalendarUrl(lead: Lead) {
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+export function buildGoogleCalendarUrl(lead: Lead) {
+  return buildGoogleCalendarUrlFromDraft(lead);
 }
