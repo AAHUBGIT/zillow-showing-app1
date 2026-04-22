@@ -63,6 +63,27 @@ export function buildRoutePreviewEmbedLink(addresses: string[]) {
   return `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
 }
 
+export function buildGoogleMapsDirectionsLink(addresses: string[]) {
+  if (addresses.length === 0) {
+    return "https://www.google.com/maps";
+  }
+
+  if (addresses.length === 1) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addresses[0])}`;
+  }
+
+  const origin = encodeURIComponent(addresses[0]);
+  const destination = encodeURIComponent(addresses[addresses.length - 1]);
+  const waypoints = addresses
+    .slice(1, -1)
+    .map((address) => encodeURIComponent(address))
+    .join("|");
+
+  return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving${
+    waypoints ? `&waypoints=${waypoints}` : ""
+  }`;
+}
+
 export function estimateTravelBetweenStops(firstAddress: string, secondAddress: string): RouteSegmentEstimate {
   const first = parseAddressMeta(firstAddress);
   const second = parseAddressMeta(secondAddress);
@@ -72,7 +93,8 @@ export function estimateTravelBetweenStops(firstAddress: string, secondAddress: 
       minutes: 180,
       label: "~3 hr+ drive",
       unrealistic: true,
-      warning: "These stops appear to be in different states."
+      warning:
+        "These stops look like they are in different states, so this pairing is probably too far apart for one smooth showing run."
     };
   }
 
@@ -81,7 +103,7 @@ export function estimateTravelBetweenStops(firstAddress: string, secondAddress: 
       minutes: 75,
       label: "~75 min drive",
       unrealistic: true,
-      warning: `This route jumps from ${toTitleCase(first.city)} to ${toTitleCase(second.city)}.`
+      warning: `This route jumps from ${toTitleCase(first.city)} to ${toTitleCase(second.city)}, so consider moving one of these stops into a separate time block.`
     };
   }
 
@@ -135,7 +157,7 @@ export function getRouteDaySummary(stops: LeadWithProperties[]) {
     warning:
       unrealisticSegments[0]?.warning ||
       (totalDriveMinutes >= 90
-        ? "This route looks unusually spread out for one touring block. Consider splitting it into two smaller runs."
+        ? "This day adds up to a long drive window. Consider splitting it into two smaller touring runs to keep the schedule realistic."
         : "")
   };
 }

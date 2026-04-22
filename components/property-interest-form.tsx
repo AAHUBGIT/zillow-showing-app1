@@ -24,6 +24,7 @@ import {
 import { PropertyInterest } from "@/lib/types";
 
 type FieldErrors = Partial<Record<string, string>>;
+type TouchedFields = Partial<Record<keyof PropertyFormValues, boolean>>;
 
 type PropertyFormValues = {
   listingTitle: string;
@@ -120,6 +121,8 @@ export function PropertyInterestForm({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const scheduleRef = useRef<DateTimePickerHandle>(null);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [touched, setTouched] = useState<TouchedFields>({});
   const [values, setValues] = useState<PropertyFormValues>({
     listingTitle: propertyInterest?.listingTitle || "",
     address: propertyInterest?.address || "",
@@ -136,20 +139,64 @@ export function PropertyInterestForm({
     cons: propertyInterest?.cons || "",
     agentNotes: propertyInterest?.agentNotes || ""
   });
-  const [errors, setErrors] = useState<FieldErrors>({});
   const [scheduleState, setScheduleState] = useState({
     date: propertyInterest?.showingDate || "",
     time: propertyInterest?.showingTime || "",
     isValid: true,
     isPastDate: false
   });
+  const liveErrors = useMemo(() => buildErrors(values), [values]);
+  const visibleErrors = useMemo(
+    () =>
+      fieldOrder.reduce<FieldErrors>((current, name) => {
+        if ((hasAttemptedSubmit || touched[name as keyof PropertyFormValues]) && liveErrors[name]) {
+          return { ...current, [name]: liveErrors[name] };
+        }
+
+        return current;
+      }, {}),
+    [hasAttemptedSubmit, liveErrors, touched]
+  );
+  const blockingMessages = useMemo(() => {
+    const messages: string[] = [];
+
+    if (liveErrors.listingTitle) {
+      messages.push("Add a listing title or nickname.");
+    }
+
+    if (liveErrors.address) {
+      messages.push("Add the property address.");
+    }
+
+    if (liveErrors.rent) {
+      messages.push("Use numbers only for rent or price.");
+    }
+
+    if (liveErrors.beds) {
+      messages.push("Use whole numbers for beds.");
+    }
+
+    if (liveErrors.baths) {
+      messages.push("Use numbers only for baths.");
+    }
+
+    if (values.status === "scheduled" && (!scheduleState.date || !scheduleState.time)) {
+      messages.push("Scheduled properties need both a showing date and showing time.");
+    }
+
+    if (!scheduleState.isValid) {
+      messages.push("Fix the showing date or time.");
+    }
+
+    return messages;
+  }, [liveErrors, scheduleState, values.status]);
 
   const isFormValid = useMemo(
     () =>
-      Object.keys(buildErrors(values)).length === 0 &&
+      Object.keys(liveErrors).length === 0 &&
       scheduleState.isValid &&
       !(values.status === "scheduled" && (!scheduleState.date || !scheduleState.time)),
-    [scheduleState, values]
+    [liveErrors, scheduleState, values.status]
   );
 
   function updateField(name: keyof PropertyFormValues, value: string) {
@@ -163,21 +210,14 @@ export function PropertyInterestForm({
             : value;
 
     setValues((current) => ({ ...current, [name]: nextValue }));
+  }
 
-    const nextError = getFieldError(name, nextValue);
-    setErrors((current) => {
-      if (!nextError) {
-        const { [name]: _ignored, ...rest } = current;
-        return rest;
-      }
-
-      return { ...current, [name]: nextError };
-    });
+  function markFieldTouched(name: keyof PropertyFormValues) {
+    setTouched((current) => ({ ...current, [name]: true }));
   }
 
   function validateForm() {
-    const nextErrors = buildErrors(values);
-    setErrors(nextErrors);
+    setHasAttemptedSubmit(true);
 
     const isScheduleValid = scheduleRef.current?.validate() ?? true;
 
@@ -187,14 +227,14 @@ export function PropertyInterestForm({
       return false;
     }
 
-    if (Object.keys(nextErrors).length === 0 && isScheduleValid) {
+    if (Object.keys(liveErrors).length === 0 && isScheduleValid) {
       return true;
     }
 
     emitAppToast({ toastKey: "validation-error" });
 
     for (const name of fieldOrder) {
-      if (nextErrors[name]) {
+      if (liveErrors[name]) {
         const field = formRef.current?.querySelector<HTMLElement>(`[data-field="${name}"]`);
         field?.focus();
         break;
@@ -230,8 +270,10 @@ export function PropertyInterestForm({
           value={values.listingTitle}
           required
           maxLength={fieldMaxLengths.listingTitle}
-          error={errors.listingTitle}
+          helpText="Required. Give the property a clear name your team can recognize quickly."
+          error={visibleErrors.listingTitle}
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <Field
           label="Address"
@@ -239,16 +281,19 @@ export function PropertyInterestForm({
           value={values.address}
           required
           maxLength={fieldMaxLengths.address}
-          error={errors.address}
+          helpText="Required. Use the full street address for maps, routes, and reporting."
+          error={visibleErrors.address}
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <SelectField
           label="Source"
           name="source"
           value={values.source}
           required
-          error={errors.source}
+          error={visibleErrors.source}
           onChange={updateField}
+          onBlur={markFieldTouched}
           options={leadSourceOptions.map((option) => ({
             value: option,
             label: getPropertyInterestSourceLabel(option)
@@ -260,8 +305,10 @@ export function PropertyInterestForm({
           value={values.listingUrl}
           type="url"
           maxLength={fieldMaxLengths.listingUrl}
-          error={errors.listingUrl}
+          helpText="Optional. Paste the live listing link if you want one-click access later."
+          error={visibleErrors.listingUrl}
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <Field
           label="Rent / price"
@@ -270,16 +317,19 @@ export function PropertyInterestForm({
           placeholder="2640"
           inputMode="decimal"
           maxLength={fieldMaxLengths.rent}
-          error={errors.rent}
+          helpText="Optional. Numbers only, like 2640 or 2640.50."
+          error={visibleErrors.rent}
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <Field
           label="Neighborhood"
           name="neighborhood"
           value={values.neighborhood}
           maxLength={fieldMaxLengths.neighborhood}
-          error={errors.neighborhood}
+          error={visibleErrors.neighborhood}
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <Field
           label="Beds"
@@ -288,8 +338,10 @@ export function PropertyInterestForm({
           placeholder="2"
           inputMode="numeric"
           maxLength={fieldMaxLengths.beds}
-          error={errors.beds}
+          helpText="Optional. Whole numbers only."
+          error={visibleErrors.beds}
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <Field
           label="Baths"
@@ -298,16 +350,19 @@ export function PropertyInterestForm({
           placeholder="2"
           inputMode="decimal"
           maxLength={fieldMaxLengths.baths}
-          error={errors.baths}
+          helpText="Optional. Numbers only, like 1 or 1.5."
+          error={visibleErrors.baths}
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <SelectField
           label="Status"
           name="status"
           value={values.status}
           required
-          error={errors.status}
+          error={visibleErrors.status}
           onChange={updateField}
+          onBlur={markFieldTouched}
           options={propertyInterestStatusOptions.map((option) => ({
             value: option,
             label: getPropertyInterestStatusLabel(option)
@@ -318,6 +373,7 @@ export function PropertyInterestForm({
           name="rating"
           value={values.rating}
           onChange={updateField}
+          onBlur={markFieldTouched}
           options={[1, 2, 3, 4, 5].map((rating) => ({
             value: String(rating),
             label: `${rating} / 5`
@@ -365,9 +421,10 @@ export function PropertyInterestForm({
           rows={5}
           value={values.clientFeedback}
           maxLength={fieldMaxLengths.notes}
-          error={errors.clientFeedback}
+          error={visibleErrors.clientFeedback}
           placeholder="What did the customer say after seeing or reviewing this listing?"
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <TextAreaField
           label="Agent feedback"
@@ -375,9 +432,10 @@ export function PropertyInterestForm({
           rows={5}
           value={values.agentNotes}
           maxLength={fieldMaxLengths.agentNotes}
-          error={errors.agentNotes}
+          error={visibleErrors.agentNotes}
           placeholder="Tour notes, access instructions, follow-up points, and context."
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
       </div>
 
@@ -388,9 +446,10 @@ export function PropertyInterestForm({
           rows={5}
           value={values.pros}
           maxLength={fieldMaxLengths.pros}
-          error={errors.pros}
+          error={visibleErrors.pros}
           placeholder="What does the customer like about this property?"
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <TextAreaField
           label="Cons"
@@ -398,9 +457,10 @@ export function PropertyInterestForm({
           rows={5}
           value={values.cons}
           maxLength={fieldMaxLengths.cons}
-          error={errors.cons}
+          error={visibleErrors.cons}
           placeholder="Any drawbacks, objections, or deal-breakers."
           onChange={updateField}
+          onBlur={markFieldTouched}
         />
         <div className="rounded-3xl border border-line/70 bg-slate-50/90 px-4 py-4">
           <p className="app-kicker">Workflow Tip</p>
@@ -413,9 +473,13 @@ export function PropertyInterestForm({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {!isFormValid ? (
-          <p className="text-xs font-medium text-slate-500">
-            Fix the highlighted fields before saving property updates.
-          </p>
+          <div className="space-y-1 text-xs font-medium text-slate-500">
+            {blockingMessages.length > 0 ? (
+              blockingMessages.map((message) => <p key={message}>{message}</p>)
+            ) : (
+              <p>Complete the required fields to save this property.</p>
+            )}
+          </div>
         ) : (
           <div />
         )}
@@ -464,10 +528,12 @@ function Field({
   type = "text",
   placeholder,
   required = false,
+  helpText,
   inputMode,
   maxLength,
   error,
-  onChange
+  onChange,
+  onBlur
 }: {
   label: string;
   name: keyof PropertyFormValues;
@@ -475,10 +541,12 @@ function Field({
   type?: string;
   placeholder?: string;
   required?: boolean;
+  helpText?: string;
   inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
   maxLength?: number;
   error?: string;
   onChange: (name: keyof PropertyFormValues, value: string) => void;
+  onBlur: (name: keyof PropertyFormValues) => void;
 }) {
   const helpId = `${name}-help`;
   const errorId = `${name}-error`;
@@ -499,10 +567,11 @@ function Field({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
         onChange={(event) => onChange(name, event.target.value)}
+        onBlur={() => onBlur(name)}
         className={`app-input ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       />
       <p id={helpId} className="text-xs text-slate-500">
-        {required ? "Required field." : "Optional field."}
+        {helpText || (required ? "Required field." : "Optional field.")}
       </p>
       <FieldError id={errorId} message={error} />
     </label>
@@ -516,7 +585,8 @@ function SelectField({
   options,
   required = false,
   error,
-  onChange
+  onChange,
+  onBlur
 }: {
   label: string;
   name: keyof PropertyFormValues;
@@ -525,6 +595,7 @@ function SelectField({
   required?: boolean;
   error?: string;
   onChange: (name: keyof PropertyFormValues, value: string) => void;
+  onBlur: (name: keyof PropertyFormValues) => void;
 }) {
   const helpId = `${name}-help`;
   const errorId = `${name}-error`;
@@ -540,6 +611,7 @@ function SelectField({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
         onChange={(event) => onChange(name, event.target.value)}
+        onBlur={() => onBlur(name)}
         className={`app-input ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       >
         {options.map((option) => (
@@ -564,7 +636,8 @@ function TextAreaField({
   placeholder,
   maxLength,
   error,
-  onChange
+  onChange,
+  onBlur
 }: {
   label: string;
   name: keyof PropertyFormValues;
@@ -574,6 +647,7 @@ function TextAreaField({
   maxLength: number;
   error?: string;
   onChange: (name: keyof PropertyFormValues, value: string) => void;
+  onBlur: (name: keyof PropertyFormValues) => void;
 }) {
   const helpId = `${name}-help`;
   const errorId = `${name}-error`;
@@ -592,6 +666,7 @@ function TextAreaField({
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
         onChange={(event) => onChange(name, event.target.value)}
+        onBlur={() => onBlur(name)}
         className={`app-textarea ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       />
       <p id={helpId} className="text-xs text-slate-500">

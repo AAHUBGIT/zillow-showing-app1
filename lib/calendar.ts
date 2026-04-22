@@ -1,7 +1,9 @@
 import { Lead } from "./types";
 
 function toGoogleCalendarDateTime(dateString: string, timeString: string, offsetMinutes = 0) {
-  const date = new Date(`${dateString}T${timeString}`);
+  const [year, month, day] = dateString.split("-").map(Number);
+  const [hours, minutes] = timeString.split(":").map(Number);
+  const date = new Date(year, (month || 1) - 1, day || 1, hours || 0, minutes || 0, 0, 0);
   date.setMinutes(date.getMinutes() + offsetMinutes);
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
@@ -27,8 +29,6 @@ export function buildGoogleCalendarUrlFromDraft(lead: LeadCalendarDraft) {
   if (
     !lead.fullName.trim() ||
     !lead.propertyAddress.trim() ||
-    !lead.phone.trim() ||
-    !lead.email.trim() ||
     !lead.showingDate ||
     !lead.showingTime
   ) {
@@ -37,15 +37,11 @@ export function buildGoogleCalendarUrlFromDraft(lead: LeadCalendarDraft) {
 
   const title = lead.fullName;
   const details = [
+    `Customer: ${lead.fullName}`,
     `Property: ${lead.propertyAddress}`,
-    `Lead: ${lead.fullName}`,
-    `Phone: ${lead.phone}`,
-    `Email: ${lead.email}`,
-    `Priority: ${lead.priority}`,
-    `Source: ${lead.source}`,
-    `Desired move-in: ${lead.desiredMoveInDate}`,
-    lead.nextFollowUpDate ? `Next follow-up: ${lead.nextFollowUpDate}` : "",
-    lead.notes ? `Lead notes: ${lead.notes}` : "",
+    lead.phone ? `Phone: ${lead.phone}` : "",
+    lead.email ? `Email: ${lead.email}` : "",
+    lead.notes ? `Notes: ${lead.notes}` : "",
     lead.agentNotes ? `Agent notes: ${lead.agentNotes}` : "",
     `Showing: ${lead.showingDate} at ${lead.showingTime}`
   ]

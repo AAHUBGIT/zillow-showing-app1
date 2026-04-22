@@ -1,77 +1,121 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { useEffect, useState, type ReactNode } from "react";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
-import { moveRouteStop, toggleRouteStopCompleted, updateRouteStopNote } from "@/lib/actions";
+
+type PendingAction = "toggle" | "move-up" | "move-down" | "note" | null;
 
 export function RouteStopControls({
-  leadId,
-  showingDate,
   routeCompleted,
   routeNote,
   canMoveUp,
   canMoveDown,
-  isPreviewReadonly = false
+  isPreviewReadonly = false,
+  onToggleCompleted,
+  onMove,
+  onSaveNote
 }: {
-  leadId: string;
-  showingDate: string;
   routeCompleted: boolean;
   routeNote: string;
   canMoveUp: boolean;
   canMoveDown: boolean;
   isPreviewReadonly?: boolean;
+  onToggleCompleted: (nextCompleted: boolean) => Promise<void>;
+  onMove: (direction: "up" | "down") => Promise<void>;
+  onSaveNote: (note: string) => Promise<void>;
 }) {
+  const [noteValue, setNoteValue] = useState(routeNote);
+  const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+
+  useEffect(() => {
+    setNoteValue(routeNote);
+  }, [routeNote]);
+
+  const isBusy = pendingAction !== null;
   const tooltipMessage =
     "Preview mode is read-only. Disable preview mode or use a live database to update route plans.";
+
+  async function runAction(action: Exclude<PendingAction, null>, callback: () => Promise<void>) {
+    if (isBusy || isPreviewReadonly) {
+      return;
+    }
+
+    setPendingAction(action);
+
+    try {
+      await callback();
+    } finally {
+      setPendingAction(null);
+    }
+  }
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
-          <form action={toggleRouteStopCompleted}>
-            <input type="hidden" name="leadId" value={leadId} />
-            <input type="hidden" name="completed" value={routeCompleted ? "false" : "true"} />
-            <RouteActionButton disabled={isPreviewReadonly}>
-              {routeCompleted ? "Reopen Stop" : "Mark Completed"}
-            </RouteActionButton>
-          </form>
+          <RouteActionButton
+            type="button"
+            disabled={isPreviewReadonly || isBusy}
+            isPending={pendingAction === "toggle"}
+            pendingLabel="Saving..."
+            onClick={() => runAction("toggle", () => onToggleCompleted(!routeCompleted))}
+          >
+            {routeCompleted ? "Reopen Stop" : "Mark Completed"}
+          </RouteActionButton>
         </TooltipShell>
 
         <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
-          <form action={moveRouteStop} className="flex gap-2">
-            <input type="hidden" name="leadId" value={leadId} />
-            <input type="hidden" name="showingDate" value={showingDate} />
-            <input type="hidden" name="direction" value="up" />
-            <RouteActionButton disabled={isPreviewReadonly || !canMoveUp}>Move Up</RouteActionButton>
-          </form>
+          <RouteActionButton
+            type="button"
+            disabled={isPreviewReadonly || isBusy || !canMoveUp}
+            isPending={pendingAction === "move-up"}
+            pendingLabel="Moving..."
+            onClick={() => runAction("move-up", () => onMove("up"))}
+          >
+            Move Up
+          </RouteActionButton>
         </TooltipShell>
 
         <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
-          <form action={moveRouteStop} className="flex gap-2">
-            <input type="hidden" name="leadId" value={leadId} />
-            <input type="hidden" name="showingDate" value={showingDate} />
-            <input type="hidden" name="direction" value="down" />
-            <RouteActionButton disabled={isPreviewReadonly || !canMoveDown}>Move Down</RouteActionButton>
-          </form>
+          <RouteActionButton
+            type="button"
+            disabled={isPreviewReadonly || isBusy || !canMoveDown}
+            isPending={pendingAction === "move-down"}
+            pendingLabel="Moving..."
+            onClick={() => runAction("move-down", () => onMove("down"))}
+          >
+            Move Down
+          </RouteActionButton>
         </TooltipShell>
       </div>
 
       <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
-        <form action={updateRouteStopNote} className="flex flex-col gap-2 sm:flex-row">
-          <input type="hidden" name="leadId" value={leadId} />
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void runAction("note", () => onSaveNote(noteValue));
+          }}
+          className="flex flex-col gap-2 sm:flex-row"
+        >
           <input
             type="text"
-            name="routeNote"
-            defaultValue={routeNote}
+            value={noteValue}
+            onChange={(event) => setNoteValue(event.target.value)}
             maxLength={160}
             aria-label="Quick note for this route stop"
             placeholder="Add a quick route note, parking note, or reminder"
             className="app-input min-h-[48px] flex-1"
-            disabled={isPreviewReadonly}
+            disabled={isPreviewReadonly || isBusy}
           />
-          <RouteActionButton disabled={isPreviewReadonly}>Save Note</RouteActionButton>
+          <RouteActionButton
+            type="submit"
+            disabled={isPreviewReadonly || isBusy}
+            isPending={pendingAction === "note"}
+            pendingLabel="Saving..."
+          >
+            Save Note
+          </RouteActionButton>
         </form>
       </TooltipShell>
     </div>
@@ -80,21 +124,29 @@ export function RouteStopControls({
 
 function RouteActionButton({
   children,
-  disabled
+  disabled,
+  isPending = false,
+  pendingLabel,
+  type = "button",
+  onClick
 }: {
   children: ReactNode;
   disabled?: boolean;
+  isPending?: boolean;
+  pendingLabel: string;
+  type?: "button" | "submit";
+  onClick?: () => void;
 }) {
-  const { pending } = useFormStatus();
-
   return (
     <button
-      type="submit"
-      disabled={disabled || pending}
+      type={type}
+      disabled={disabled || isPending}
+      aria-busy={isPending}
+      onClick={onClick}
       className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-line/80 bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-sm transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-55"
     >
-      {pending ? <InlineSpinner className="h-4 w-4" /> : null}
-      <span>{pending ? "Saving..." : children}</span>
+      {isPending ? <InlineSpinner className="h-4 w-4" /> : null}
+      <span>{isPending ? pendingLabel : children}</span>
     </button>
   );
 }

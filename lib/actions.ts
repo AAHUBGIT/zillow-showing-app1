@@ -756,3 +756,180 @@ export async function moveRouteStop(formData: FormData) {
   revalidatePath("/routes");
   redirect(withToast("/routes", "route-order-updated"));
 }
+
+export async function toggleRouteStopCompletedInline({
+  leadId,
+  completed
+}: {
+  leadId: string;
+  completed: boolean;
+}) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    return {
+      success: false,
+      toastKey: isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"
+    } as const;
+  }
+
+  const prisma = getPrismaClient();
+
+  try {
+    const result = await prisma.lead.updateMany({
+      where: { id: leadId, userId: sessionUser.id },
+      data: {
+        routeCompleted: completed,
+        updatedAt: new Date().toISOString()
+      }
+    });
+
+    if (result.count === 0) {
+      return { success: false, toastKey: "save-error" } as const;
+    }
+  } catch (error) {
+    console.error(error);
+    return { success: false, toastKey: "save-error" } as const;
+  }
+
+  revalidatePath("/");
+  revalidatePath("/routes");
+
+  return {
+    success: true,
+    toastKey: completed ? "route-stop-completed" : "route-stop-reopened"
+  } as const;
+}
+
+export async function updateRouteStopNoteInline({
+  leadId,
+  routeNote
+}: {
+  leadId: string;
+  routeNote: string;
+}) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    return {
+      success: false,
+      toastKey: isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"
+    } as const;
+  }
+
+  const prisma = getPrismaClient();
+  const nextRouteNote = routeNote.trim().slice(0, 160);
+
+  try {
+    const result = await prisma.lead.updateMany({
+      where: { id: leadId, userId: sessionUser.id },
+      data: {
+        routeNote: nextRouteNote,
+        updatedAt: new Date().toISOString()
+      }
+    });
+
+    if (result.count === 0) {
+      return { success: false, toastKey: "save-error" } as const;
+    }
+  } catch (error) {
+    console.error(error);
+    return { success: false, toastKey: "save-error" } as const;
+  }
+
+  revalidatePath("/routes");
+
+  return {
+    success: true,
+    toastKey: "route-note-saved",
+    routeNote: nextRouteNote
+  } as const;
+}
+
+export async function moveRouteStopInline({
+  leadId,
+  showingDate,
+  direction
+}: {
+  leadId: string;
+  showingDate: string;
+  direction: "up" | "down";
+}) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    return {
+      success: false,
+      toastKey: isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"
+    } as const;
+  }
+
+  if (!showingDate || !["up", "down"].includes(direction)) {
+    return { success: false, toastKey: "save-error" } as const;
+  }
+
+  const prisma = getPrismaClient();
+  let dayStops;
+
+  try {
+    dayStops = await prisma.lead.findMany({
+      where: {
+        userId: sessionUser.id,
+        showingDate
+      },
+      include: {
+        propertyInterests: true
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return { success: false, toastKey: "save-error" } as const;
+  }
+
+  const orderedStops = sortRouteStops(dayStops as unknown as LeadWithProperties[]);
+  const currentIndex = orderedStops.findIndex((stop) => stop.id === leadId);
+  const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= orderedStops.length) {
+    return { success: false, toastKey: "save-error" } as const;
+  }
+
+  const reorderedStops = [...orderedStops];
+  [reorderedStops[currentIndex], reorderedStops[nextIndex]] = [
+    reorderedStops[nextIndex],
+    reorderedStops[currentIndex]
+  ];
+
+  try {
+    await prisma.$transaction(
+      reorderedStops.map((stop, index) =>
+        prisma.lead.update({
+          where: { id: stop.id },
+          data: {
+            routeStopOrder: index + 1,
+            updatedAt: new Date().toISOString()
+          }
+        })
+      )
+    );
+  } catch (error) {
+    console.error(error);
+    return { success: false, toastKey: "save-error" } as const;
+  }
+
+  revalidatePath("/routes");
+
+  return { success: true, toastKey: "route-order-updated" } as const;
+}
