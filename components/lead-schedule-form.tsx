@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { CalendarLinkButton } from "@/components/calendar-link-button";
@@ -102,6 +102,17 @@ export function LeadScheduleForm({
           agentNotes: values.agentNotes
         })
       : null;
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("lead-calendar-url-change", {
+        detail: {
+          leadId: lead.id,
+          calendarUrl
+        }
+      })
+    );
+  }, [calendarUrl, lead.id]);
 
   const isFormValid = useMemo(
     () => Object.keys(buildErrors(values)).length === 0 && scheduleState.isValid,

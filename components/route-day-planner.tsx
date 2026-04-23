@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { CopyRouteButton } from "@/components/copy-route-button";
 import { LoadingLink } from "@/components/loading-link";
 import { PriorityBadge } from "@/components/priority-badge";
@@ -28,7 +27,6 @@ export function RouteDayPlanner({
   initialStops: LeadWithProperties[];
   isPreviewReadonly?: boolean;
 }) {
-  const router = useRouter();
   const [stops, setStops] = useState<LeadWithProperties[]>(() => sortRouteStops(initialStops));
 
   useEffect(() => {
@@ -67,8 +65,7 @@ export function RouteDayPlanner({
       return;
     }
 
-    emitAppToast({ toastKey: result.toastKey });
-    router.refresh();
+    emitAppToast({ message: "Route updated." });
   }
 
   async function handleToggleCompleted(leadId: string, nextCompleted: boolean) {
@@ -91,7 +88,6 @@ export function RouteDayPlanner({
     }
 
     emitAppToast({ toastKey: result.toastKey });
-    router.refresh();
   }
 
   async function handleSaveNote(leadId: string, note: string) {
@@ -110,7 +106,6 @@ export function RouteDayPlanner({
     }
 
     emitAppToast({ toastKey: result.toastKey });
-    router.refresh();
   }
 
   return (

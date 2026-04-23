@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { CalendarLinkButton } from "@/components/calendar-link-button";
 import { FollowUpBadge } from "@/components/follow-up-badge";
 import { LeadAiInsights } from "@/components/lead-ai-insights";
+import { LiveCalendarLinkButton } from "@/components/live-calendar-link-button";
 import { LeadScheduleForm } from "@/components/lead-schedule-form";
 import { LoadingLink } from "@/components/loading-link";
 import { PropertyComparisonTable } from "@/components/property-comparison-table";
@@ -72,8 +72,9 @@ export default async function LeadDetailsPage({
                 <LoadingLink href="/" className="app-button-secondary">
                   Back to Dashboard
                 </LoadingLink>
-                <CalendarLinkButton
-                  calendarUrl={calendarUrl}
+                <LiveCalendarLinkButton
+                  leadId={lead.id}
+                  initialCalendarUrl={calendarUrl}
                   missingMessage="Add a showing date and time before creating a Google Calendar event."
                 />
               </div>

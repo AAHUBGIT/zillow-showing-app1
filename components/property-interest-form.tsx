@@ -12,7 +12,6 @@ import {
   getMaxLengthError,
   getNumericError,
   getRequiredSelectError,
-  getRequiredTextError,
   sanitizeNumericInput
 } from "@/lib/form-validation";
 import { leadSourceOptions } from "@/lib/lead-utils";
@@ -63,20 +62,38 @@ const fieldOrder = [
 function getFieldError(name: keyof PropertyFormValues, value: string) {
   switch (name) {
     case "listingTitle":
-      return getRequiredTextError(value) || getMaxLengthError(value, fieldMaxLengths.listingTitle);
+      return (
+        (!value.trim() ? "Listing title is required." : "") ||
+        getMaxLengthError(value, fieldMaxLengths.listingTitle)
+      );
     case "address":
-      return getRequiredTextError(value) || getMaxLengthError(value, fieldMaxLengths.address);
+      return (
+        (!value.trim() ? "Address is required." : "") ||
+        getMaxLengthError(value, fieldMaxLengths.address)
+      );
     case "source":
     case "status":
       return getRequiredSelectError(value);
     case "listingUrl":
       return getMaxLengthError(value, fieldMaxLengths.listingUrl);
     case "rent":
-      return getNumericError(value) || getMaxLengthError(value, fieldMaxLengths.rent);
+      return (
+        (!value.trim() ? "Price is required." : "") ||
+        (getNumericError(value) ? "Price must be numeric." : "") ||
+        getMaxLengthError(value, fieldMaxLengths.rent)
+      );
     case "beds":
-      return getNumericError(value, false) || getMaxLengthError(value, fieldMaxLengths.beds);
+      return (
+        (!value.trim() ? "Beds is required." : "") ||
+        (getNumericError(value, false) ? "Beds must be numeric." : "") ||
+        getMaxLengthError(value, fieldMaxLengths.beds)
+      );
     case "baths":
-      return getNumericError(value) || getMaxLengthError(value, fieldMaxLengths.baths);
+      return (
+        (!value.trim() ? "Baths is required." : "") ||
+        (getNumericError(value) ? "Baths must be numeric." : "") ||
+        getMaxLengthError(value, fieldMaxLengths.baths)
+      );
     case "neighborhood":
       return getMaxLengthError(value, fieldMaxLengths.neighborhood);
     case "rating":
@@ -157,39 +174,6 @@ export function PropertyInterestForm({
       }, {}),
     [hasAttemptedSubmit, liveErrors, touched]
   );
-  const blockingMessages = useMemo(() => {
-    const messages: string[] = [];
-
-    if (liveErrors.listingTitle) {
-      messages.push("Add a listing title or nickname.");
-    }
-
-    if (liveErrors.address) {
-      messages.push("Add the property address.");
-    }
-
-    if (liveErrors.rent) {
-      messages.push("Use numbers only for rent or price.");
-    }
-
-    if (liveErrors.beds) {
-      messages.push("Use whole numbers for beds.");
-    }
-
-    if (liveErrors.baths) {
-      messages.push("Use numbers only for baths.");
-    }
-
-    if (values.status === "scheduled" && (!scheduleState.date || !scheduleState.time)) {
-      messages.push("Scheduled properties need both a showing date and showing time.");
-    }
-
-    if (!scheduleState.isValid) {
-      messages.push("Fix the showing date or time.");
-    }
-
-    return messages;
-  }, [liveErrors, scheduleState, values.status]);
 
   const isFormValid = useMemo(
     () =>
@@ -315,9 +299,10 @@ export function PropertyInterestForm({
           name="rent"
           value={values.rent}
           placeholder="2640"
+          required
           inputMode="decimal"
           maxLength={fieldMaxLengths.rent}
-          helpText="Optional. Numbers only, like 2640 or 2640.50."
+          helpText="Required. Numbers only, like 2640 or 2640.50."
           error={visibleErrors.rent}
           onChange={updateField}
           onBlur={markFieldTouched}
@@ -336,9 +321,10 @@ export function PropertyInterestForm({
           name="beds"
           value={values.beds}
           placeholder="2"
+          required
           inputMode="numeric"
           maxLength={fieldMaxLengths.beds}
-          helpText="Optional. Whole numbers only."
+          helpText="Required. Whole numbers only."
           error={visibleErrors.beds}
           onChange={updateField}
           onBlur={markFieldTouched}
@@ -348,9 +334,10 @@ export function PropertyInterestForm({
           name="baths"
           value={values.baths}
           placeholder="2"
+          required
           inputMode="decimal"
           maxLength={fieldMaxLengths.baths}
-          helpText="Optional. Numbers only, like 1 or 1.5."
+          helpText="Required. Numbers only, like 1 or 1.5."
           error={visibleErrors.baths}
           onChange={updateField}
           onBlur={markFieldTouched}
@@ -471,18 +458,7 @@ export function PropertyInterestForm({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {!isFormValid ? (
-          <div className="space-y-1 text-xs font-medium text-slate-500">
-            {blockingMessages.length > 0 ? (
-              blockingMessages.map((message) => <p key={message}>{message}</p>)
-            ) : (
-              <p>Complete the required fields to save this property.</p>
-            )}
-          </div>
-        ) : (
-          <div />
-        )}
+      <div className="flex justify-end">
         <TooltipShell
           disabled={isPreviewReadonly}
           message="Preview mode is read-only. Disable preview mode or use a live database to save property changes."
