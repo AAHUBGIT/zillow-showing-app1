@@ -58,6 +58,7 @@ const fieldOrder = [
   "cons",
   "agentNotes"
 ];
+const alwaysVisibleErrorFields: Array<keyof PropertyFormValues> = ["listingTitle", "address"];
 
 function getFieldError(name: keyof PropertyFormValues, value: string) {
   switch (name) {
@@ -77,23 +78,11 @@ function getFieldError(name: keyof PropertyFormValues, value: string) {
     case "listingUrl":
       return getMaxLengthError(value, fieldMaxLengths.listingUrl);
     case "rent":
-      return (
-        (!value.trim() ? "Price is required." : "") ||
-        (getNumericError(value) ? "Price must be numeric." : "") ||
-        getMaxLengthError(value, fieldMaxLengths.rent)
-      );
+      return (getNumericError(value) ? "Price must be numeric." : "") || getMaxLengthError(value, fieldMaxLengths.rent);
     case "beds":
-      return (
-        (!value.trim() ? "Beds is required." : "") ||
-        (getNumericError(value, false) ? "Beds must be numeric." : "") ||
-        getMaxLengthError(value, fieldMaxLengths.beds)
-      );
+      return (getNumericError(value, false) ? "Beds must be numeric." : "") || getMaxLengthError(value, fieldMaxLengths.beds);
     case "baths":
-      return (
-        (!value.trim() ? "Baths is required." : "") ||
-        (getNumericError(value) ? "Baths must be numeric." : "") ||
-        getMaxLengthError(value, fieldMaxLengths.baths)
-      );
+      return (getNumericError(value) ? "Baths must be numeric." : "") || getMaxLengthError(value, fieldMaxLengths.baths);
     case "neighborhood":
       return getMaxLengthError(value, fieldMaxLengths.neighborhood);
     case "rating":
@@ -166,7 +155,12 @@ export function PropertyInterestForm({
   const visibleErrors = useMemo(
     () =>
       fieldOrder.reduce<FieldErrors>((current, name) => {
-        if ((hasAttemptedSubmit || touched[name as keyof PropertyFormValues]) && liveErrors[name]) {
+        if (
+          (alwaysVisibleErrorFields.includes(name as keyof PropertyFormValues) ||
+            hasAttemptedSubmit ||
+            touched[name as keyof PropertyFormValues]) &&
+          liveErrors[name]
+        ) {
           return { ...current, [name]: liveErrors[name] };
         }
 
@@ -299,10 +293,9 @@ export function PropertyInterestForm({
           name="rent"
           value={values.rent}
           placeholder="2640"
-          required
           inputMode="decimal"
           maxLength={fieldMaxLengths.rent}
-          helpText="Required. Numbers only, like 2640 or 2640.50."
+          helpText="Optional. Numbers only, like 2640 or 2640.50."
           error={visibleErrors.rent}
           onChange={updateField}
           onBlur={markFieldTouched}
@@ -321,10 +314,9 @@ export function PropertyInterestForm({
           name="beds"
           value={values.beds}
           placeholder="2"
-          required
           inputMode="numeric"
           maxLength={fieldMaxLengths.beds}
-          helpText="Required. Whole numbers only."
+          helpText="Optional. Whole numbers only."
           error={visibleErrors.beds}
           onChange={updateField}
           onBlur={markFieldTouched}
@@ -334,10 +326,9 @@ export function PropertyInterestForm({
           name="baths"
           value={values.baths}
           placeholder="2"
-          required
           inputMode="decimal"
           maxLength={fieldMaxLengths.baths}
-          helpText="Required. Numbers only, like 1 or 1.5."
+          helpText="Optional. Numbers only, like 1 or 1.5."
           error={visibleErrors.baths}
           onChange={updateField}
           onBlur={markFieldTouched}

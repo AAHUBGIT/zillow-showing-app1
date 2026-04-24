@@ -52,7 +52,7 @@ export function LoadingLink({
         // auth redirects, and Vercel deployment aliases.
         window.location.assign(href);
       }}
-      className={`${className} touch-manipulation ${isCurrentPath ? "cursor-default" : ""} disabled:cursor-progress disabled:opacity-75`}
+      className={`${className} touch-manipulation select-none ${isCurrentPath ? "cursor-default" : ""} disabled:cursor-progress disabled:opacity-75`}
     >
       {isPending ? <InlineSpinner /> : null}
       <span>{isPending ? loadingLabel || "Opening..." : children}</span>

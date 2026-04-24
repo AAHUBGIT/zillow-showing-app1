@@ -65,7 +65,7 @@ export function RouteDayPlanner({
       return;
     }
 
-    emitAppToast({ message: "Route updated." });
+    emitAppToast({ toastKey: "route-order-updated" });
   }
 
   async function handleToggleCompleted(leadId: string, nextCompleted: boolean) {
@@ -229,7 +229,8 @@ export function RouteDayPlanner({
                     />
                     <LoadingLink
                       href={`/leads/${lead.id}`}
-                      className="app-button-secondary text-center"
+                      className="app-button-secondary w-full text-center"
+                      loadingLabel="Opening lead..."
                     >
                       View Lead
                     </LoadingLink>

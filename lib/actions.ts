@@ -345,11 +345,8 @@ export async function createPropertyInterest(formData: FormData) {
     getRequiredTextError(address) ||
     getRequiredSelectError(source) ||
     getRequiredSelectError(status) ||
-    getRequiredTextError(rent) ||
     getNumericError(rent) ||
-    getRequiredTextError(beds) ||
     getNumericError(beds, false) ||
-    getRequiredTextError(baths) ||
     getNumericError(baths) ||
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||
@@ -448,11 +445,8 @@ export async function updatePropertyInterest(formData: FormData) {
     getRequiredTextError(address) ||
     getRequiredSelectError(source) ||
     getRequiredSelectError(status) ||
-    getRequiredTextError(rent) ||
     getNumericError(rent) ||
-    getRequiredTextError(beds) ||
     getNumericError(beds, false) ||
-    getRequiredTextError(baths) ||
     getNumericError(baths) ||
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||

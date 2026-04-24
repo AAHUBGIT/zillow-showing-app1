@@ -143,7 +143,7 @@ function RouteActionButton({
       disabled={disabled || isPending}
       aria-busy={isPending}
       onClick={onClick}
-      className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-2xl border border-line/80 bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-sm transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-55"
+      className="inline-flex min-h-[48px] touch-manipulation items-center justify-center gap-2 rounded-2xl border border-line/80 bg-white px-4 py-2.5 text-sm font-semibold text-ink shadow-sm transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-55"
     >
       {isPending ? <InlineSpinner className="h-4 w-4" /> : null}
       <span>{isPending ? pendingLabel : children}</span>
