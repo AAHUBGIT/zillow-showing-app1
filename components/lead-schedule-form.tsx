@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { CalendarLinkButton } from "@/components/calendar-link-button";
+import { DateInputField } from "@/components/date-input-field";
 import { DateTimePickerFields, DateTimePickerHandle } from "@/components/date-time-picker-fields";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
@@ -232,36 +233,15 @@ export function LeadScheduleForm({
         onValueChange={setScheduleState}
       />
 
-      <label className="flex min-w-0 flex-col gap-2">
-        <span className="text-sm font-medium text-slate-700">Next follow-up date</span>
-        <input
-          type="date"
-          name="nextFollowUpDate"
-          value={values.nextFollowUpDate}
-          data-field="nextFollowUpDate"
-          aria-label="Next follow-up date"
-          aria-invalid={Boolean(errors.nextFollowUpDate)}
-          aria-describedby={
-            errors.nextFollowUpDate
-              ? "nextFollowUpDate-help nextFollowUpDate-error"
-              : "nextFollowUpDate-help"
-          }
-          onChange={(event) => updateField("nextFollowUpDate", event.target.value)}
-          className={`app-input ${
-            errors.nextFollowUpDate ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""
-          }`}
-        />
-        <p id="nextFollowUpDate-help" className="text-xs text-slate-500">
-          Optional. Keeps the dashboard follow-up badges current.
-        </p>
-        <p
-          id="nextFollowUpDate-error"
-          className="min-h-[1.25rem] text-xs font-medium text-rose-600"
-          aria-live="polite"
-        >
-          {errors.nextFollowUpDate || ""}
-        </p>
-      </label>
+      <DateInputField
+        label="Next follow-up date"
+        name="nextFollowUpDate"
+        value={values.nextFollowUpDate}
+        error={errors.nextFollowUpDate}
+        dataField="nextFollowUpDate"
+        helperText="Optional. Format: YYYY-MM-DD. Keeps follow-up badges current."
+        onChange={(value) => updateField("nextFollowUpDate", value)}
+      />
 
       <label className="flex min-w-0 flex-col gap-2">
         <span className="text-sm font-medium text-slate-700">Agent notes</span>

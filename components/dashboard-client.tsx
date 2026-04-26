@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DateInputField } from "@/components/date-input-field";
 import { LeadCard } from "@/components/lead-card";
 import { LoadingLink } from "@/components/loading-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
@@ -318,31 +319,23 @@ export function DashboardClient({
                   </select>
                 </label>
 
-                <label className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Move-In Date
-                  </span>
-                  <input
-                    type="date"
-                    value={moveInDate}
-                    onChange={(event) => setMoveInDate(event.target.value)}
-                    aria-label="Filter by desired move-in date"
-                    className="app-input"
-                  />
-                </label>
+                <DateInputField
+                  label="Move-In Date"
+                  value={moveInDate}
+                  onChange={setMoveInDate}
+                  ariaLabel="Filter by desired move-in date"
+                  helperText="Filter by YYYY-MM-DD or calendar."
+                  labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+                />
 
-                <label className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Showing Date
-                  </span>
-                  <input
-                    type="date"
-                    value={showingDate}
-                    onChange={(event) => setShowingDate(event.target.value)}
-                    aria-label="Filter by showing date"
-                    className="app-input"
-                  />
-                </label>
+                <DateInputField
+                  label="Showing Date"
+                  value={showingDate}
+                  onChange={setShowingDate}
+                  ariaLabel="Filter by showing date"
+                  helperText="Filter by YYYY-MM-DD or calendar."
+                  labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+                />
 
                 <div className="flex items-end">
                   <button

@@ -10,6 +10,10 @@ export default function PrivacyPage() {
           Showings CRM is in beta. This page summarizes the privacy approach for agents testing
           the workspace while the product is being refined.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="app-chip">Showings CRM beta</span>
+          <span className="app-chip">Rental showing workspace</span>
+        </div>
       </section>
 
       <section className="app-panel p-5 sm:p-6">
@@ -28,7 +32,7 @@ export default function PrivacyPage() {
           />
           <PolicyBlock
             title="Questions"
-            body="For privacy questions during beta, use the Support page and include the workspace email you use to sign in."
+            body="For privacy questions during beta, contact support@showingscrm.com and include the workspace email you use to sign in."
           />
         </div>
       </section>

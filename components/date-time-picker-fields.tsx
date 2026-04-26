@@ -56,7 +56,7 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
       timeAriaLabel,
       initialDate = "",
       initialTime = "",
-      helperText = "Type the value or use the browser picker.",
+      helperText = "Format: MM/DD/YYYY. Type directly or use the calendar.",
       timeStep = 300,
       onValueChange
     },
@@ -71,6 +71,8 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
     const nativeDateRef = useRef<HTMLInputElement>(null);
     const nativeTimeRef = useRef<HTMLInputElement>(null);
     const manualDateRef = useRef<HTMLInputElement>(null);
+    const datePickerButtonRef = useRef<HTMLButtonElement>(null);
+    const timePickerButtonRef = useRef<HTMLButtonElement>(null);
     const openedDatePickerRef = useRef(false);
     const openedTimePickerRef = useRef(false);
     const [dateText, setDateText] = useState(formatDateForManualEntry(initialDate));
@@ -158,25 +160,26 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
 
     function openPicker(input: HTMLInputElement | null) {
       if (!input) {
-        return;
+        return false;
       }
 
       const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
 
       if (typeof pickerInput.showPicker === "function") {
         pickerInput.showPicker();
-        return;
+        return true;
       }
 
       input.focus();
+      return false;
     }
 
     function openDatePicker() {
-      openPicker(nativeDateRef.current);
+      openedDatePickerRef.current = openPicker(nativeDateRef.current);
     }
 
     function openTimePicker() {
-      openPicker(nativeTimeRef.current);
+      openedTimePickerRef.current = openPicker(nativeTimeRef.current);
     }
 
     useImperativeHandle(
@@ -206,12 +209,6 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
               autoComplete="off"
               placeholder="MM/DD/YYYY"
               value={dateText}
-              onFocus={() => {
-                if (!openedDatePickerRef.current) {
-                  openedDatePickerRef.current = true;
-                  openDatePicker();
-                }
-              }}
               onChange={(event) => {
                 setDateText(event.target.value);
                 if (dateError) {
@@ -219,7 +216,6 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
                 }
               }}
               onBlur={() => {
-                openedDatePickerRef.current = false;
                 if (dateText.trim()) {
                   commitDate();
                 } else {
@@ -234,9 +230,10 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
               className={`app-input pr-14 ${dateError ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
             />
             <button
+              ref={datePickerButtonRef}
               type="button"
               onClick={openDatePicker}
-              className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-line/80 bg-slate-50 text-slate-500 transition hover:border-accent hover:text-accent"
+              className="absolute right-3 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-line/80 bg-slate-50 text-slate-500 transition hover:border-accent hover:text-accent focus:border-accent focus:text-accent focus:ring-4 focus:ring-accent/15"
               aria-label={`Open ${dateAriaLabel} picker`}
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -255,6 +252,11 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
               setDateValue(nextValue);
               setDateText(formatDateForManualEntry(nextValue));
               setDateError("");
+              if (openedDatePickerRef.current) {
+                openedDatePickerRef.current = false;
+                nativeDateRef.current?.blur();
+                datePickerButtonRef.current?.focus({ preventScroll: true });
+              }
             }}
             name={dateName}
             className="sr-only"
@@ -307,15 +309,14 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
               name={timeName}
               step={timeStep}
               value={timeValue}
-              onFocus={() => {
-                if (!openedTimePickerRef.current) {
-                  openedTimePickerRef.current = true;
-                  openTimePicker();
-                }
-              }}
               onChange={(event) => {
                 setTimeValue(event.target.value);
                 setTimeError("");
+                if (openedTimePickerRef.current) {
+                  openedTimePickerRef.current = false;
+                  nativeTimeRef.current?.blur();
+                  timePickerButtonRef.current?.focus({ preventScroll: true });
+                }
               }}
               onBlur={(event) => {
                 openedTimePickerRef.current = false;
@@ -327,9 +328,10 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
               className={`app-input pr-14 ${timeError ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
             />
             <button
+              ref={timePickerButtonRef}
               type="button"
               onClick={openTimePicker}
-              className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-line/80 bg-slate-50 text-slate-500 transition hover:border-accent hover:text-accent"
+              className="absolute right-3 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-line/80 bg-slate-50 text-slate-500 transition hover:border-accent hover:text-accent focus:border-accent focus:text-accent focus:ring-4 focus:ring-accent/15"
               aria-label={`Open ${timeAriaLabel} picker`}
             >
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">

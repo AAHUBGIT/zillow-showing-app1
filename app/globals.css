@@ -68,7 +68,16 @@ button {
   }
 
   .app-input {
-    @apply min-h-[48px] w-full min-w-0 rounded-2xl border border-line bg-white px-4 py-3 text-[15px] text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-accent focus:ring-4 focus:ring-accent/10 sm:text-sm;
+    @apply min-h-[48px] w-full min-w-0 rounded-2xl border border-line bg-white px-4 py-3 text-[15px] text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-accent focus:ring-4 focus:ring-accent/20 focus:shadow-soft sm:text-sm;
+  }
+
+  .app-date-input {
+    @apply cursor-text;
+  }
+
+  .app-date-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
   }
 
   .app-textarea {

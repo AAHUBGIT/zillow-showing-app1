@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { CalendarLinkButton } from "@/components/calendar-link-button";
+import { DateInputField } from "@/components/date-input-field";
 import { DateTimePickerFields, DateTimePickerHandle } from "@/components/date-time-picker-fields";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
@@ -245,22 +246,24 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
         maxLength={fieldMaxLengths.propertyAddress}
         onChange={updateField}
       />
-      <ValidatedField
+      <DateInputField
         label="Desired move-in date"
         name="desiredMoveInDate"
-        type="date"
         required
         value={values.desiredMoveInDate}
         error={errors.desiredMoveInDate}
-        onChange={updateField}
+        dataField="desiredMoveInDate"
+        helperText="Required. Format: YYYY-MM-DD. Type directly or use the calendar."
+        onChange={(value) => updateField("desiredMoveInDate", value)}
       />
-      <ValidatedField
+      <DateInputField
         label="Next follow-up date"
         name="nextFollowUpDate"
-        type="date"
         value={values.nextFollowUpDate}
         error={errors.nextFollowUpDate}
-        onChange={updateField}
+        dataField="nextFollowUpDate"
+        helperText="Optional. Format: YYYY-MM-DD. Keeps follow-up badges current."
+        onChange={(value) => updateField("nextFollowUpDate", value)}
       />
 
       <ValidatedSelect

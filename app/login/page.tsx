@@ -17,8 +17,8 @@ export default function LoginPage({
               Run your rental showing day from one workspace
             </h1>
             <p className="app-copy mt-3">
-              Manage leads, showings, routes, properties, and follow-ups without bouncing between
-              tabs while you are working the day.
+              Built for rental showing agents managing leads, routes, follow-ups, properties, and
+              showing-day details from one focused beta workspace.
             </p>
           </div>
 
@@ -48,7 +48,10 @@ export default function LoginPage({
             </label>
 
             <div className="rounded-3xl border border-line/80 bg-slate-50/80 p-4">
-              <p className="app-kicker">Beta Access</p>
+              <p className="app-kicker">Sample beta access</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Use this sample access to explore the beta workspace.
+              </p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Email: <span className="font-semibold text-ink">demo@showingscrm.com</span>
               </p>
@@ -58,7 +61,7 @@ export default function LoginPage({
             </div>
 
             <button type="submit" className="app-button-primary">
-              Login
+              Explore Beta Workspace
             </button>
           </form>
         </div>
@@ -72,7 +75,7 @@ export default function LoginPage({
               Showings CRM beta
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">
-              A focused operating screen for rental showing teams.
+              A focused operating screen for rental showing agents.
             </h2>
             <p className="mt-4 text-sm leading-6 text-slate-200">
               Keep inquiry intake, property options, follow-up pressure, route planning, and
