@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
 
@@ -12,6 +12,7 @@ export function RouteStopControls({
   canMoveUp,
   canMoveDown,
   isPreviewReadonly = false,
+  isRouteBusy = false,
   onToggleCompleted,
   onMove,
   onSaveNote
@@ -21,31 +22,36 @@ export function RouteStopControls({
   canMoveUp: boolean;
   canMoveDown: boolean;
   isPreviewReadonly?: boolean;
+  isRouteBusy?: boolean;
   onToggleCompleted: (nextCompleted: boolean) => Promise<void>;
   onMove: (direction: "up" | "down") => Promise<void>;
   onSaveNote: (note: string) => Promise<void>;
 }) {
   const [noteValue, setNoteValue] = useState(routeNote);
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const busyRef = useRef(false);
 
   useEffect(() => {
     setNoteValue(routeNote);
   }, [routeNote]);
 
   const isBusy = pendingAction !== null;
+  const controlsDisabled = isPreviewReadonly || isBusy || isRouteBusy;
   const tooltipMessage =
     "Preview mode is read-only. Disable preview mode or use a live database to update route plans.";
 
   async function runAction(action: Exclude<PendingAction, null>, callback: () => Promise<void>) {
-    if (isBusy || isPreviewReadonly) {
+    if (busyRef.current || isRouteBusy || isPreviewReadonly) {
       return;
     }
 
+    busyRef.current = true;
     setPendingAction(action);
 
     try {
       await callback();
     } finally {
+      busyRef.current = false;
       setPendingAction(null);
     }
   }
@@ -56,7 +62,7 @@ export function RouteStopControls({
         <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
           <RouteActionButton
             type="button"
-            disabled={isPreviewReadonly || isBusy}
+            disabled={controlsDisabled}
             isPending={pendingAction === "toggle"}
             pendingLabel="Saving..."
             onClick={() => runAction("toggle", () => onToggleCompleted(!routeCompleted))}
@@ -68,7 +74,7 @@ export function RouteStopControls({
         <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
           <RouteActionButton
             type="button"
-            disabled={isPreviewReadonly || isBusy || !canMoveUp}
+            disabled={controlsDisabled || !canMoveUp}
             isPending={pendingAction === "move-up"}
             pendingLabel="Moving..."
             onClick={() => runAction("move-up", () => onMove("up"))}
@@ -80,7 +86,7 @@ export function RouteStopControls({
         <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
           <RouteActionButton
             type="button"
-            disabled={isPreviewReadonly || isBusy || !canMoveDown}
+            disabled={controlsDisabled || !canMoveDown}
             isPending={pendingAction === "move-down"}
             pendingLabel="Moving..."
             onClick={() => runAction("move-down", () => onMove("down"))}
@@ -106,11 +112,11 @@ export function RouteStopControls({
             aria-label="Quick note for this route stop"
             placeholder="Add a quick route note, parking note, or reminder"
             className="app-input min-h-[48px] flex-1"
-            disabled={isPreviewReadonly || isBusy}
+            disabled={controlsDisabled}
           />
           <RouteActionButton
             type="submit"
-            disabled={isPreviewReadonly || isBusy}
+            disabled={controlsDisabled}
             isPending={pendingAction === "note"}
             pendingLabel="Saving..."
           >

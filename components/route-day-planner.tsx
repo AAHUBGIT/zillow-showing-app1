@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CopyRouteButton } from "@/components/copy-route-button";
 import { LoadingLink } from "@/components/loading-link";
 import { PriorityBadge } from "@/components/priority-badge";
@@ -28,6 +28,8 @@ export function RouteDayPlanner({
   isPreviewReadonly?: boolean;
 }) {
   const [stops, setStops] = useState<LeadWithProperties[]>(() => sortRouteStops(initialStops));
+  const [busyLeadId, setBusyLeadId] = useState<string | null>(null);
+  const routeBusyRef = useRef(false);
 
   useEffect(() => {
     setStops(sortRouteStops(initialStops));
@@ -43,69 +45,99 @@ export function RouteDayPlanner({
   );
   const routeSummary = useMemo(() => getRouteDaySummary(stops), [stops]);
 
+  async function runRouteMutation(leadId: string, callback: () => Promise<void>) {
+    if (routeBusyRef.current) {
+      return;
+    }
+
+    routeBusyRef.current = true;
+    setBusyLeadId(leadId);
+
+    try {
+      await callback();
+    } finally {
+      routeBusyRef.current = false;
+      setBusyLeadId(null);
+    }
+  }
+
+  function applySequentialRouteOrder(nextStops: LeadWithProperties[]) {
+    return nextStops.map((stop, index) => ({
+      ...stop,
+      routeStopOrder: index + 1
+    }));
+  }
+
   async function handleMove(leadId: string, direction: "up" | "down") {
-    const currentIndex = stops.findIndex((stop) => stop.id === leadId);
-    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    await runRouteMutation(leadId, async () => {
+      const currentIndex = stops.findIndex((stop) => stop.id === leadId);
+      const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 
-    if (currentIndex < 0 || nextIndex < 0 || nextIndex >= stops.length) {
-      emitAppToast({ toastKey: "save-error" });
-      return;
-    }
+      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= stops.length) {
+        emitAppToast({ toastKey: "save-error" });
+        return;
+      }
 
-    const previousStops = stops;
-    const nextStops = [...stops];
-    [nextStops[currentIndex], nextStops[nextIndex]] = [nextStops[nextIndex], nextStops[currentIndex]];
-    setStops(nextStops);
+      const previousStops = stops;
+      const nextStops = applySequentialRouteOrder([...stops]);
+      [nextStops[currentIndex], nextStops[nextIndex]] = [nextStops[nextIndex], nextStops[currentIndex]];
+      const reorderedStops = applySequentialRouteOrder(nextStops);
+      setStops(reorderedStops);
 
-    const result = await moveRouteStopInline({ leadId, showingDate: day, direction });
+      const result = await moveRouteStopInline({ leadId, showingDate: day, direction });
 
-    if (!result.success) {
-      setStops(previousStops);
-      emitAppToast({ toastKey: result.toastKey });
-      return;
-    }
+      if (!result.success) {
+        setStops(previousStops);
+        emitAppToast({ toastKey: result.toastKey });
+        return;
+      }
 
-    emitAppToast({ toastKey: "route-order-updated" });
+      emitAppToast({ toastKey: "route-order-updated" });
+    });
   }
 
   async function handleToggleCompleted(leadId: string, nextCompleted: boolean) {
-    const previousStops = stops;
-    setStops((current) =>
-      current.map((stop) =>
-        stop.id === leadId ? { ...stop, routeCompleted: nextCompleted } : stop
-      )
-    );
+    await runRouteMutation(leadId, async () => {
+      const previousStops = stops;
+      setStops((current) =>
+        current.map((stop) =>
+          stop.id === leadId ? { ...stop, routeCompleted: nextCompleted } : stop
+        )
+      );
 
-    const result = await toggleRouteStopCompletedInline({
-      leadId,
-      completed: nextCompleted
-    });
+      const result = await toggleRouteStopCompletedInline({
+        leadId,
+        completed: nextCompleted
+      });
 
-    if (!result.success) {
-      setStops(previousStops);
+      if (!result.success) {
+        setStops(previousStops);
+        emitAppToast({ toastKey: result.toastKey });
+        return;
+      }
+
       emitAppToast({ toastKey: result.toastKey });
-      return;
-    }
-
-    emitAppToast({ toastKey: result.toastKey });
+    });
   }
 
   async function handleSaveNote(leadId: string, note: string) {
-    const nextRouteNote = note.trim().slice(0, 160);
-    const previousStops = stops;
-    setStops((current) =>
-      current.map((stop) => (stop.id === leadId ? { ...stop, routeNote: nextRouteNote } : stop))
-    );
+    await runRouteMutation(leadId, async () => {
+      const nextRouteNote = note.trim().slice(0, 160);
+      const previousStops = stops;
+      setStops((current) =>
+        current.map((stop) => (stop.id === leadId ? { ...stop, routeNote: nextRouteNote } : stop))
+      );
 
-    const result = await updateRouteStopNoteInline({ leadId, routeNote: nextRouteNote });
+      const result = await updateRouteStopNoteInline({ leadId, routeNote: nextRouteNote });
 
-    if (!result.success) {
-      setStops(previousStops);
+      if (!result.success) {
+        setStops(previousStops);
+        emitAppToast({ toastKey: result.toastKey });
+        return;
+      }
+
       emitAppToast({ toastKey: result.toastKey });
-      return;
-    }
-
-    emitAppToast({ toastKey: result.toastKey });
+    });
   }
 
   return (
@@ -221,6 +253,7 @@ export function RouteDayPlanner({
                       canMoveUp={index > 0}
                       canMoveDown={index < stops.length - 1}
                       isPreviewReadonly={isPreviewReadonly}
+                      isRouteBusy={Boolean(busyLeadId)}
                       onToggleCompleted={(nextCompleted) =>
                         handleToggleCompleted(lead.id, nextCompleted)
                       }
@@ -229,8 +262,9 @@ export function RouteDayPlanner({
                     />
                     <LoadingLink
                       href={`/leads/${lead.id}`}
-                      className="app-button-secondary w-full text-center"
+                      className="app-button-secondary min-h-[52px] w-full text-center"
                       loadingLabel="Opening lead..."
+                      disabled={Boolean(busyLeadId)}
                     >
                       View Lead
                     </LoadingLink>

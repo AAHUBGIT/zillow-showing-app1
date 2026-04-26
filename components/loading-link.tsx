@@ -2,7 +2,7 @@
 
 import { ButtonHTMLAttributes } from "react";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { InlineSpinner } from "@/components/inline-spinner";
 
 export function LoadingLink({
@@ -11,6 +11,7 @@ export function LoadingLink({
   children,
   loadingLabel,
   ariaLabel,
+  disabled,
   onClick,
   ...buttonProps
 }: {
@@ -22,9 +23,12 @@ export function LoadingLink({
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
   const pathname = usePathname();
   const [isPending, setIsPending] = useState(false);
+  const pendingRef = useRef(false);
   const isCurrentPath = pathname === href;
+  const isDisabled = Boolean(disabled || isPending);
 
   useEffect(() => {
+    pendingRef.current = false;
     setIsPending(false);
   }, [pathname]);
 
@@ -33,8 +37,8 @@ export function LoadingLink({
       type="button"
       aria-label={ariaLabel}
       aria-busy={isPending}
-      disabled={isPending}
       {...buttonProps}
+      disabled={isDisabled}
       onClick={(event) => {
         onClick?.(event);
 
@@ -42,10 +46,11 @@ export function LoadingLink({
           return;
         }
 
-        if (isPending || isCurrentPath) {
+        if (disabled || pendingRef.current || isCurrentPath) {
           return;
         }
 
+        pendingRef.current = true;
         setIsPending(true);
 
         // Use a full document navigation for reliability across protected routes,

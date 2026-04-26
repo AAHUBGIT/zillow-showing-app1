@@ -17,7 +17,7 @@ import { canUseDatabase, isPreviewReadonlyMode } from "./deployment";
 import { leadPriorityOptions, leadSourceOptions, leadStatusOptions } from "./lead-utils";
 import { getPrismaClient } from "./prisma";
 import { propertyInterestStatusOptions } from "./property-interest-utils";
-import { sortRouteStops } from "./route-planner";
+import { isRouteReadyLead, sortRouteStops } from "./route-planner";
 import {
   Lead,
   LeadPriority,
@@ -94,6 +94,51 @@ function redirectValidation(path: string): never {
 function redirectSaveError(path: string, error: unknown): never {
   console.error(error);
   redirect(withToast(path, "save-error"));
+}
+
+type LeadRouteFields = Pick<
+  Lead,
+  "propertyAddress" | "showingDate" | "showingTime" | "routeCompleted" | "routeStopOrder"
+> & { status: string };
+
+function getRouteResetData(
+  lead: LeadRouteFields,
+  nextRoute: Pick<LeadRouteFields, "propertyAddress" | "showingDate" | "showingTime">
+) {
+  const routeChanged =
+    lead.propertyAddress !== nextRoute.propertyAddress ||
+    lead.showingDate !== nextRoute.showingDate ||
+    lead.showingTime !== nextRoute.showingTime;
+
+  return routeChanged
+    ? {
+        routeCompleted: false,
+        routeStopOrder: 0
+      }
+    : {};
+}
+
+function getScheduledLeadRouteData({
+  lead,
+  propertyAddress,
+  showingDate,
+  showingTime,
+  updatedAt
+}: {
+  lead: LeadRouteFields;
+  propertyAddress: string;
+  showingDate: string;
+  showingTime: string;
+  updatedAt: string;
+}) {
+  return {
+    propertyAddress,
+    showingDate,
+    showingTime,
+    status: lead.status === "new" ? "scheduled" : lead.status,
+    ...getRouteResetData(lead, { propertyAddress, showingDate, showingTime }),
+    updatedAt
+  };
 }
 
 export async function loginUser(formData: FormData) {
@@ -237,11 +282,23 @@ export async function updateLeadSchedule(formData: FormData) {
     redirectValidation(`/leads/${id}`);
   }
 
-  let result;
+  let existingLead;
 
   try {
-    result = await prisma.lead.updateMany({
-      where: { id, userId: sessionUser.id },
+    existingLead = await prisma.lead.findUnique({
+      where: { id }
+    });
+  } catch (error) {
+    redirectSaveError(`/leads/${id}`, error);
+  }
+
+  if (!existingLead || existingLead.userId !== sessionUser.id) {
+    redirect(withToast(`/leads/${id}`, "save-error"));
+  }
+
+  try {
+    await prisma.lead.update({
+      where: { id },
       data: {
         status: showingDate && showingTime && nextStatus === "new" ? "scheduled" : nextStatus,
         priority,
@@ -249,18 +306,17 @@ export async function updateLeadSchedule(formData: FormData) {
         nextFollowUpDate,
         showingDate,
         showingTime,
-        routeCompleted: false,
-        routeStopOrder: 0,
+        ...getRouteResetData(existingLead, {
+          propertyAddress: existingLead.propertyAddress,
+          showingDate,
+          showingTime
+        }),
         agentNotes: getString(formData, "agentNotes"),
         updatedAt: new Date().toISOString()
       }
     });
   } catch (error) {
     redirectSaveError(`/leads/${id}`, error);
-  }
-
-  if (result.count === 0) {
-    redirect(withToast(`/leads/${id}`, "save-error"));
   }
 
   revalidatePath("/");
@@ -396,14 +452,31 @@ export async function createPropertyInterest(formData: FormData) {
   };
 
   try {
-    await prisma.propertyInterest.create({
-      data: propertyInterest
-    });
+    await prisma.$transaction([
+      prisma.propertyInterest.create({
+        data: propertyInterest
+      }),
+      ...(status === "scheduled" && showingDate && showingTime
+        ? [
+            prisma.lead.update({
+              where: { id: lead.id },
+              data: getScheduledLeadRouteData({
+                lead,
+                propertyAddress: address,
+                showingDate,
+                showingTime,
+                updatedAt: now
+              })
+            })
+          ]
+        : [])
+    ]);
   } catch (error) {
     redirectSaveError(`/leads/${leadId}`, error);
   }
 
   revalidatePath("/");
+  revalidatePath("/routes");
   revalidatePath(`/leads/${leadId}`);
   revalidatePath(`/leads/${leadId}/properties/${propertyInterest.id}`);
   redirect(withToast(`/leads/${leadId}`, "property-added"));
@@ -474,34 +547,53 @@ export async function updatePropertyInterest(formData: FormData) {
     redirect(withToast(`/leads/${leadId}`, "save-error"));
   }
 
+  const updatedAt = new Date().toISOString();
+
   try {
-    await prisma.propertyInterest.update({
-      where: { id: propertyInterestId },
-      data: {
-        address,
-        listingTitle,
-        source,
-        listingUrl: getString(formData, "listingUrl"),
-        rent,
-        beds,
-        baths,
-        neighborhood: getString(formData, "neighborhood"),
-        status,
-        rating: getPropertyInterestRating(formData),
-        clientFeedback: getString(formData, "clientFeedback"),
-        pros: getString(formData, "pros"),
-        cons: getString(formData, "cons"),
-        agentNotes: getString(formData, "agentNotes"),
-        showingDate,
-        showingTime,
-        updatedAt: new Date().toISOString()
-      }
-    });
+    await prisma.$transaction([
+      prisma.propertyInterest.update({
+        where: { id: propertyInterestId },
+        data: {
+          address,
+          listingTitle,
+          source,
+          listingUrl: getString(formData, "listingUrl"),
+          rent,
+          beds,
+          baths,
+          neighborhood: getString(formData, "neighborhood"),
+          status,
+          rating: getPropertyInterestRating(formData),
+          clientFeedback: getString(formData, "clientFeedback"),
+          pros: getString(formData, "pros"),
+          cons: getString(formData, "cons"),
+          agentNotes: getString(formData, "agentNotes"),
+          showingDate,
+          showingTime,
+          updatedAt
+        }
+      }),
+      ...(status === "scheduled" && showingDate && showingTime
+        ? [
+            prisma.lead.update({
+              where: { id: leadId },
+              data: getScheduledLeadRouteData({
+                lead: propertyInterest.lead,
+                propertyAddress: address,
+                showingDate,
+                showingTime,
+                updatedAt
+              })
+            })
+          ]
+        : [])
+    ]);
   } catch (error) {
     redirectSaveError(`/leads/${leadId}/properties/${propertyInterestId}`, error);
   }
 
   revalidatePath("/");
+  revalidatePath("/routes");
   revalidatePath(`/leads/${leadId}`);
   revalidatePath(`/leads/${leadId}/properties/${propertyInterestId}`);
   redirect(withToast(`/leads/${leadId}/properties/${propertyInterestId}`, "property-updated"));
@@ -572,21 +664,40 @@ export async function quickUpdatePropertyInterest(formData: FormData) {
             ? "property-toured"
             : "property-updated";
 
+  const updatedAt = new Date().toISOString();
+
   try {
-    await prisma.propertyInterest.update({
-      where: { id: propertyInterestId },
-      data: {
-        status: nextStatus,
-        showingDate: effectiveShowingDate,
-        showingTime: effectiveShowingTime,
-        updatedAt: new Date().toISOString()
-      }
-    });
+    await prisma.$transaction([
+      prisma.propertyInterest.update({
+        where: { id: propertyInterestId },
+        data: {
+          status: nextStatus,
+          showingDate: effectiveShowingDate,
+          showingTime: effectiveShowingTime,
+          updatedAt
+        }
+      }),
+      ...(nextStatus === "scheduled" && effectiveShowingDate && effectiveShowingTime
+        ? [
+            prisma.lead.update({
+              where: { id: leadId },
+              data: getScheduledLeadRouteData({
+                lead: propertyInterest.lead,
+                propertyAddress: propertyInterest.address,
+                showingDate: effectiveShowingDate,
+                showingTime: effectiveShowingTime,
+                updatedAt
+              })
+            })
+          ]
+        : [])
+    ]);
   } catch (error) {
     redirectSaveError(redirectTo, error);
   }
 
   revalidatePath("/");
+  revalidatePath("/routes");
   revalidatePath(`/leads/${leadId}`);
   revalidatePath(`/leads/${leadId}/properties/${propertyInterestId}`);
   redirect(withToast(redirectTo, nextToastKey));
@@ -713,7 +824,9 @@ export async function moveRouteStop(formData: FormData) {
     dayStops = await prisma.lead.findMany({
       where: {
         userId: sessionUser.id,
-        showingDate
+        showingDate,
+        showingTime: { not: "" },
+        propertyAddress: { not: "" }
       },
       include: {
         propertyInterests: true
@@ -723,7 +836,7 @@ export async function moveRouteStop(formData: FormData) {
     redirectSaveError("/routes", error);
   }
 
-  const orderedStops = sortRouteStops(dayStops as unknown as LeadWithProperties[]);
+  const orderedStops = sortRouteStops((dayStops as unknown as LeadWithProperties[]).filter(isRouteReadyLead));
   const currentIndex = orderedStops.findIndex((stop) => stop.id === leadId);
   const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 
@@ -887,7 +1000,9 @@ export async function moveRouteStopInline({
     dayStops = await prisma.lead.findMany({
       where: {
         userId: sessionUser.id,
-        showingDate
+        showingDate,
+        showingTime: { not: "" },
+        propertyAddress: { not: "" }
       },
       include: {
         propertyInterests: true
@@ -898,7 +1013,7 @@ export async function moveRouteStopInline({
     return { success: false, toastKey: "save-error" } as const;
   }
 
-  const orderedStops = sortRouteStops(dayStops as unknown as LeadWithProperties[]);
+  const orderedStops = sortRouteStops((dayStops as unknown as LeadWithProperties[]).filter(isRouteReadyLead));
   const currentIndex = orderedStops.findIndex((stop) => stop.id === leadId);
   const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
 

@@ -1,15 +1,13 @@
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { RouteDayPlanner } from "@/components/route-day-planner";
-import { sortDateAndTime } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
+import { isRouteReadyLead } from "@/lib/route-planner";
 import { getLeads } from "@/lib/storage";
 
 export default async function RoutesPage() {
   const leads = await getLeads();
   const isPreviewReadonly = isPreviewReadonlyMode();
-  const scheduled = leads
-    .filter((lead) => lead.showingDate && lead.showingTime)
-    .sort((a, b) => sortDateAndTime(a.showingDate!, a.showingTime!, b.showingDate!, b.showingTime!));
+  const scheduled = leads.filter(isRouteReadyLead);
 
   const routesByDay = scheduled.reduce<Record<string, typeof scheduled>>((acc, lead) => {
     const key = lead.showingDate!;
@@ -33,8 +31,7 @@ export default async function RoutesPage() {
             </h2>
             <p className="app-copy mt-2">
               Scheduled showings are grouped by day. Each day includes a Google Maps directions
-              link built from the property addresses in showing order, with light same-time
-              address clustering to make daily planning more practical.
+              link built from the property addresses in your saved showing order.
             </p>
           </div>
 

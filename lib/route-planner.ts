@@ -16,6 +16,12 @@ export type RouteSegmentEstimate = {
   warning: string;
 };
 
+export function isRouteReadyLead(
+  lead: Pick<LeadWithProperties, "showingDate" | "showingTime" | "propertyAddress">
+) {
+  return Boolean(lead.showingDate && lead.showingTime && lead.propertyAddress);
+}
+
 function parseAddressMeta(address: string): AddressMeta {
   const [street = "", city = "", stateZip = ""] = address.split(",").map((part) => part.trim());
   const [state = "", zip = ""] = stateZip.split(/\s+/);
@@ -30,26 +36,30 @@ function parseAddressMeta(address: string): AddressMeta {
 }
 
 export function sortRouteStops(leads: LeadWithProperties[]) {
-  const hasManualOrder = leads.some((lead) => (lead.routeStopOrder || 0) > 0);
+  return [...leads].filter(isRouteReadyLead).sort((first, second) => {
+    const firstOrder = first.routeStopOrder > 0 ? first.routeStopOrder : Number.MAX_SAFE_INTEGER;
+    const secondOrder = second.routeStopOrder > 0 ? second.routeStopOrder : Number.MAX_SAFE_INTEGER;
 
-  const orderedByTime = [...leads].sort((first, second) => {
-    if (hasManualOrder) {
-      const firstOrder = first.routeStopOrder || Number.MAX_SAFE_INTEGER;
-      const secondOrder = second.routeStopOrder || Number.MAX_SAFE_INTEGER;
-
-      if (firstOrder !== secondOrder) {
-        return firstOrder - secondOrder;
-      }
+    if (firstOrder !== secondOrder) {
+      return firstOrder - secondOrder;
     }
 
-    return sortDateAndTime(first.showingDate, first.showingTime, second.showingDate, second.showingTime);
+    const byShowingTime = sortDateAndTime(
+      first.showingDate,
+      first.showingTime,
+      second.showingDate,
+      second.showingTime
+    );
+
+    if (byShowingTime !== 0) {
+      return byShowingTime;
+    }
+
+    return (
+      first.fullName.localeCompare(second.fullName, undefined, { sensitivity: "base" }) ||
+      first.id.localeCompare(second.id)
+    );
   });
-
-  if (hasManualOrder || orderedByTime.length < 3) {
-    return orderedByTime;
-  }
-
-  return groupStopsByTimeWindow(orderedByTime).flatMap(optimizeTimeBlockByAddress);
 }
 
 export function buildRoutePreviewEmbedLink(addresses: string[]) {
@@ -164,73 +174,4 @@ export function getRouteDaySummary(stops: LeadWithProperties[]) {
 
 function toTitleCase(value: string) {
   return value.replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function groupStopsByTimeWindow(stops: LeadWithProperties[]) {
-  return stops.reduce<LeadWithProperties[][]>((groups, stop) => {
-    const currentGroup = groups[groups.length - 1];
-
-    if (!currentGroup || currentGroup[0].showingTime !== stop.showingTime) {
-      groups.push([stop]);
-      return groups;
-    }
-
-    currentGroup.push(stop);
-    return groups;
-  }, []);
-}
-
-function optimizeTimeBlockByAddress(stops: LeadWithProperties[]) {
-  if (stops.length < 3) {
-    return stops;
-  }
-
-  const ordered = [stops[0]];
-  const remaining = stops.slice(1);
-
-  while (remaining.length > 0) {
-    const currentStop = ordered[ordered.length - 1];
-    let bestIndex = 0;
-    let bestScore = getRouteClosenessScore(currentStop.propertyAddress, remaining[0].propertyAddress);
-
-    for (let index = 1; index < remaining.length; index += 1) {
-      const nextScore = getRouteClosenessScore(currentStop.propertyAddress, remaining[index].propertyAddress);
-
-      if (nextScore < bestScore) {
-        bestScore = nextScore;
-        bestIndex = index;
-      }
-    }
-
-    ordered.push(remaining.splice(bestIndex, 1)[0]);
-  }
-
-  return ordered;
-}
-
-function getRouteClosenessScore(firstAddress: string, secondAddress: string) {
-  const first = parseAddressMeta(firstAddress);
-  const second = parseAddressMeta(secondAddress);
-
-  if (first.state && second.state && first.state !== second.state) {
-    return 400;
-  }
-
-  if (first.city && second.city && first.city !== second.city) {
-    return 200;
-  }
-
-  if (first.zip && second.zip && first.zip === second.zip) {
-    return 10;
-  }
-
-  if (first.streetName && second.streetName && first.streetName === second.streetName) {
-    return 5;
-  }
-
-  if (first.zip && second.zip && first.zip.slice(0, 3) === second.zip.slice(0, 3)) {
-    return 40;
-  }
-
-  return 80;
 }
