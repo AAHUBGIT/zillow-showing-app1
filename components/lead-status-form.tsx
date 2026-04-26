@@ -48,7 +48,7 @@ export function LeadStatusForm({
         <div className="flex items-center gap-2">
           <TooltipShell
             disabled={isPreviewReadonly}
-            message="Preview mode is read-only. Disable preview mode or use a live database to update lead status."
+            message="This beta sample workspace is read-only. Use a live workspace to update lead status."
           >
             <select
               name="status"

@@ -294,7 +294,7 @@ export function LeadScheduleForm({
           ) : null}
           <TooltipShell
             disabled={isPreviewReadonly}
-            message="Preview mode is read-only. Disable preview mode or use a live database to update leads."
+            message="This beta sample workspace is read-only. Use a live workspace to update leads."
           >
             <UpdateLeadButton disabled={isPreviewReadonly || !isFormValid} />
           </TooltipShell>

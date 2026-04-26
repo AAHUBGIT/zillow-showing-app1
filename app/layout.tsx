@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { Suspense } from "react";
+import { AppFooter } from "@/components/app-footer";
 import { AppHeader } from "@/components/app-header";
 import { KeyboardShortcutsGuard } from "@/components/keyboard-shortcuts-guard";
 import { ToastViewport } from "@/components/toast-viewport";
@@ -14,8 +15,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Showing Agent Dashboard",
-  description: "Simple rental lead dashboard for showings and routes."
+  title: "Showings CRM",
+  description: "A beta workspace for rental leads, showings, routes, properties, and follow-ups."
 };
 
 export default async function RootLayout({
@@ -43,6 +44,8 @@ export default async function RootLayout({
           <div id="main-content" tabIndex={-1} className="pb-8">
             {children}
           </div>
+
+          <AppFooter />
         </div>
         <Suspense>
           <ToastViewport />

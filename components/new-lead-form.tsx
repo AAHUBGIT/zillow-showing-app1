@@ -378,7 +378,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
           />
           <TooltipShell
             disabled={isPreviewReadonly}
-            message="Preview mode is read-only. Disable preview mode or use a live database to create leads."
+            message="This beta sample workspace is read-only. Use a live workspace to create leads."
           >
             <CreateLeadButton disabled={isPreviewReadonly || !isFormValid} />
           </TooltipShell>

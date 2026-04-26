@@ -185,14 +185,14 @@ export function DashboardClient({
             </div>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <LoadingLink href="/today" className="app-button-primary flex-1">
+                Open Today
+              </LoadingLink>
               <LoadingLink href="/leads/new" className="app-button-primary flex-1">
                 Add New Lead
               </LoadingLink>
               <LoadingLink href="/routes" className="app-button-secondary flex-1">
                 Open Routes
-              </LoadingLink>
-              <LoadingLink href="/leads/new" className="app-button-secondary flex-1">
-                Capture Inquiry
               </LoadingLink>
             </div>
           </div>

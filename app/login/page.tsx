@@ -12,12 +12,13 @@ export default function LoginPage({
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="app-panel p-6 sm:p-8">
           <div>
-            <p className="app-eyebrow">Secure Login</p>
+            <p className="app-eyebrow">Showings CRM beta</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">
-              Sign in to your showing CRM
+              Run your rental showing day from one workspace
             </h1>
             <p className="app-copy mt-3">
-              Use the simple demo credentials from your local environment to access the dashboard.
+              Manage leads, showings, routes, properties, and follow-ups without bouncing between
+              tabs while you are working the day.
             </p>
           </div>
 
@@ -47,7 +48,7 @@ export default function LoginPage({
             </label>
 
             <div className="rounded-3xl border border-line/80 bg-slate-50/80 p-4">
-              <p className="app-kicker">Local Demo Defaults</p>
+              <p className="app-kicker">Beta Access</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Email: <span className="font-semibold text-ink">demo@showingscrm.com</span>
               </p>
@@ -68,14 +69,14 @@ export default function LoginPage({
             <div className="absolute bottom-0 left-8 -z-10 h-32 w-32 rounded-full bg-blue-300/20 blur-3xl" />
 
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-100">
-              Investor-demo ready
+              Showings CRM beta
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">
-              A premium operating system for showings and lead conversion.
+              A focused operating screen for rental showing teams.
             </h2>
             <p className="mt-4 text-sm leading-6 text-slate-200">
-              Keep inquiry intake, follow-up pressure, tour scheduling, and route planning inside a
-              single clean workspace.
+              Keep inquiry intake, property options, follow-up pressure, route planning, and
+              calendar-ready showing details inside one clean workspace.
             </p>
 
             <div className="mt-8 grid gap-3">
@@ -89,7 +90,7 @@ export default function LoginPage({
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Ops</p>
-                <p className="mt-2 text-base font-semibold">Fast enough for the field, clean enough to demo</p>
+                <p className="mt-2 text-base font-semibold">Fast enough for the field, polished enough for beta</p>
               </div>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { logoutUser } from "@/lib/actions";
 import { SessionUser } from "@/lib/auth";
 
 const navItems = [
+  { href: "/today", label: "Today" },
   { href: "/", label: "Dashboard" },
   { href: "/leads/new", label: "New Lead" },
   { href: "/routes", label: "Routes" }
@@ -55,13 +56,13 @@ export function AppHeader({
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#0f172a)] text-sm font-semibold text-white shadow-soft">
-              RS
+              SC
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
-                Rental Showing Agent CRM
+                Showings CRM
               </p>
-              <p className="text-sm font-medium text-slate-500">Leads, showings, and routes</p>
+              <p className="text-sm font-medium text-slate-500">Leads, showings, routes, follow-ups</p>
             </div>
           </div>
 
@@ -129,37 +130,43 @@ export function AppHeader({
             <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-3xl">
                 <div className="app-chip border-white/10 bg-white/10 text-blue-50">
-                  Modern real estate workflow
+                  Showings CRM beta
                 </div>
                 {isPreviewReadonly ? (
                   <div className="mt-3 inline-flex rounded-full border border-amber-200/40 bg-amber-300/15 px-3 py-1.5 text-xs font-semibold text-amber-100">
-                    Public preview mode: demo data, read-only changes
+                    Beta sample workspace: changes are limited
                   </div>
                 ) : null}
                 <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl xl:text-[2.8rem]">
-                  Run your showing pipeline like a polished modern CRM.
+                  Run your rental showing day from one workspace.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
-                  Keep lead follow-up, scheduling, route planning, and calendar-ready showing
-                  details in one focused workspace built for speed.
+                  Keep leads, properties, showings, routes, and follow-ups organized in one focused
+                  beta workspace built for agents in the field.
                 </p>
               </div>
               <div className="rounded-4xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-                      Workspace
+                      Daily Workspace
                     </p>
-                    <p className="mt-2 text-lg font-semibold text-white">Agent Ops Command Center</p>
+                    <p className="mt-2 text-lg font-semibold text-white">Today Command Center</p>
                     <p className="mt-2 text-sm leading-6 text-slate-200">
-                      Built to prioritize follow-ups, schedule tours, and move prospects toward a
-                      signed showing.
+                      Built to prioritize showings, follow-ups, routes, and the next lead that
+                      needs attention.
                     </p>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row xl:flex-col">
                     <LoadingLink
-                      href="/leads/new"
+                      href="/today"
                       className="app-button-primary bg-white px-6 text-ink hover:bg-slate-100"
+                    >
+                      Open Today
+                    </LoadingLink>
+                    <LoadingLink
+                      href="/leads/new"
+                      className="inline-flex items-center justify-center rounded-full border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/15"
                     >
                       Add New Lead
                     </LoadingLink>
@@ -188,8 +195,8 @@ export function AppHeader({
                 <p className="mt-1 text-sm font-semibold text-white">Grouped by day</p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/10 px-4 py-4 backdrop-blur">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Storage</p>
-                <p className="mt-1 text-sm font-semibold text-white">Preview safe</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Beta</p>
+                <p className="mt-1 text-sm font-semibold text-white">Workspace ready</p>
               </div>
             </div>
           </div>
