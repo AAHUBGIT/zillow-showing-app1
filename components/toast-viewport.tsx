@@ -18,6 +18,8 @@ const toastMessages: Record<string, string> = {
   "route-stop-reopened": "Route stop moved back into the active route.",
   "route-note-saved": "Route note saved.",
   "route-order-updated": "Route updated",
+  "communication-logged": "Communication logged.",
+  "template-saved": "Communication template saved.",
   "login-success": "Logged in successfully.",
   "logout-success": "Logged out successfully.",
   "login-error": "That email or password did not match.",

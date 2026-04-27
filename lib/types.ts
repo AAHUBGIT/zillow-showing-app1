@@ -16,6 +16,8 @@ export type PropertyInterestStatus =
   | "applying"
   | "approved"
   | "closed";
+export type CommunicationChannel = "call" | "text" | "email" | "note";
+export type CommunicationDirection = "outbound" | "inbound" | "internal";
 
 export type Lead = {
   id: string;
@@ -61,6 +63,32 @@ export type PropertyInterest = {
   showingTime: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CommunicationTemplate = {
+  id: string;
+  userId: string;
+  name: string;
+  channel: CommunicationChannel;
+  subject: string;
+  body: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CommunicationActivity = {
+  id: string;
+  leadId: string;
+  userId: string;
+  templateId: string;
+  channel: CommunicationChannel;
+  direction: CommunicationDirection;
+  subject: string;
+  body: string;
+  outcome: string;
+  occurredAt: string;
+  createdAt: string;
 };
 
 export type LeadWithProperties = Lead & {

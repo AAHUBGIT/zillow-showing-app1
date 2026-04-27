@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { FollowUpBadge } from "@/components/follow-up-badge";
+import { CommunicationWorkspace } from "@/components/communication-workspace";
 import { LeadAiInsights } from "@/components/lead-ai-insights";
 import { LiveCalendarLinkButton } from "@/components/live-calendar-link-button";
 import { LeadScheduleForm } from "@/components/lead-schedule-form";
@@ -23,7 +24,7 @@ import {
   isActivePropertyInterest,
   isRejectedPropertyInterest
 } from "@/lib/property-interest-utils";
-import { getLeadById } from "@/lib/storage";
+import { getCommunicationWorkspace, getLeadById } from "@/lib/storage";
 
 export default async function LeadDetailsPage({
   params
@@ -31,7 +32,10 @@ export default async function LeadDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const lead = await getLeadById(id);
+  const [lead, communicationWorkspace] = await Promise.all([
+    getLeadById(id),
+    getCommunicationWorkspace(id)
+  ]);
 
   if (!lead) {
     notFound();
@@ -127,6 +131,13 @@ export default async function LeadDetailsPage({
           </div>
 
           <LeadAiInsights lead={lead} />
+
+          <CommunicationWorkspace
+            lead={lead}
+            templates={communicationWorkspace.templates}
+            activities={communicationWorkspace.activities}
+            isPreviewReadonly={isPreviewReadonly}
+          />
 
           <div className="app-panel p-5 sm:p-6">
             <p className="app-eyebrow">Showing Snapshot</p>

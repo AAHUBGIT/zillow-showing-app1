@@ -1,4 +1,8 @@
 import { getSessionUser } from "./auth";
+import {
+  getDefaultCommunicationTemplates,
+  getDemoCommunicationActivities
+} from "./communication";
 import { getDemoLeads } from "./demo-leads";
 import { canUseDatabase, shouldUseDemoData } from "./deployment";
 import { sortLeads } from "./lead-utils";
@@ -7,7 +11,17 @@ import {
   syncLeadShowingToPropertyInterests
 } from "./property-interest-utils";
 import { getPrismaClient } from "./prisma";
-import { LeadWithProperties, PropertyInterest } from "./types";
+import {
+  CommunicationActivity,
+  CommunicationTemplate,
+  LeadWithProperties,
+  PropertyInterest
+} from "./types";
+
+export type LeadCommunicationWorkspace = {
+  templates: CommunicationTemplate[];
+  activities: CommunicationActivity[];
+};
 
 export async function getLeads(): Promise<LeadWithProperties[]> {
   if (shouldUseDemoData()) {
@@ -95,6 +109,98 @@ export async function getPropertyInterestById(
   }
 
   return lead.propertyInterests.find((propertyInterest) => propertyInterest.id === propertyInterestId) ?? null;
+}
+
+export async function getCommunicationWorkspace(leadId: string): Promise<LeadCommunicationWorkspace> {
+  if (shouldUseDemoData()) {
+    const lead = getDemoLeads().find((currentLead) => currentLead.id === leadId);
+
+    return {
+      templates: getDefaultCommunicationTemplates(lead?.userId || "demo-user"),
+      activities: lead ? getDemoCommunicationActivities(lead) : []
+    };
+  }
+
+  const sessionUser = await getSessionUser();
+  const fallbackTemplates = getDefaultCommunicationTemplates(sessionUser?.id || "demo-user");
+
+  if (!sessionUser || !canUseDatabase()) {
+    return {
+      templates: fallbackTemplates,
+      activities: []
+    };
+  }
+
+  const prisma = getPrismaClient();
+
+  let lead;
+
+  try {
+    lead = await prisma.lead.findUnique({
+      where: { id: leadId }
+    });
+  } catch {
+    return {
+      templates: fallbackTemplates,
+      activities: []
+    };
+  }
+
+  if (!lead || lead.userId !== sessionUser.id) {
+    return {
+      templates: fallbackTemplates,
+      activities: []
+    };
+  }
+
+  try {
+    const [savedTemplates, activities] = await Promise.all([
+      prisma.$queryRaw<CommunicationTemplate[]>`
+        SELECT
+          "id",
+          "userId",
+          "name",
+          "channel",
+          "subject",
+          "body",
+          "sortOrder",
+          "createdAt",
+          "updatedAt"
+        FROM "CommunicationTemplate"
+        WHERE "userId" = ${sessionUser.id}
+        ORDER BY "sortOrder" ASC, "createdAt" ASC
+      `,
+      prisma.$queryRaw<CommunicationActivity[]>`
+        SELECT
+          "id",
+          "leadId",
+          "userId",
+          "templateId",
+          "channel",
+          "direction",
+          "subject",
+          "body",
+          "outcome",
+          "occurredAt",
+          "createdAt"
+        FROM "CommunicationActivity"
+        WHERE "leadId" = ${leadId} AND "userId" = ${sessionUser.id}
+        ORDER BY "occurredAt" DESC, "createdAt" DESC
+        LIMIT 30
+      `
+    ]);
+
+    return {
+      templates: [...fallbackTemplates, ...savedTemplates],
+      activities
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      templates: fallbackTemplates,
+      activities: []
+    };
+  }
 }
 
 export async function saveLeads(leads: LeadWithProperties[]) {
