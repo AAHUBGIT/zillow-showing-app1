@@ -4,23 +4,23 @@ export default function TermsPage() {
       <section className="app-panel p-5 sm:p-6">
         <p className="app-eyebrow">Terms</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-          Showings CRM Beta Terms
+          Showings CRM Terms
         </h2>
         <p className="app-copy mt-3">
-          These beta terms summarize how Showings CRM should be used while the product is being
-          tested and refined.
+          These terms summarize expected use for Showings CRM while the workspace is available to
+          early-access users.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className="app-chip">Showings CRM beta</span>
-          <span className="app-chip">Current beta URL</span>
+          <span className="app-chip">Showings CRM</span>
+          <span className="app-chip">Early access</span>
         </div>
       </section>
 
       <section className="app-panel p-5 sm:p-6">
         <div className="grid gap-4">
           <TermsBlock
-            title="Beta Product"
-            body="Showings CRM is available for beta testing at the current Vercel beta URL. Product details may change as workflows and copy are refined."
+            title="Early Access Product"
+            body="Showings CRM is an early-access workspace. Product details may change as workflows and product copy are refined."
           />
           <TermsBlock
             title="Authorized Use"
@@ -32,7 +32,7 @@ export default function TermsPage() {
           />
           <TermsBlock
             title="Availability"
-            body="During beta, features may be adjusted or temporarily unavailable while the workspace is improved. Report access issues through Support."
+            body="Features may be adjusted or temporarily unavailable while the workspace is improved. Report access issues through Support."
           />
         </div>
       </section>

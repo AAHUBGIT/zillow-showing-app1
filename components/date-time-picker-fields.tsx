@@ -56,7 +56,7 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
       timeAriaLabel,
       initialDate = "",
       initialTime = "",
-      helperText = "Format: MM/DD/YYYY. Type directly or use the calendar.",
+      helperText = "Use MM/DD/YYYY",
       timeStep = 300,
       onValueChange
     },
@@ -71,7 +71,6 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
     const nativeDateRef = useRef<HTMLInputElement>(null);
     const nativeTimeRef = useRef<HTMLInputElement>(null);
     const manualDateRef = useRef<HTMLInputElement>(null);
-    const datePickerButtonRef = useRef<HTMLButtonElement>(null);
     const timePickerButtonRef = useRef<HTMLButtonElement>(null);
     const openedDatePickerRef = useRef(false);
     const openedTimePickerRef = useRef(false);
@@ -103,11 +102,17 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
 
       if (parsed === null) {
         setDateValue("");
+        if (nativeDateRef.current) {
+          nativeDateRef.current.value = "";
+        }
         setDateError("Use MM/DD/YYYY.");
         return false;
       }
 
       setDateValue(parsed);
+      if (nativeDateRef.current) {
+        nativeDateRef.current.value = parsed;
+      }
       setDateError("");
       setDateText(formatDateForManualEntry(parsed));
       if (!isPastDate(parsed)) {
@@ -230,7 +235,6 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
               className={`app-input pr-14 ${dateError ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
             />
             <button
-              ref={datePickerButtonRef}
               type="button"
               onClick={openDatePicker}
               className="absolute right-3 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-line/80 bg-slate-50 text-slate-500 transition hover:border-accent hover:text-accent focus:border-accent focus:text-accent focus:ring-4 focus:ring-accent/15"
@@ -255,7 +259,7 @@ export const DateTimePickerFields = forwardRef<DateTimePickerHandle, DateTimePic
               if (openedDatePickerRef.current) {
                 openedDatePickerRef.current = false;
                 nativeDateRef.current?.blur();
-                datePickerButtonRef.current?.focus({ preventScroll: true });
+                manualDateRef.current?.focus({ preventScroll: true });
               }
             }}
             name={dateName}

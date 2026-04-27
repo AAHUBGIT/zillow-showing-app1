@@ -239,7 +239,7 @@ export function LeadScheduleForm({
         value={values.nextFollowUpDate}
         error={errors.nextFollowUpDate}
         dataField="nextFollowUpDate"
-        helperText="Optional. Format: YYYY-MM-DD. Keeps follow-up badges current."
+        helperText="Use MM/DD/YYYY"
         onChange={(value) => updateField("nextFollowUpDate", value)}
       />
 
@@ -274,7 +274,7 @@ export function LeadScheduleForm({
           ) : null}
           <TooltipShell
             disabled={isPreviewReadonly}
-            message="This beta sample workspace is read-only. Use a live workspace to update leads."
+            message="This preview workspace is read-only. Use a live workspace to update leads."
           >
             <UpdateLeadButton disabled={isPreviewReadonly || !isFormValid} />
           </TooltipShell>

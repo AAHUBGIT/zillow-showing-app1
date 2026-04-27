@@ -324,7 +324,7 @@ export function DashboardClient({
                   value={moveInDate}
                   onChange={setMoveInDate}
                   ariaLabel="Filter by desired move-in date"
-                  helperText="Filter by YYYY-MM-DD or calendar."
+                  helperText="Use MM/DD/YYYY"
                   labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
                 />
 
@@ -333,7 +333,7 @@ export function DashboardClient({
                   value={showingDate}
                   onChange={setShowingDate}
                   ariaLabel="Filter by showing date"
-                  helperText="Filter by YYYY-MM-DD or calendar."
+                  helperText="Use MM/DD/YYYY"
                   labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
                 />
 

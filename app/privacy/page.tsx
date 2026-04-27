@@ -7,11 +7,11 @@ export default function PrivacyPage() {
           Showings CRM Privacy
         </h2>
         <p className="app-copy mt-3">
-          Showings CRM is in beta. This page summarizes the privacy approach for agents testing
-          the workspace while the product is being refined.
+          This page summarizes how Showings CRM handles information used to organize leads,
+          showings, routes, properties, and follow-ups inside the workspace.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <span className="app-chip">Showings CRM beta</span>
+          <span className="app-chip">Showings CRM</span>
           <span className="app-chip">Rental showing workspace</span>
         </div>
       </section>
@@ -23,8 +23,8 @@ export default function PrivacyPage() {
             body="Lead names, contact details, property addresses, follow-up dates, and showing notes are used to run the CRM workflow inside the workspace."
           />
           <PolicyBlock
-            title="Beta Access"
-            body="Access is limited to authorized beta users. Do not enter sensitive information that is not needed to manage a showing or follow-up."
+            title="Workspace Access"
+            body="Access is intended for authorized workspace users. Avoid entering sensitive information that is not needed to manage a showing or follow-up."
           />
           <PolicyBlock
             title="Third-Party Links"
@@ -32,7 +32,7 @@ export default function PrivacyPage() {
           />
           <PolicyBlock
             title="Questions"
-            body="For privacy questions during beta, contact support@showingscrm.com and include the workspace email you use to sign in."
+            body="For privacy questions, contact support@showingscrm.com and include the workspace email you use to sign in."
           />
         </div>
       </section>

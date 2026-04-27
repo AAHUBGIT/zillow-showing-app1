@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { formatDateForManualEntry, parseManualDateInput } from "@/lib/date";
 
 type DateInputFieldProps = {
   label: string;
@@ -22,7 +23,7 @@ export function DateInputField({
   name,
   required = false,
   error,
-  helperText = "Format: YYYY-MM-DD. Type directly or use the calendar.",
+  helperText = "Use MM/DD/YYYY",
   ariaLabel,
   dataField,
   labelClassName = "text-sm font-medium text-slate-700"
@@ -31,31 +32,73 @@ export function DateInputField({
   const helpId = `${inputId}-help`;
   const errorId = `${inputId}-error`;
   const inputRef = useRef<HTMLInputElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const openedPickerRef = useRef(false);
+  const nativeDateRef = useRef<HTMLInputElement>(null);
+  const [dateText, setDateText] = useState(formatDateForManualEntry(value));
+  const [localError, setLocalError] = useState("");
+  const visibleError = localError || error;
+
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setDateText(formatDateForManualEntry(value));
+      setLocalError("");
+    }
+  }, [value]);
 
   function openPicker() {
-    const input = inputRef.current;
+    const input = nativeDateRef.current;
 
     if (!input) {
       return;
     }
 
-    input.focus({ preventScroll: true });
-
     const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
     if (typeof pickerInput.showPicker === "function") {
-      openedPickerRef.current = true;
       pickerInput.showPicker();
+      return;
     }
+
+    inputRef.current?.focus({ preventScroll: true });
   }
 
-  function handleChange(nextValue: string) {
-    onChange(nextValue);
-    if (openedPickerRef.current) {
-      openedPickerRef.current = false;
-      inputRef.current?.blur();
-      buttonRef.current?.focus({ preventScroll: true });
+  function commitDate(nextText = dateText) {
+    const trimmed = nextText.trim();
+
+    if (!trimmed) {
+      setDateText("");
+      setLocalError("");
+      onChange("");
+      return true;
+    }
+
+    const parsed = parseManualDateInput(trimmed);
+
+    if (parsed === null) {
+      setLocalError("Use MM/DD/YYYY.");
+      onChange("");
+      return false;
+    }
+
+    setDateText(formatDateForManualEntry(parsed));
+    setLocalError("");
+    onChange(parsed);
+    return true;
+  }
+
+  function handleTextChange(nextText: string) {
+    setDateText(nextText);
+
+    if (!nextText.trim()) {
+      setLocalError("");
+      onChange("");
+      return;
+    }
+
+    const parsed = parseManualDateInput(nextText);
+    if (parsed) {
+      setLocalError("");
+      onChange(parsed);
+    } else if (localError) {
+      setLocalError("");
     }
   }
 
@@ -68,24 +111,23 @@ export function DateInputField({
         <input
           ref={inputRef}
           id={inputId}
-          type="date"
-          name={name}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
           required={required}
-          value={value}
+          placeholder="MM/DD/YYYY"
+          value={dateText}
           data-field={dataField || name}
           aria-label={ariaLabel || label}
-          aria-invalid={Boolean(error)}
-          aria-describedby={error ? `${helpId} ${errorId}` : helpId}
-          onChange={(event) => handleChange(event.target.value)}
-          onBlur={() => {
-            openedPickerRef.current = false;
-          }}
+          aria-invalid={Boolean(visibleError)}
+          aria-describedby={visibleError ? `${helpId} ${errorId}` : helpId}
+          onChange={(event) => handleTextChange(event.target.value)}
+          onBlur={() => commitDate()}
           className={`app-input app-date-input pr-14 ${
-            error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""
+            visibleError ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""
           }`}
         />
         <button
-          ref={buttonRef}
           type="button"
           onClick={openPicker}
           className="absolute right-3 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-line/80 bg-slate-50 text-slate-500 transition hover:border-accent hover:text-accent focus:border-accent focus:text-accent focus:ring-4 focus:ring-accent/15"
@@ -94,11 +136,27 @@ export function DateInputField({
           <CalendarIcon />
         </button>
       </div>
+      <input
+        ref={nativeDateRef}
+        type="date"
+        tabIndex={-1}
+        name={name}
+        value={value}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setDateText(formatDateForManualEntry(nextValue));
+          setLocalError("");
+          onChange(nextValue);
+          inputRef.current?.focus({ preventScroll: true });
+        }}
+        className="sr-only"
+        aria-hidden="true"
+      />
       <p id={helpId} className="text-xs text-slate-500">
         {helperText}
       </p>
       <p id={errorId} className="min-h-[1.25rem] text-xs font-medium text-rose-600" aria-live="polite">
-        {error || ""}
+        {visibleError || ""}
       </p>
     </div>
   );

@@ -12,13 +12,13 @@ export default function LoginPage({
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="app-panel p-6 sm:p-8">
           <div>
-            <p className="app-eyebrow">Showings CRM beta</p>
+            <p className="app-eyebrow">Showings CRM</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">
               Run your rental showing day from one workspace
             </h1>
             <p className="app-copy mt-3">
               Built for rental showing agents managing leads, routes, follow-ups, properties, and
-              showing-day details from one focused beta workspace.
+              showing-day details from one private workspace.
             </p>
           </div>
 
@@ -48,9 +48,9 @@ export default function LoginPage({
             </label>
 
             <div className="rounded-3xl border border-line/80 bg-slate-50/80 p-4">
-              <p className="app-kicker">Sample beta access</p>
+              <p className="app-kicker">Preview workspace access</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Use this sample access to explore the beta workspace.
+                Use these sign-in details to open the early-access workspace.
               </p>
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 Email: <span className="font-semibold text-ink">demo@showingscrm.com</span>
@@ -61,7 +61,7 @@ export default function LoginPage({
             </div>
 
             <button type="submit" className="app-button-primary">
-              Explore Beta Workspace
+              Sign in to Showings CRM
             </button>
           </form>
         </div>
@@ -72,7 +72,7 @@ export default function LoginPage({
             <div className="absolute bottom-0 left-8 -z-10 h-32 w-32 rounded-full bg-blue-300/20 blur-3xl" />
 
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-100">
-              Showings CRM beta
+              Showings CRM
             </p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">
               A focused operating screen for rental showing agents.
@@ -93,7 +93,7 @@ export default function LoginPage({
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/10 p-4 backdrop-blur">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Ops</p>
-                <p className="mt-2 text-base font-semibold">Fast enough for the field, polished enough for beta</p>
+                <p className="mt-2 text-base font-semibold">Fast in the field, calm at the desk</p>
               </div>
             </div>
           </div>

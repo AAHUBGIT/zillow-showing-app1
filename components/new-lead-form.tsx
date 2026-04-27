@@ -60,20 +60,6 @@ const initialFormValues: LeadFormValues = {
   agentNotes: ""
 };
 
-const fieldOrder = [
-  "fullName",
-  "phone",
-  "email",
-  "propertyAddress",
-  "desiredMoveInDate",
-  "nextFollowUpDate",
-  "status",
-  "priority",
-  "source",
-  "notes",
-  "agentNotes"
-];
-
 function getFieldError(name: keyof LeadFormValues, value: string) {
   switch (name) {
     case "fullName":
@@ -157,18 +143,6 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
     });
   }
 
-  function focusFirstInvalid(nextErrors: FieldErrors) {
-    for (const name of fieldOrder) {
-      if (nextErrors[name]) {
-        const field = formRef.current?.querySelector<HTMLElement>(`[data-field="${name}"]`);
-        field?.focus();
-        return;
-      }
-    }
-
-    scheduleRef.current?.focusDate();
-  }
-
   function validateForm() {
     const nextErrors = buildErrors(values);
     const isScheduleValid = scheduleRef.current?.validate() ?? true;
@@ -177,13 +151,11 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
 
     if (Object.keys(nextErrors).length > 0) {
       emitAppToast({ toastKey: "validation-error" });
-      focusFirstInvalid(nextErrors);
       return false;
     }
 
     if (!isScheduleValid) {
       emitAppToast({ toastKey: "validation-error" });
-      scheduleRef.current?.focusDate();
       return false;
     }
 
@@ -253,7 +225,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
         value={values.desiredMoveInDate}
         error={errors.desiredMoveInDate}
         dataField="desiredMoveInDate"
-        helperText="Required. Format: YYYY-MM-DD. Type directly or use the calendar."
+        helperText="Use MM/DD/YYYY"
         onChange={(value) => updateField("desiredMoveInDate", value)}
       />
       <DateInputField
@@ -262,7 +234,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
         value={values.nextFollowUpDate}
         error={errors.nextFollowUpDate}
         dataField="nextFollowUpDate"
-        helperText="Optional. Format: YYYY-MM-DD. Keeps follow-up badges current."
+        helperText="Use MM/DD/YYYY"
         onChange={(value) => updateField("nextFollowUpDate", value)}
       />
 
@@ -381,7 +353,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
           />
           <TooltipShell
             disabled={isPreviewReadonly}
-            message="This beta sample workspace is read-only. Use a live workspace to create leads."
+            message="This preview workspace is read-only. Use a live workspace to create leads."
           >
             <CreateLeadButton disabled={isPreviewReadonly || !isFormValid} />
           </TooltipShell>

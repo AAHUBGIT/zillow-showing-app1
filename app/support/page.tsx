@@ -7,11 +7,11 @@ export default function SupportPage() {
           Showings CRM Support
         </h2>
         <p className="app-copy mt-3">
-          Need help during beta? Start here with the most common support paths for access,
+          Need help with Showings CRM? Start here with the most common support paths for access,
           workflow questions, and route planning.
         </p>
         <div className="mt-4 rounded-3xl border border-line/80 bg-slate-50/80 p-4">
-          <p className="app-kicker">Beta support contact</p>
+          <p className="app-kicker">Support contact</p>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Email <span className="font-semibold text-ink">support@showingscrm.com</span> with the
             page you were on, what you expected, and what happened.
@@ -21,8 +21,8 @@ export default function SupportPage() {
 
       <section className="grid gap-4 sm:grid-cols-2">
         <SupportCard
-          title="Beta Access"
-          body="If you cannot sign in, confirm you are using the beta access email and password shared with your team."
+          title="Workspace Access"
+          body="If you cannot sign in, confirm you are using the access email and password shared with your team."
         />
         <SupportCard
           title="Leads and Properties"
@@ -34,7 +34,7 @@ export default function SupportPage() {
         />
         <SupportCard
           title="Contact"
-          body="For beta feedback, include your workspace email, the lead or page involved, and the action you were trying to complete."
+          body="For feedback, include your workspace email, the lead or page involved, and the action you were trying to complete."
         />
       </section>
     </main>
