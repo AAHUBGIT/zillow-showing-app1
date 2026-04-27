@@ -25,7 +25,12 @@ export type LeadCommunicationWorkspace = {
 
 export async function getLeads(): Promise<LeadWithProperties[]> {
   if (shouldUseDemoData()) {
-    return sortLeads(getDemoLeads());
+    return sortLeads(
+      getDemoLeads().map((lead) => ({
+        ...lead,
+        lastActivity: getDemoCommunicationActivities(lead)[0] ?? null
+      }))
+    );
   }
 
   if (!canUseDatabase()) {
@@ -47,10 +52,40 @@ export async function getLeads(): Promise<LeadWithProperties[]> {
       propertyInterests: true
     }
   });
+  const lastActivitiesByLeadId = new Map<string, CommunicationActivity>();
+
+  try {
+    const activities = await prisma.$queryRaw<CommunicationActivity[]>`
+      SELECT
+        "id",
+        "leadId",
+        "userId",
+        "templateId",
+        "channel",
+        "direction",
+        "subject",
+        "body",
+        "outcome",
+        "occurredAt",
+        "createdAt"
+      FROM "CommunicationActivity"
+      WHERE "userId" = ${sessionUser.id}
+      ORDER BY "occurredAt" DESC, "createdAt" DESC
+    `;
+
+    for (const activity of activities) {
+      if (!lastActivitiesByLeadId.has(activity.leadId)) {
+        lastActivitiesByLeadId.set(activity.leadId, activity);
+      }
+    }
+  } catch (error) {
+    console.error(error);
+  }
 
   return sortLeads(
     (leads as unknown as LeadWithProperties[]).map((lead) => ({
       ...lead,
+      lastActivity: lastActivitiesByLeadId.get(lead.id) ?? null,
       propertyInterests: syncLeadShowingToPropertyInterests(
         lead.propertyInterests || [],
         lead.propertyAddress,

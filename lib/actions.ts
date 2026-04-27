@@ -27,6 +27,7 @@ import {
   LeadSource,
   LeadStatus,
   LeadWithProperties,
+  CommunicationActivity,
   CommunicationChannel,
   CommunicationDirection,
   PropertyInterest,
@@ -66,14 +67,56 @@ function getPropertyInterestStatus(formData: FormData) {
   return propertyInterestStatusOptions.includes(value) ? value : "interested";
 }
 
+function normalizeCommunicationChannel(value: string) {
+  const nextValue = value as CommunicationChannel;
+  return communicationChannelOptions.includes(nextValue) ? nextValue : "text";
+}
+
+function normalizeCommunicationDirection(value: string) {
+  const nextValue = value as CommunicationDirection;
+  return communicationDirectionOptions.includes(nextValue) ? nextValue : "outbound";
+}
+
 function getCommunicationChannel(formData: FormData) {
-  const value = getString(formData, "channel") as CommunicationChannel;
-  return communicationChannelOptions.includes(value) ? value : "text";
+  return normalizeCommunicationChannel(getString(formData, "channel"));
 }
 
 function getCommunicationDirection(formData: FormData) {
-  const value = getString(formData, "direction") as CommunicationDirection;
-  return communicationDirectionOptions.includes(value) ? value : "outbound";
+  return normalizeCommunicationDirection(getString(formData, "direction"));
+}
+
+type CommunicationActivityInput = {
+  leadId: string;
+  channel: CommunicationChannel;
+  direction: CommunicationDirection;
+  templateId?: string;
+  subject?: string;
+  body: string;
+  outcome?: string;
+};
+
+function getCommunicationActivityError(input: CommunicationActivityInput) {
+  return (
+    (!input.leadId ? "Lead is required." : "") ||
+    getRequiredSelectError(input.channel) ||
+    getRequiredSelectError(input.direction) ||
+    getRequiredTextError(input.body) ||
+    getMaxLengthError(input.subject || "", fieldMaxLengths.communicationSubject) ||
+    getMaxLengthError(input.body, fieldMaxLengths.communicationBody) ||
+    getMaxLengthError(input.outcome || "", fieldMaxLengths.communicationOutcome)
+  );
+}
+
+function buildCommunicationActivityFromForm(formData: FormData): CommunicationActivityInput {
+  return {
+    leadId: getString(formData, "leadId"),
+    channel: getCommunicationChannel(formData),
+    direction: getCommunicationDirection(formData),
+    templateId: getString(formData, "templateId").slice(0, 120),
+    subject: getString(formData, "subject"),
+    body: getString(formData, "body"),
+    outcome: getString(formData, "outcome")
+  };
 }
 
 function getPropertyInterestRating(formData: FormData) {
@@ -109,6 +152,78 @@ function redirectValidation(path: string): never {
 function redirectSaveError(path: string, error: unknown): never {
   console.error(error);
   redirect(withToast(path, "save-error"));
+}
+
+async function saveCommunicationActivity(input: CommunicationActivityInput, userId: string) {
+  const prisma = getPrismaClient();
+  const now = new Date().toISOString();
+  const activity: CommunicationActivity = {
+    id: crypto.randomUUID(),
+    leadId: input.leadId,
+    userId,
+    templateId: input.templateId || "",
+    channel: input.channel,
+    direction: input.direction,
+    subject: input.subject || "",
+    body: input.body,
+    outcome: input.outcome || "",
+    occurredAt: now,
+    createdAt: now
+  };
+
+  const lead = await prisma.lead.findUnique({
+    where: { id: input.leadId }
+  });
+
+  if (!lead || lead.userId !== userId) {
+    return null;
+  }
+
+  const nextStatus = lead.status === "new" && input.channel !== "note" ? "contacted" : lead.status;
+
+  await prisma.$transaction([
+    prisma.$executeRaw`
+      INSERT INTO "CommunicationActivity" (
+        "id",
+        "leadId",
+        "userId",
+        "templateId",
+        "channel",
+        "direction",
+        "subject",
+        "body",
+        "outcome",
+        "occurredAt",
+        "createdAt"
+      )
+      VALUES (
+        ${activity.id},
+        ${activity.leadId},
+        ${activity.userId},
+        ${activity.templateId},
+        ${activity.channel},
+        ${activity.direction},
+        ${activity.subject},
+        ${activity.body},
+        ${activity.outcome},
+        ${activity.occurredAt},
+        ${activity.createdAt}
+      )
+    `,
+    prisma.lead.update({
+      where: { id: input.leadId },
+      data: {
+        status: nextStatus,
+        updatedAt: now
+      }
+    })
+  ]);
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath(`/leads/${input.leadId}`);
+
+  return activity;
 }
 
 type LeadRouteFields = Pick<
@@ -385,7 +500,7 @@ export async function updateLeadStatus(formData: FormData) {
 }
 
 export async function createCommunicationActivity(formData: FormData) {
-  const leadId = getString(formData, "leadId");
+  const input = buildCommunicationActivityFromForm(formData);
   const sessionUser = await getSessionUser();
 
   if (!sessionUser) {
@@ -394,93 +509,75 @@ export async function createCommunicationActivity(formData: FormData) {
 
   if (!canUseDatabase()) {
     redirect(
-      withToast(`/leads/${leadId}`, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
+      withToast(`/leads/${input.leadId}`, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
     );
   }
 
-  const prisma = getPrismaClient();
-  const channel = getCommunicationChannel(formData);
-  const direction = getCommunicationDirection(formData);
-  const templateId = getString(formData, "templateId").slice(0, 120);
-  const subject = getString(formData, "subject");
-  const body = getString(formData, "body");
-  const outcome = getString(formData, "outcome");
-
-  if (
-    !leadId ||
-    getRequiredSelectError(channel) ||
-    getRequiredSelectError(direction) ||
-    getRequiredTextError(body) ||
-    getMaxLengthError(subject, fieldMaxLengths.communicationSubject) ||
-    getMaxLengthError(body, fieldMaxLengths.communicationBody) ||
-    getMaxLengthError(outcome, fieldMaxLengths.communicationOutcome)
-  ) {
-    redirectValidation(`/leads/${leadId}`);
+  if (getCommunicationActivityError(input)) {
+    redirectValidation(`/leads/${input.leadId}`);
   }
-
-  let lead;
 
   try {
-    lead = await prisma.lead.findUnique({
-      where: { id: leadId }
-    });
+    const activity = await saveCommunicationActivity(input, sessionUser.id);
+
+    if (!activity) {
+      redirect(withToast(`/leads/${input.leadId}`, "save-error"));
+    }
   } catch (error) {
-    redirectSaveError(`/leads/${leadId}`, error);
+    redirectSaveError(`/leads/${input.leadId}`, error);
   }
 
-  if (!lead || lead.userId !== sessionUser.id) {
-    redirect(withToast(`/leads/${leadId}`, "save-error"));
+  redirect(withToast(`/leads/${input.leadId}`, "activity-logged"));
+}
+
+export async function logCommunicationActivityInline(input: {
+  leadId: string;
+  channel: string;
+  direction?: string;
+  templateId?: string;
+  subject?: string;
+  body: string;
+  outcome?: string;
+}) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    return { success: false, toastKey: "save-error" } as const;
   }
 
-  const now = new Date().toISOString();
-  const nextStatus = lead.status === "new" && channel !== "note" ? "contacted" : lead.status;
+  if (!canUseDatabase()) {
+    return {
+      success: false,
+      toastKey: isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"
+    } as const;
+  }
+
+  const activityInput: CommunicationActivityInput = {
+    leadId: input.leadId,
+    channel: normalizeCommunicationChannel(input.channel),
+    direction: normalizeCommunicationDirection(input.direction || "outbound"),
+    templateId: (input.templateId || "").trim().slice(0, 120),
+    subject: (input.subject || "").trim(),
+    body: input.body.trim(),
+    outcome: (input.outcome || "").trim()
+  };
+
+  if (getCommunicationActivityError(activityInput)) {
+    return { success: false, toastKey: "validation-error" } as const;
+  }
 
   try {
-    await prisma.$transaction([
-      prisma.$executeRaw`
-        INSERT INTO "CommunicationActivity" (
-          "id",
-          "leadId",
-          "userId",
-          "templateId",
-          "channel",
-          "direction",
-          "subject",
-          "body",
-          "outcome",
-          "occurredAt",
-          "createdAt"
-        )
-        VALUES (
-          ${crypto.randomUUID()},
-          ${leadId},
-          ${sessionUser.id},
-          ${templateId},
-          ${channel},
-          ${direction},
-          ${subject},
-          ${body},
-          ${outcome},
-          ${now},
-          ${now}
-        )
-      `,
-      prisma.lead.update({
-        where: { id: leadId },
-        data: {
-          status: nextStatus,
-          updatedAt: now
-        }
-      })
-    ]);
-  } catch (error) {
-    redirectSaveError(`/leads/${leadId}`, error);
-  }
+    const activity = await saveCommunicationActivity(activityInput, sessionUser.id);
 
-  revalidatePath("/");
-  revalidatePath("/today");
-  revalidatePath(`/leads/${leadId}`);
-  redirect(withToast(`/leads/${leadId}`, "communication-logged"));
+    if (!activity) {
+      return { success: false, toastKey: "save-error" } as const;
+    }
+
+    return { success: true, toastKey: "activity-logged", activity } as const;
+  } catch (error) {
+    console.error(error);
+    return { success: false, toastKey: "save-error" } as const;
+  }
 }
 
 export async function createCommunicationTemplate(formData: FormData) {

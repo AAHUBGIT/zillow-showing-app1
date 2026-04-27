@@ -93,4 +93,5 @@ export type CommunicationActivity = {
 
 export type LeadWithProperties = Lead & {
   propertyInterests: PropertyInterest[];
+  lastActivity?: CommunicationActivity | null;
 };

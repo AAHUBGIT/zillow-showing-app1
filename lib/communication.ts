@@ -67,38 +67,50 @@ export function getDefaultCommunicationTemplates(userId = "system"): Communicati
       updatedAt: createdAt
     },
     {
-      id: "default-post-showing-follow-up",
+      id: "default-showing-reminder",
       userId,
-      name: "Post-showing follow-up",
-      channel: "email",
-      subject: "Following up on {{propertyAddress}}",
+      name: "Showing reminder",
+      channel: "text",
+      subject: "",
       body:
-        "Hi {{firstName}},\n\nThanks for touring {{propertyAddress}}. What did you think of the space, pricing, and location? I can help compare it against your shortlist and next steps.\n\nBest,",
+        "Hi {{firstName}}, quick reminder about your showing for {{propertyAddress}} on {{showingDateTime}}. See you then.",
       sortOrder: 2,
       createdAt,
       updatedAt: createdAt
     },
     {
-      id: "default-voicemail",
+      id: "default-running-late",
       userId,
-      name: "Voicemail follow-up",
-      channel: "call",
-      subject: "Voicemail left",
+      name: "Running late",
+      channel: "text",
+      subject: "",
       body:
-        "Left a voicemail for {{firstName}} about {{propertyAddress}} and asked them to call or text back with availability.",
+        "Hi {{firstName}}, I am running a few minutes late for {{propertyAddress}}. I will keep you updated and appreciate your patience.",
       sortOrder: 3,
       createdAt,
       updatedAt: createdAt
     },
     {
-      id: "default-internal-note",
+      id: "default-post-tour-follow-up",
       userId,
-      name: "Internal note",
-      channel: "note",
-      subject: "Lead context",
+      name: "Post-tour follow-up",
+      channel: "email",
+      subject: "Following up on {{propertyAddress}}",
       body:
-        "{{firstName}} is focused on {{propertyAddress}}. Capture objections, preferred timing, budget concerns, and next follow-up here.",
+        "Hi {{firstName}},\n\nThanks for touring {{propertyAddress}}. What did you think of the space, pricing, and location? I can help compare it against your shortlist and next steps.\n\nBest,",
       sortOrder: 4,
+      createdAt,
+      updatedAt: createdAt
+    },
+    {
+      id: "default-application-next-step",
+      userId,
+      name: "Application next step",
+      channel: "email",
+      subject: "Next step for {{propertyAddress}}",
+      body:
+        "Hi {{firstName}},\n\nIf you would like to move forward with {{propertyAddress}}, the next step is to complete the application and gather any requested income or ID documents. I can send the application link when you are ready.\n\nBest,",
+      sortOrder: 5,
       createdAt,
       updatedAt: createdAt
     }

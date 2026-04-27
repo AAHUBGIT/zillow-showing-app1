@@ -2,6 +2,7 @@ import { LeadStatusBadge } from "@/components/lead-status-badge";
 import { LoadingLink } from "@/components/loading-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PriorityBadge } from "@/components/priority-badge";
+import { getCommunicationChannelLabel } from "@/lib/communication";
 import { formatDateLabel, formatDateTimeLabel, formatTimeForManualEntry } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
 import { buildGoogleMapsSearchLink } from "@/lib/property-interest-utils";
@@ -254,6 +255,7 @@ function ShowingCard({ lead }: { lead: LeadWithProperties }) {
           <p className="mt-3 text-lg font-semibold tracking-tight text-ink">{lead.fullName}</p>
           <p className="mt-1 text-sm text-slate-600">{lead.phone}</p>
           <p className="mt-1 text-sm leading-5 text-slate-600">{lead.propertyAddress}</p>
+          <LastActivity activity={lead.lastActivity} />
         </div>
         <QuickActions lead={lead} includeMaps />
       </div>
@@ -278,6 +280,7 @@ function LeadList({
             <div className="min-w-0">
               <p className="text-base font-semibold tracking-tight text-ink">{lead.fullName}</p>
               <p className="mt-1 text-sm text-slate-600">{lead.phone}</p>
+              <LastActivity activity={lead.lastActivity} />
               {showFollowUpDate ? (
                 <p className="mt-2 text-sm font-medium text-rose-700">
                   Follow-up was due {formatDateLabel(lead.nextFollowUpDate)}
@@ -317,6 +320,7 @@ function HighPriorityCard({ lead }: { lead: LeadWithProperties }) {
             <InfoPill label="Next follow-up" value={lead.nextFollowUpDate ? formatDateLabel(lead.nextFollowUpDate) : "Not set"} />
             <InfoPill label="Showing" value={showingLabel} />
           </div>
+          <LastActivity activity={lead.lastActivity} />
         </div>
         <QuickActions lead={lead} includeMaps={Boolean(lead.propertyAddress)} />
       </div>
@@ -330,13 +334,13 @@ function QuickActions({ lead, includeMaps = false }: { lead: LeadWithProperties;
       <LoadingLink href={`/leads/${lead.id}`} className="app-button-primary min-h-[48px] px-4 py-2.5">
         View Lead
       </LoadingLink>
-      <a href={getPhoneHref("tel", lead.phone)} className="app-button-secondary min-h-[48px] px-4 py-2.5">
+      <a href={`tel:${lead.phone}`} className="app-button-secondary min-h-[48px] px-4 py-2.5">
         Call
       </a>
-      <a href={getPhoneHref("sms", lead.phone)} className="app-button-secondary min-h-[48px] px-4 py-2.5">
+      <a href={getLeadTextHref(lead)} className="app-button-secondary min-h-[48px] px-4 py-2.5">
         Text
       </a>
-      <a href={`mailto:${lead.email}`} className="app-button-secondary min-h-[48px] px-4 py-2.5">
+      <a href={getLeadEmailHref(lead)} className="app-button-secondary min-h-[48px] px-4 py-2.5">
         Email
       </a>
       {includeMaps ? (
@@ -362,6 +366,45 @@ function InfoPill({ label, value }: { label: string; value: string }) {
   );
 }
 
+function LastActivity({ activity }: { activity: LeadWithProperties["lastActivity"] }) {
+  if (!activity) {
+    return (
+      <p className="mt-2 text-sm text-slate-500">
+        Last activity: none logged
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-2xl border border-line/70 bg-slate-50 px-3 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+        Last activity
+      </p>
+      <p className="mt-1 text-sm font-semibold text-slate-700">
+        {getCommunicationChannelLabel(activity.channel)} - {formatActivityDate(activity.createdAt)}
+      </p>
+      <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">
+        {activity.outcome || activity.subject || activity.body}
+      </p>
+    </div>
+  );
+}
+
+function formatActivityDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "recently";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(date);
+}
+
 function EmptyState({ title, detail }: { title: string; detail: string }) {
   return (
     <div className="rounded-3xl border border-dashed border-line bg-slate-50/90 px-5 py-8 text-center">
@@ -371,9 +414,19 @@ function EmptyState({ title, detail }: { title: string; detail: string }) {
   );
 }
 
-function getPhoneHref(protocol: "tel" | "sms", phone: string) {
-  const normalized = phone.replace(/[^\d+]/g, "");
-  return `${protocol}:${normalized || phone}`;
+function getLeadTextHref(lead: LeadWithProperties) {
+  const message = `Hi ${getFirstName(lead.fullName)}, following up on ${lead.propertyAddress}.`;
+  return `sms:${lead.phone}?body=${encodeURIComponent(message)}`;
+}
+
+function getLeadEmailHref(lead: LeadWithProperties) {
+  const subject = `Following up on ${lead.propertyAddress}`;
+  const message = `Hi ${getFirstName(lead.fullName)},\n\nFollowing up on ${lead.propertyAddress}. Let me know what questions you have or what timing works best.\n\nBest,`;
+  return `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+}
+
+function getFirstName(fullName: string) {
+  return fullName.split(" ").filter(Boolean)[0] || fullName;
 }
 
 function sortByShowingTimeThenName(first: LeadWithProperties, second: LeadWithProperties) {
