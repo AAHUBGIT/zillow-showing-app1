@@ -452,7 +452,7 @@ export function PropertyInterestForm({
       <div className="flex justify-end">
         <TooltipShell
           disabled={isPreviewReadonly}
-          message="This beta sample workspace is read-only. Use a live workspace to save property changes."
+          message="This preview workspace is read-only. Use a live workspace to save property changes."
         >
           <SubmitButton disabled={isPreviewReadonly || !isFormValid} submitLabel={submitLabel} />
         </TooltipShell>

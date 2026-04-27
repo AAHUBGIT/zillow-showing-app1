@@ -10,6 +10,12 @@ import { getLeads } from "@/lib/storage";
 import { LeadWithProperties } from "@/lib/types";
 
 const appTimeZone = process.env.APP_TIME_ZONE || "America/New_York";
+const todaySectionIds = {
+  showings: "todays-showings",
+  overdue: "overdue-follow-ups",
+  dueToday: "follow-ups-due-today",
+  highPriority: "high-priority-leads"
+} as const;
 
 export default async function TodayPage() {
   const leads = await getLeads();
@@ -56,14 +62,35 @@ export default async function TodayPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard label="Showings Today" value={todaysShowings.length} detail="Tours on the calendar" />
-        <SummaryCard label="Overdue Follow-Ups" value={overdueFollowUps.length} detail="Oldest first below" />
-        <SummaryCard label="Due Today" value={followUpsDueToday.length} detail="Follow-ups for this workday" />
-        <SummaryCard label="High Priority Open" value={highPriorityOpenLeads.length} detail="Urgent and high leads" />
+        <SummaryCard
+          label="Showings Today"
+          value={todaysShowings.length}
+          detail="Tours on the calendar"
+          href={`#${todaySectionIds.showings}`}
+        />
+        <SummaryCard
+          label="Overdue Follow-Ups"
+          value={overdueFollowUps.length}
+          detail="Oldest first below"
+          href={`#${todaySectionIds.overdue}`}
+        />
+        <SummaryCard
+          label="Due Today"
+          value={followUpsDueToday.length}
+          detail="Follow-ups for this workday"
+          href={`#${todaySectionIds.dueToday}`}
+        />
+        <SummaryCard
+          label="High Priority Open"
+          value={highPriorityOpenLeads.length}
+          detail="Urgent and high leads"
+          href={`#${todaySectionIds.highPriority}`}
+        />
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <CommandSection
+          id={todaySectionIds.showings}
           title="Today's Showings"
           eyebrow="Showing Schedule"
           emptyTitle="No showings today"
@@ -108,6 +135,7 @@ export default async function TodayPage() {
 
       <section className="grid gap-6 xl:grid-cols-2">
         <CommandSection
+          id={todaySectionIds.overdue}
           title="Overdue Follow-ups"
           eyebrow="Needs Attention"
           emptyTitle="No overdue follow-ups"
@@ -118,6 +146,7 @@ export default async function TodayPage() {
         </CommandSection>
 
         <CommandSection
+          id={todaySectionIds.dueToday}
           title="Follow-ups Due Today"
           eyebrow="Due Today"
           emptyTitle="No follow-ups due today"
@@ -129,6 +158,7 @@ export default async function TodayPage() {
       </section>
 
       <CommandSection
+        id={todaySectionIds.highPriority}
         title="High Priority Leads"
         eyebrow="Open Priority"
         emptyTitle="No high priority open leads"
@@ -146,6 +176,7 @@ export default async function TodayPage() {
 }
 
 function CommandSection({
+  id,
   title,
   eyebrow,
   emptyTitle,
@@ -154,6 +185,7 @@ function CommandSection({
   action,
   children
 }: {
+  id?: string;
   title: string;
   eyebrow: string;
   emptyTitle: string;
@@ -163,7 +195,7 @@ function CommandSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="app-panel p-5 sm:p-6">
+    <section id={id} className="scroll-mt-40 app-panel p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="app-kicker">{eyebrow}</p>
@@ -178,13 +210,32 @@ function CommandSection({
   );
 }
 
-function SummaryCard({ label, value, detail }: { label: string; value: number; detail: string }) {
+function SummaryCard({
+  label,
+  value,
+  detail,
+  href
+}: {
+  label: string;
+  value: number;
+  detail: string;
+  href: string;
+}) {
   return (
-    <div className="rounded-4xl border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-5 shadow-panel">
+    <a
+      href={href}
+      aria-label={`View ${label}`}
+      className="group block rounded-4xl border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-5 shadow-panel transition hover:-translate-y-0.5 hover:border-accent/30 hover:shadow-[0_24px_55px_-34px_rgba(15,23,42,0.65)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
+    >
       <p className="text-sm font-semibold text-slate-600">{label}</p>
-      <p className="mt-5 text-4xl font-semibold tracking-tight text-ink">{value}</p>
+      <p className="mt-5 text-4xl font-semibold tracking-tight text-ink transition group-hover:text-accent group-focus-visible:text-accent">
+        {value}
+      </p>
       <p className="mt-2 text-sm leading-6 text-slate-500">{detail}</p>
-    </div>
+      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+        View section
+      </p>
+    </a>
   );
 }
 

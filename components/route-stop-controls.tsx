@@ -38,7 +38,7 @@ export function RouteStopControls({
   const isBusy = pendingAction !== null;
   const controlsDisabled = isPreviewReadonly || isBusy || isRouteBusy;
   const tooltipMessage =
-    "This beta sample workspace is read-only. Use a live workspace to update route plans.";
+    "This preview workspace is read-only. Use a live workspace to update route plans.";
 
   async function runAction(action: Exclude<PendingAction, null>, callback: () => Promise<void>) {
     if (busyRef.current || isRouteBusy || isPreviewReadonly) {

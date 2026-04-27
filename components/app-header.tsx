@@ -130,11 +130,11 @@ export function AppHeader({
             <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
               <div className="max-w-3xl">
                 <div className="app-chip border-white/10 bg-white/10 text-blue-50">
-                  Showings CRM beta
+                  Showings CRM
                 </div>
                 {isPreviewReadonly ? (
                   <div className="mt-3 inline-flex rounded-full border border-amber-200/40 bg-amber-300/15 px-3 py-1.5 text-xs font-semibold text-amber-100">
-                    Beta sample workspace: changes are limited
+                    Preview workspace: changes are limited
                   </div>
                 ) : null}
                 <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl xl:text-[2.8rem]">
@@ -142,7 +142,7 @@ export function AppHeader({
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
                   Keep leads, properties, showings, routes, and follow-ups organized in one focused
-                  beta workspace built for agents in the field.
+                  workspace built for agents in the field.
                 </p>
               </div>
               <div className="rounded-4xl border border-white/10 bg-white/10 p-4 backdrop-blur">
@@ -195,7 +195,7 @@ export function AppHeader({
                 <p className="mt-1 text-sm font-semibold text-white">Grouped by day</p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-white/10 px-4 py-4 backdrop-blur">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Beta</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-300">Access</p>
                 <p className="mt-1 text-sm font-semibold text-white">Workspace ready</p>
               </div>
             </div>

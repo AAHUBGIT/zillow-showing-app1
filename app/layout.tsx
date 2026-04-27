@@ -16,7 +16,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "Showings CRM",
-  description: "A beta workspace for rental leads, showings, routes, properties, and follow-ups."
+  description: "A private workspace for rental leads, showings, routes, properties, and follow-ups."
 };
 
 export default async function RootLayout({

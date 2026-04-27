@@ -6,12 +6,12 @@ export function PreviewModeBanner() {
       aria-live="polite"
     >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <p className="font-semibold tracking-tight">Beta sample workspace - changes are not saved.</p>
-        <p className="text-xs font-medium uppercase tracking-[0.18em] text-amber-700">Read only beta</p>
+        <p className="font-semibold tracking-tight">Preview workspace - changes are not saved.</p>
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-amber-700">Read only access</p>
       </div>
       <p className="mt-2 text-sm leading-6 text-amber-900/80">
         You can explore the workflow, filters, routes, and calendar handoff here. Save actions are
-        disabled so the shared beta workspace stays stable.
+        disabled so the shared workspace stays stable.
       </p>
     </div>
   );

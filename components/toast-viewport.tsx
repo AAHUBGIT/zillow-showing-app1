@@ -21,7 +21,7 @@ const toastMessages: Record<string, string> = {
   "login-success": "Logged in successfully.",
   "logout-success": "Logged out successfully.",
   "login-error": "That email or password did not match.",
-  "preview-readonly": "This beta sample workspace is read-only, so changes are disabled.",
+  "preview-readonly": "This preview workspace is read-only, so changes are disabled.",
   "database-unavailable": "Database is unavailable right now, so changes could not be saved.",
   "save-error": "Something went wrong while saving. Please try again.",
   "validation-error": "Please fix the highlighted fields before saving."

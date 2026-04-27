@@ -95,7 +95,7 @@ function QuickActionForm({
   return (
     <TooltipShell
       disabled={isPreviewReadonly}
-      message="This beta sample workspace is read-only. Use a live workspace to update property workflow."
+      message="This preview workspace is read-only. Use a live workspace to update property workflow."
     >
       <form action={quickUpdatePropertyInterest} className="flex">
         <input type="hidden" name="leadId" value={leadId} />
