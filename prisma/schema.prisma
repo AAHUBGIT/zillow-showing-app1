@@ -17,6 +17,20 @@ model Lead {
   propertyAddress   String
   desiredMoveInDate String
   notes             String
+  budgetMin         String @default("")
+  budgetMax         String @default("")
+  bedrooms          String @default("")
+  bathrooms         String @default("")
+  preferredNeighborhoods String @default("")
+  moveInUrgency     String @default("")
+  mustHaves         String @default("")
+  dealBreakers      String @default("")
+  pets              String @default("")
+  incomeQualified   Boolean @default(false)
+  creditConcern     Boolean @default(false)
+  hasGuarantor      Boolean @default(false)
+  applicationReady  Boolean @default(false)
+  preScreeningNotes String @default("")
   status            String
   priority          String
   source            String

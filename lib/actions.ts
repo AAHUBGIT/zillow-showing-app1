@@ -15,6 +15,7 @@ import {
   isPastIsoDate,
   isTwentyFourHourTime
 } from "./form-validation";
+import { isMoveInUrgencyOption, type ClientPreferenceFields } from "./client-preferences";
 import { communicationChannelOptions, communicationDirectionOptions } from "./communication";
 import { canUseDatabase, isPreviewReadonlyMode } from "./deployment";
 import { leadPriorityOptions, leadSourceOptions, leadStatusOptions } from "./lead-utils";
@@ -60,6 +61,46 @@ function getStatus(formData: FormData) {
 function getSource(formData: FormData) {
   const value = getString(formData, "source") as LeadSource;
   return leadSourceOptions.includes(value) ? value : "other";
+}
+
+function getClientPreferenceFields(formData: FormData): ClientPreferenceFields {
+  const moveInUrgency = getString(formData, "moveInUrgency");
+
+  return {
+    budgetMin: getString(formData, "budgetMin"),
+    budgetMax: getString(formData, "budgetMax"),
+    bedrooms: getString(formData, "bedrooms"),
+    bathrooms: getString(formData, "bathrooms"),
+    preferredNeighborhoods: getString(formData, "preferredNeighborhoods"),
+    moveInUrgency: isMoveInUrgencyOption(moveInUrgency) ? moveInUrgency : "",
+    mustHaves: getString(formData, "mustHaves"),
+    dealBreakers: getString(formData, "dealBreakers"),
+    pets: getString(formData, "pets"),
+    incomeQualified: getBoolean(formData, "incomeQualified"),
+    creditConcern: getBoolean(formData, "creditConcern"),
+    hasGuarantor: getBoolean(formData, "hasGuarantor"),
+    applicationReady: getBoolean(formData, "applicationReady"),
+    preScreeningNotes: getString(formData, "preScreeningNotes")
+  };
+}
+
+function getClientPreferenceError(input: ClientPreferenceFields) {
+  return (
+    getNumericError(input.budgetMin) ||
+    getNumericError(input.budgetMax) ||
+    getNumericError(input.bedrooms, false) ||
+    getNumericError(input.bathrooms) ||
+    getMaxLengthError(input.budgetMin, fieldMaxLengths.budget) ||
+    getMaxLengthError(input.budgetMax, fieldMaxLengths.budget) ||
+    getMaxLengthError(input.bedrooms, fieldMaxLengths.bedrooms) ||
+    getMaxLengthError(input.bathrooms, fieldMaxLengths.bathrooms) ||
+    getMaxLengthError(input.preferredNeighborhoods, fieldMaxLengths.preferredNeighborhoods) ||
+    getMaxLengthError(input.moveInUrgency, fieldMaxLengths.moveInUrgency) ||
+    getMaxLengthError(input.mustHaves, fieldMaxLengths.mustHaves) ||
+    getMaxLengthError(input.dealBreakers, fieldMaxLengths.dealBreakers) ||
+    getMaxLengthError(input.pets, fieldMaxLengths.pets) ||
+    getMaxLengthError(input.preScreeningNotes, fieldMaxLengths.preScreeningNotes)
+  );
 }
 
 function getPropertyInterestStatus(formData: FormData) {
@@ -316,6 +357,7 @@ export async function createLead(formData: FormData) {
   const status = getStatus(formData);
   const priority = getPriority(formData);
   const source = getSource(formData);
+  const clientPreferences = getClientPreferenceFields(formData);
 
   if (
     getRequiredTextError(fullName) ||
@@ -331,7 +373,8 @@ export async function createLead(formData: FormData) {
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||
     hasScheduleMismatch(showingDate, showingTime) ||
-    hasBlockedPastShowingDate(showingDate, allowPastShowingDate)
+    hasBlockedPastShowingDate(showingDate, allowPastShowingDate) ||
+    getClientPreferenceError(clientPreferences)
   ) {
     redirectValidation("/leads/new");
   }
@@ -345,6 +388,7 @@ export async function createLead(formData: FormData) {
     propertyAddress,
     desiredMoveInDate,
     notes: getString(formData, "notes"),
+    ...clientPreferences,
     status,
     priority,
     source,
@@ -453,6 +497,51 @@ export async function updateLeadSchedule(formData: FormData) {
   revalidatePath(`/leads/${id}`);
   revalidatePath("/routes");
   redirect(withToast(`/leads/${id}`, showingDate && showingTime ? "showing-scheduled" : "status-updated"));
+}
+
+export async function updateLeadPreferences(formData: FormData) {
+  const id = getString(formData, "id");
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(
+      withToast(`/leads/${id}`, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
+    );
+  }
+
+  const clientPreferences = getClientPreferenceFields(formData);
+
+  if (!id || getClientPreferenceError(clientPreferences)) {
+    redirectValidation(`/leads/${id}`);
+  }
+
+  const prisma = getPrismaClient();
+  let result;
+
+  try {
+    result = await prisma.lead.updateMany({
+      where: { id, userId: sessionUser.id },
+      data: {
+        ...clientPreferences,
+        updatedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    redirectSaveError(`/leads/${id}`, error);
+  }
+
+  if (result.count === 0) {
+    redirect(withToast(`/leads/${id}`, "save-error"));
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath(`/leads/${id}`);
+  redirect(withToast(`/leads/${id}`, "preferences-updated"));
 }
 
 export async function updateLeadStatus(formData: FormData) {

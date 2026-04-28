@@ -5,6 +5,7 @@ import {
 } from "./communication";
 import { getDemoLeads } from "./demo-leads";
 import { canUseDatabase, shouldUseDemoData } from "./deployment";
+import { withClientPreferenceDefaults } from "./client-preferences";
 import { sortLeads } from "./lead-utils";
 import {
   buildGoogleMapsSearchLink,
@@ -83,16 +84,18 @@ export async function getLeads(): Promise<LeadWithProperties[]> {
   }
 
   return sortLeads(
-    (leads as unknown as LeadWithProperties[]).map((lead) => ({
-      ...lead,
-      lastActivity: lastActivitiesByLeadId.get(lead.id) ?? null,
-      propertyInterests: syncLeadShowingToPropertyInterests(
-        lead.propertyInterests || [],
-        lead.propertyAddress,
-        lead.showingDate,
-        lead.showingTime
-      )
-    }))
+    (leads as unknown as LeadWithProperties[]).map((lead) =>
+      withClientPreferenceDefaults({
+        ...lead,
+        lastActivity: lastActivitiesByLeadId.get(lead.id) ?? null,
+        propertyInterests: syncLeadShowingToPropertyInterests(
+          lead.propertyInterests || [],
+          lead.propertyAddress,
+          lead.showingDate,
+          lead.showingTime
+        )
+      })
+    )
   );
 }
 
@@ -124,7 +127,7 @@ export async function getLeadById(id: string): Promise<LeadWithProperties | null
   }
 
   return {
-    ...(lead as unknown as LeadWithProperties),
+    ...withClientPreferenceDefaults(lead as unknown as LeadWithProperties),
     propertyInterests: syncLeadShowingToPropertyInterests(
       (lead as any).propertyInterests || [],
       lead.propertyAddress,
@@ -259,6 +262,20 @@ export async function saveLeads(leads: LeadWithProperties[]) {
           propertyAddress: lead.propertyAddress,
           desiredMoveInDate: lead.desiredMoveInDate,
           notes: lead.notes,
+          budgetMin: lead.budgetMin || "",
+          budgetMax: lead.budgetMax || "",
+          bedrooms: lead.bedrooms || "",
+          bathrooms: lead.bathrooms || "",
+          preferredNeighborhoods: lead.preferredNeighborhoods || "",
+          moveInUrgency: lead.moveInUrgency || "",
+          mustHaves: lead.mustHaves || "",
+          dealBreakers: lead.dealBreakers || "",
+          pets: lead.pets || "",
+          incomeQualified: Boolean(lead.incomeQualified),
+          creditConcern: Boolean(lead.creditConcern),
+          hasGuarantor: Boolean(lead.hasGuarantor),
+          applicationReady: Boolean(lead.applicationReady),
+          preScreeningNotes: lead.preScreeningNotes || "",
           status: lead.status,
           priority: lead.priority,
           source: lead.source,

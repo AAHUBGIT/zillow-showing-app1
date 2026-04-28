@@ -1,4 +1,5 @@
 import { LoadingLink } from "@/components/loading-link";
+import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import { getSourceLabel } from "@/lib/lead-utils";
 import { getPropertyInterestCountLabel } from "@/lib/property-interest-utils";
@@ -44,6 +45,13 @@ export function LeadCard({
         <SourceBadge source={lead.source} />
         <FollowUpBadge nextFollowUpDate={lead.nextFollowUpDate} />
         <div className="app-chip">{getPropertyInterestCountLabel(propertyCount)}</div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <PreferenceChip label={`Budget: ${getBudgetLabel(lead)}`} />
+        <PreferenceChip label={getBedroomBathroomLabel(lead)} />
+        <PreferenceChip label={getPreScreenStatus(lead)} />
+        {lead.applicationReady ? <PreferenceChip label="Application ready" /> : null}
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
@@ -111,5 +119,13 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
       <p className="mt-1 text-sm font-medium text-slate-700">{value}</p>
     </div>
+  );
+}
+
+function PreferenceChip({ label }: { label: string }) {
+  return (
+    <span className="rounded-full border border-line/80 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+      {label}
+    </span>
   );
 }

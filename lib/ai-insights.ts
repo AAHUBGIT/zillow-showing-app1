@@ -1,5 +1,13 @@
 import { formatDateLabel, formatDateTimeLabel } from "./date";
 import {
+  getBedroomBathroomLabel,
+  getBudgetLabel,
+  getMoveInUrgencyLabel,
+  getPreScreenStatus,
+  getPropertyPreferenceFit,
+  splitPreferenceList
+} from "./client-preferences";
+import {
   getFollowUpState,
   getPriorityLabel,
   getSourceLabel,
@@ -66,16 +74,19 @@ const statusBonus: Record<string, number> = {
 };
 
 export function getLeadAiInsights(lead: LeadWithProperties): LeadAiInsights {
-  const preferenceSignals = extractPreferences([lead.notes, lead.agentNotes].join(" "));
-  const recommendedProperty = getRecommendedProperty(lead, preferenceSignals);
+  const notePreferenceSignals = extractPreferences(
+    [lead.notes, lead.agentNotes, lead.mustHaves, lead.dealBreakers, lead.preScreeningNotes].join(" ")
+  );
+  const preferenceHighlights = [
+    ...getExplicitPreferenceHighlights(lead),
+    ...notePreferenceSignals.map((signal) => signal.label)
+  ].filter((value, index, values) => values.indexOf(value) === index);
+  const recommendedProperty = getRecommendedProperty(lead, notePreferenceSignals);
   const nextAction = getSuggestedNextAction(lead, recommendedProperty);
 
   return {
-    preferenceSummary: buildPreferenceSummary(
-      lead,
-      preferenceSignals.map((signal) => signal.label)
-    ),
-    preferenceHighlights: preferenceSignals.map((signal) => signal.label),
+    preferenceSummary: buildPreferenceSummary(lead),
+    preferenceHighlights: preferenceHighlights.slice(0, 8),
     nextAction,
     recommendedProperty
   };
@@ -89,16 +100,72 @@ function extractPreferences(text: string) {
     .slice(0, 5);
 }
 
-function buildPreferenceSummary(lead: LeadWithProperties, preferences: string[]) {
+function getExplicitPreferenceHighlights(lead: LeadWithProperties) {
+  const highlights: string[] = [];
+  const budget = getBudgetLabel(lead);
+  const bedsBaths = getBedroomBathroomLabel(lead);
+  const urgency = getMoveInUrgencyLabel(lead.moveInUrgency);
+  const neighborhoods = splitPreferenceList(lead.preferredNeighborhoods);
+  const mustHaves = splitPreferenceList(lead.mustHaves);
+
+  if (budget !== "Budget not set") {
+    highlights.push(budget);
+  }
+
+  if (bedsBaths !== "Beds/baths not set") {
+    highlights.push(bedsBaths);
+  }
+
+  if (neighborhoods.length > 0) {
+    highlights.push(`Neighborhoods: ${formatList(neighborhoods.slice(0, 2))}`);
+  }
+
+  if (urgency !== "Not set") {
+    highlights.push(`Move-in: ${urgency}`);
+  }
+
+  if (mustHaves.length > 0) {
+    highlights.push(`Must-haves: ${formatList(mustHaves.slice(0, 2))}`);
+  }
+
+  if (lead.applicationReady) {
+    highlights.push("Application ready");
+  }
+
+  return highlights;
+}
+
+function buildPreferenceSummary(lead: LeadWithProperties) {
   const moveInLabel = lead.desiredMoveInDate ? formatDateLabel(lead.desiredMoveInDate) : "their target date";
+  const budget = getBudgetLabel(lead);
+  const bedsBaths = getBedroomBathroomLabel(lead);
+  const neighborhoods = splitPreferenceList(lead.preferredNeighborhoods);
+  const mustHaves = splitPreferenceList(lead.mustHaves);
+  const dealBreakers = splitPreferenceList(lead.dealBreakers);
+  const urgency = getMoveInUrgencyLabel(lead.moveInUrgency);
+  const explicitPreferences = [
+    budget !== "Budget not set" ? budget : "",
+    bedsBaths !== "Beds/baths not set" ? bedsBaths : "",
+    neighborhoods.length > 0 ? `neighborhoods near ${formatList(neighborhoods.slice(0, 3))}` : "",
+    mustHaves.length > 0 ? `must-haves: ${formatList(mustHaves.slice(0, 3))}` : "",
+    dealBreakers.length > 0 ? `dealbreakers: ${formatList(dealBreakers.slice(0, 3))}` : "",
+    lead.pets ? `pets: ${lead.pets}` : "",
+    urgency !== "Not set" ? `move-in urgency: ${urgency}` : ""
+  ].filter((value): value is string => Boolean(value));
+  const preScreenDetails = [
+    getPreScreenStatus(lead),
+    lead.applicationReady ? "application ready" : "",
+    lead.creditConcern ? "credit needs review" : "",
+    lead.hasGuarantor ? "guarantor available" : ""
+  ].filter((value): value is string => Boolean(value));
   const preferenceSummary =
-    preferences.length > 0
-      ? `${lead.fullName} is focused on ${formatList(preferences.slice(0, 3))}.`
+    explicitPreferences.length > 0
+      ? `${lead.fullName} is looking for ${formatList(explicitPreferences.slice(0, 4))}.`
       : lead.notes
         ? `${lead.fullName}'s main preferences are captured in the current lead notes.`
         : `${lead.fullName} has not shared detailed preferences yet.`;
 
-  return `${preferenceSummary} Current priority is ${getPriorityLabel(
+  return `${preferenceSummary} Pre-screen status: ${formatList(preScreenDetails)}. Current priority is ${getPriorityLabel(
     lead.priority
   ).toLowerCase()}, move-in target is ${moveInLabel}, and the lead is ${getStatusLabel(
     lead.status
@@ -136,8 +203,9 @@ function getRecommendedProperty(
       const blockedPreferences = preferences.filter((preference) =>
         preference.keywords.some((keyword) => consText.includes(keyword))
       );
+      const fit = getPropertyPreferenceFit(propertyInterest, lead);
 
-      let score = propertyInterest.rating * 12 + (statusBonus[normalizedStatus] || 0);
+      let score = propertyInterest.rating * 12 + (statusBonus[normalizedStatus] || 0) + fit.score * 4;
 
       if (propertyInterest.address === lead.propertyAddress) {
         score += 5;
@@ -154,11 +222,24 @@ function getRecommendedProperty(
         score -= 2;
       }
 
-      const reasons = [
-        `${propertyInterest.rating}/5 client rating keeps it near the top.`,
+      const strongestFit = fit.items.find((item) => item.status === "match");
+      const fitConcern = fit.items.find((item) => item.status === "miss");
+      const fitReview = fit.items.find((item) => item.status === "review");
+      const fitReason = fitConcern
+        ? `Preference review needed: ${fitConcern.detail}.`
+        : strongestFit
+          ? `Preference fit: ${strongestFit.detail}.`
+          : fitReview
+            ? `Needs confirmation: ${fitReview.detail}.`
+            : `${fit.label} based on budget, bedrooms, neighborhood, and dealbreaker checks.`;
+      const notePreferenceReason =
         matchedPreferences.length > 0
           ? `Matches ${formatList(matchedPreferences.slice(0, 2).map((preference) => preference.label))}.`
-          : `Still aligns well with the lead's current shortlist.`,
+          : `Still aligns well with the lead's current shortlist.`;
+      const reasons = [
+        `${propertyInterest.rating}/5 client rating keeps it near the top.`,
+        fitReason,
+        notePreferenceReason,
         `${getPropertyInterestStatusLabel(propertyInterest.status)} status means the lead is already making progress here.`
       ];
 
@@ -174,7 +255,7 @@ function getRecommendedProperty(
 
   return {
     property: best.property,
-    reason: `Best fit right now based on rating, status, and how closely it matches the lead's stated preferences.`,
+    reason: `Best fit right now based on rating, status, and how closely it matches budget, bedrooms, neighborhood, must-haves, and dealbreakers.`,
     reasons: best.reasons,
     confidenceLabel:
       best.score >= 65 ? "High confidence" : best.score >= 48 ? "Good fit" : "Worth reviewing"
@@ -189,16 +270,47 @@ function getSuggestedNextAction(
   const followUpState = getFollowUpState(lead.nextFollowUpDate);
   const recommendedPropertyName =
     recommendedProperty?.property.listingTitle || lead.propertyAddress || "the current shortlist";
+  const mustHaves = splitPreferenceList(lead.mustHaves);
+  const preferenceLine =
+    mustHaves.length > 0
+      ? `I kept ${formatList(mustHaves.slice(0, 3))} in mind while reviewing options.`
+      : `I kept your budget and layout preferences in mind while reviewing options.`;
+
+  if (lead.applicationReady && recommendedProperty) {
+    const subject = `Application next step for ${recommendedPropertyName}`;
+    const draft = `Hi ${firstName}, ${recommendedPropertyName} looks like the strongest fit based on your preferences. Since your application is ready, I recommend we confirm availability and move to the next application step today.`;
+
+    return {
+      type: "email",
+      label: "Application step",
+      reason: "The lead is marked application ready, so the best follow-up is a clear next-step email tied to the strongest property fit.",
+      draft,
+      href: `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(draft)}`
+    };
+  }
+
+  if (!lead.incomeQualified || (lead.creditConcern && !lead.hasGuarantor)) {
+    const draft = `Hi ${firstName}, I want to make sure I match you with the right options before scheduling more tours. Can you confirm your income range, any credit concerns, and whether a guarantor is available if needed?`;
+
+    return {
+      type: "text",
+      label: "Pre-screen follow-up",
+      reason: "Qualification details need review before investing more time in showings.",
+      draft,
+      href: `sms:${lead.phone}?body=${encodeURIComponent(draft)}`
+    };
+  }
 
   if (lead.status === "new" || lead.priority === "urgent" || followUpState === "overdue") {
+    const urgencyLabel = getMoveInUrgencyLabel(lead.moveInUrgency);
     const draft = `Hi ${firstName}, this is your leasing team checking in about ${recommendedPropertyName}. I wanted to confirm your top priorities and help lock in the best next step for your move-in around ${formatDateLabel(
       lead.desiredMoveInDate
-    )}.`;
+    )}${urgencyLabel !== "Not set" ? ` (${urgencyLabel})` : ""}.`;
 
     return {
       type: "call",
       label: "Call recommended",
-      reason: "A live call is the fastest way to move an urgent, new, or overdue lead forward.",
+      reason: "A live call is the fastest way to move an urgent, new, or overdue lead forward while confirming preferences.",
       draft,
       href: `tel:${lead.phone}`
     };
@@ -220,12 +332,12 @@ function getSuggestedNextAction(
   }
 
   const subject = `Next steps for ${recommendedPropertyName}`;
-  const draft = `Hi ${firstName}, I reviewed your current shortlist and ${recommendedPropertyName} looks like the strongest fit so far. Based on your priorities, I would recommend that we confirm your next tour or application step this week. Let me know if you want me to send over updated options or schedule the next showing.`;
+  const draft = `Hi ${firstName}, I reviewed your current shortlist and ${recommendedPropertyName} looks like the strongest fit so far. ${preferenceLine} Based on your priorities, I recommend that we confirm your next tour or application step this week.`;
 
   return {
     type: "email",
     label: "Email recommended",
-    reason: "An email recap works well when the lead needs a clear written next step and property recommendation.",
+    reason: "An email recap works well when the lead needs a preference-based property recommendation and a clear written next step.",
     draft,
     href: `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(draft)}`
   };

@@ -11,6 +11,7 @@ import { TooltipShell } from "@/components/tooltip-shell";
 import { emitAppToast } from "@/lib/client-toast";
 import { createLead } from "@/lib/actions";
 import { buildGoogleCalendarUrlFromDraft } from "@/lib/calendar";
+import { getMoveInUrgencyLabel, moveInUrgencyOptions } from "@/lib/client-preferences";
 import {
   fieldMaxLengths,
   getEmailError,
@@ -295,6 +296,92 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
         />
       </div>
 
+      <details className="sm:col-span-2 app-subpanel p-5">
+        <summary className="cursor-pointer list-none">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-ink">Preferences & Pre-screening</p>
+              <p className="mt-1 text-sm text-slate-600">Optional fit and qualification details.</p>
+            </div>
+            <span className="app-chip">Optional</span>
+          </div>
+        </summary>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-4">
+          <OptionalPreferenceField
+            label="Budget min"
+            name="budgetMin"
+            inputMode="numeric"
+            maxLength={fieldMaxLengths.budget}
+          />
+          <OptionalPreferenceField
+            label="Budget max"
+            name="budgetMax"
+            inputMode="numeric"
+            maxLength={fieldMaxLengths.budget}
+          />
+          <OptionalPreferenceField
+            label="Bedrooms"
+            name="bedrooms"
+            inputMode="numeric"
+            maxLength={fieldMaxLengths.bedrooms}
+          />
+          <OptionalPreferenceField
+            label="Bathrooms"
+            name="bathrooms"
+            inputMode="decimal"
+            maxLength={fieldMaxLengths.bathrooms}
+          />
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
+          <OptionalPreferenceField
+            label="Preferred neighborhoods"
+            name="preferredNeighborhoods"
+            maxLength={fieldMaxLengths.preferredNeighborhoods}
+          />
+          <OptionalPreferenceSelect label="Move-in urgency" name="moveInUrgency" />
+          <OptionalPreferenceField
+            label="Pets"
+            name="pets"
+            maxLength={fieldMaxLengths.pets}
+          />
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <OptionalPreferenceTextarea
+            label="Must-haves"
+            name="mustHaves"
+            rows={3}
+            maxLength={fieldMaxLengths.mustHaves}
+          />
+          <OptionalPreferenceTextarea
+            label="Dealbreakers"
+            name="dealBreakers"
+            rows={3}
+            maxLength={fieldMaxLengths.dealBreakers}
+          />
+        </div>
+
+        <div className="mt-4 rounded-3xl border border-line/70 bg-white px-4 py-4">
+          <p className="app-kicker">Pre-screening</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <PreferenceCheckbox label="Income qualified" name="incomeQualified" />
+            <PreferenceCheckbox label="Credit concern" name="creditConcern" />
+            <PreferenceCheckbox label="Has guarantor" name="hasGuarantor" />
+            <PreferenceCheckbox label="Application ready" name="applicationReady" />
+          </div>
+          <div className="mt-4">
+            <OptionalPreferenceTextarea
+              label="Qualification notes"
+              name="preScreeningNotes"
+              rows={3}
+              maxLength={fieldMaxLengths.preScreeningNotes}
+            />
+          </div>
+        </div>
+      </details>
+
       <div className="sm:col-span-2 app-subpanel p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -520,6 +607,103 @@ function ValidatedTextarea({
         Optional field.
       </p>
       <FieldError id={errorId} message={error} />
+    </label>
+  );
+}
+
+function OptionalPreferenceField({
+  label,
+  name,
+  inputMode,
+  maxLength
+}: {
+  label: string;
+  name: string;
+  inputMode?: "text" | "numeric" | "decimal";
+  maxLength: number;
+}) {
+  const helpId = `${name}-help`;
+
+  return (
+    <label className="flex min-w-0 flex-col gap-2">
+      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <input
+        type="text"
+        name={name}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        aria-label={label}
+        aria-describedby={helpId}
+        className="app-input"
+      />
+      <p id={helpId} className="text-xs text-slate-500">
+        Optional field.
+      </p>
+    </label>
+  );
+}
+
+function OptionalPreferenceSelect({ label, name }: { label: string; name: string }) {
+  const helpId = `${name}-help`;
+
+  return (
+    <label className="flex min-w-0 flex-col gap-2">
+      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <select name={name} aria-label={label} aria-describedby={helpId} className="app-input">
+        {moveInUrgencyOptions.map((option) => (
+          <option key={option || "not-set"} value={option}>
+            {getMoveInUrgencyLabel(option)}
+          </option>
+        ))}
+      </select>
+      <p id={helpId} className="text-xs text-slate-500">
+        Optional field.
+      </p>
+    </label>
+  );
+}
+
+function OptionalPreferenceTextarea({
+  label,
+  name,
+  rows,
+  maxLength
+}: {
+  label: string;
+  name: string;
+  rows: number;
+  maxLength: number;
+}) {
+  const helpId = `${name}-help`;
+
+  return (
+    <label className="flex min-w-0 flex-col gap-2">
+      <span className="text-sm font-medium text-slate-700">{label}</span>
+      <AutoResizeTextarea
+        name={name}
+        rows={rows}
+        maxLength={maxLength}
+        aria-label={label}
+        aria-describedby={helpId}
+        className="app-textarea"
+      />
+      <p id={helpId} className="text-xs text-slate-500">
+        Optional field.
+      </p>
+    </label>
+  );
+}
+
+function PreferenceCheckbox({ label, name }: { label: string; name: string }) {
+  return (
+    <label className="flex items-center gap-3 rounded-2xl border border-line/70 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+      <input
+        type="checkbox"
+        name={name}
+        value="true"
+        className="h-4 w-4 rounded border-line text-accent focus:ring-accent/20"
+      />
+      <span>{label}</span>
     </label>
   );
 }

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ClientPreferencesForm } from "@/components/client-preferences-form";
 import { FollowUpBadge } from "@/components/follow-up-badge";
 import { CommunicationWorkspace } from "@/components/communication-workspace";
 import { LeadAiInsights } from "@/components/lead-ai-insights";
@@ -132,6 +133,8 @@ export default async function LeadDetailsPage({
 
           <LeadAiInsights lead={lead} />
 
+          <ClientPreferencesForm lead={lead} isPreviewReadonly={isPreviewReadonly} />
+
           <CommunicationWorkspace
             lead={lead}
             templates={communicationWorkspace.templates}
@@ -234,7 +237,7 @@ export default async function LeadDetailsPage({
                       </div>
                       <div className="app-chip">Scroll sideways on mobile</div>
                     </div>
-                    <PropertyComparisonTable propertyInterests={comparisonProperties} />
+                    <PropertyComparisonTable lead={lead} propertyInterests={comparisonProperties} />
                   </div>
                 ) : null}
 

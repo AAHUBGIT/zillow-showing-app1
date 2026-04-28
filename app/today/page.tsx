@@ -3,6 +3,7 @@ import { LeadStatusBadge } from "@/components/lead-status-badge";
 import { LoadingLink } from "@/components/loading-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PriorityBadge } from "@/components/priority-badge";
+import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { getCommunicationChannelLabel } from "@/lib/communication";
 import { formatDateLabel, formatDateTimeLabel, formatTimeForManualEntry } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
@@ -256,6 +257,7 @@ function ShowingCard({ lead }: { lead: LeadWithProperties }) {
           <p className="mt-3 text-lg font-semibold tracking-tight text-ink">{lead.fullName}</p>
           <p className="mt-1 text-sm text-slate-600">{lead.phone}</p>
           <p className="mt-1 text-sm leading-5 text-slate-600">{lead.propertyAddress}</p>
+          <PreferenceIndicators lead={lead} />
           <LastActivity activity={lead.lastActivity} />
         </div>
         <QuickActions lead={lead} includeMaps />
@@ -281,6 +283,7 @@ function LeadList({
             <div className="min-w-0">
               <p className="text-base font-semibold tracking-tight text-ink">{lead.fullName}</p>
               <p className="mt-1 text-sm text-slate-600">{lead.phone}</p>
+              <PreferenceIndicators lead={lead} />
               <LastActivity activity={lead.lastActivity} />
               {showFollowUpDate ? (
                 <p className="mt-2 text-sm font-medium text-rose-700">
@@ -321,6 +324,7 @@ function HighPriorityCard({ lead }: { lead: LeadWithProperties }) {
             <InfoPill label="Next follow-up" value={lead.nextFollowUpDate ? formatDateLabel(lead.nextFollowUpDate) : "Not set"} />
             <InfoPill label="Showing" value={showingLabel} />
           </div>
+          <PreferenceIndicators lead={lead} />
           <LastActivity activity={lead.lastActivity} />
         </div>
         <QuickActions lead={lead} includeMaps={Boolean(lead.propertyAddress)} />
@@ -380,6 +384,27 @@ function InfoPill({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-line/70 bg-slate-50 px-3 py-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
       <p className="mt-1 text-sm font-medium text-slate-700">{value}</p>
+    </div>
+  );
+}
+
+function PreferenceIndicators({ lead }: { lead: LeadWithProperties }) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      <span className="rounded-full border border-line/80 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+        Budget: {getBudgetLabel(lead)}
+      </span>
+      <span className="rounded-full border border-line/80 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+        {getBedroomBathroomLabel(lead)}
+      </span>
+      <span className="rounded-full border border-line/80 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+        {getPreScreenStatus(lead)}
+      </span>
+      {lead.applicationReady ? (
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+          Application ready
+        </span>
+      ) : null}
     </div>
   );
 }

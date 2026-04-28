@@ -14,6 +14,7 @@ const toastMessages: Record<string, string> = {
   "property-scheduled": "Property showing scheduled.",
   "property-rejected": "Property marked as rejected.",
   "property-applying": "Property moved to applying.",
+  "preferences-updated": "Client preferences saved.",
   "route-stop-completed": "Route stop marked as completed.",
   "route-stop-reopened": "Route stop moved back into the active route.",
   "route-note-saved": "Route note saved.",

@@ -3,9 +3,11 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { PropertyInterestStatusBadge } from "@/components/property-interest-status-badge";
 import { PropertyRatingStars } from "@/components/property-rating-stars";
-import { PropertyInterest } from "@/lib/types";
+import { getPropertyPreferenceFit } from "@/lib/client-preferences";
+import { LeadWithProperties, PropertyInterest } from "@/lib/types";
 
 type PropertyComparisonTableProps = {
+  lead: LeadWithProperties;
   propertyInterests: PropertyInterest[];
 };
 
@@ -71,10 +73,21 @@ const sortOptions: Array<{ mode: SortMode; label: string }> = [
 ];
 
 export function PropertyComparisonTable({
+  lead,
   propertyInterests
 }: PropertyComparisonTableProps) {
   const [sortMode, setSortMode] = useState<SortMode>("rating");
   const bestRating = Math.max(...propertyInterests.map((propertyInterest) => propertyInterest.rating));
+  const rows = [
+    {
+      key: "fit",
+      label: "Fit",
+      render: (propertyInterest: PropertyInterest) => (
+        <PropertyFitSummary propertyInterest={propertyInterest} lead={lead} />
+      )
+    },
+    ...comparisonRows
+  ];
 
   const sortedPropertyInterests = useMemo(() => {
     return [...propertyInterests].sort((first, second) => {
@@ -175,7 +188,7 @@ export function PropertyComparisonTable({
             </tr>
           </thead>
           <tbody>
-            {comparisonRows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.key}>
                 <th className="sticky left-0 z-10 border-b border-line/60 bg-white px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                   {row.label}
@@ -217,6 +230,45 @@ function PropertyComparisonText({
     <p className="max-w-[18rem] whitespace-pre-wrap text-sm leading-6 text-slate-600">
       {value || fallback}
     </p>
+  );
+}
+
+function PropertyFitSummary({
+  propertyInterest,
+  lead
+}: {
+  propertyInterest: PropertyInterest;
+  lead: LeadWithProperties;
+}) {
+  const fit = getPropertyPreferenceFit(propertyInterest, lead);
+  const toneClass =
+    fit.misses > 0
+      ? "border-rose-200 bg-rose-50 text-rose-700"
+      : fit.reviews > 0
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : fit.items.length > 0
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : "border-line/80 bg-slate-50 text-slate-600";
+
+  return (
+    <div className="max-w-[18rem]">
+      <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClass}`}>
+        {fit.label}
+      </span>
+      {fit.items.length > 0 ? (
+        <ul className="mt-3 space-y-1 text-xs leading-5 text-slate-600">
+          {fit.items.slice(0, 4).map((item) => (
+            <li key={`${item.key}-${item.detail}`}>
+              {item.label}: {item.detail}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          Add preferences to compare fit.
+        </p>
+      )}
+    </div>
   );
 }
 
