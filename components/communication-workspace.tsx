@@ -140,7 +140,7 @@ export function CommunicationWorkspace({
     subject: string;
     body: string;
     outcome: string;
-  }> = {}, options: { successMessage?: string; keepInView?: boolean } = {}) {
+  }> = {}, options: { successMessage?: string; preserveScroll?: boolean } = {}) {
     if (saveInFlightRef.current) {
       return false;
     }
@@ -171,11 +171,15 @@ export function CommunicationWorkspace({
         return false;
       }
 
+      const scrollPosition = options.preserveScroll
+        ? { left: window.scrollX, top: window.scrollY }
+        : null;
+
       setRecentActivities((current) => [result.activity, ...current]);
       setOutcome("");
 
-      if (options.keepInView) {
-        keepCommunicationInView(communicationPanelRef.current);
+      if (scrollPosition) {
+        restoreScrollPosition(scrollPosition);
       }
 
       if (options.successMessage) {
@@ -259,7 +263,7 @@ export function CommunicationWorkspace({
     try {
       const didLog = await logActivity(quickLogConfig, {
         successMessage: quickLogToastMessages,
-        keepInView: true
+        preserveScroll: true
       });
 
       if (didLog && kind === "note") {
@@ -411,7 +415,7 @@ export function CommunicationWorkspace({
                   href={phoneHref}
                   protocolText={hasPhone ? `tel:${phone}` : "No phone number"}
                   disabled={!hasPhone}
-                  disabledReason="No phone number"
+                  disabledReason="Phone unavailable"
                   toastMessage="Opening phone app"
                 >
                   Call
@@ -420,7 +424,7 @@ export function CommunicationWorkspace({
                   href={smsHref}
                   protocolText={hasPhone ? `sms:${phone}` : "No phone number"}
                   disabled={!hasPhone}
-                  disabledReason="No phone number"
+                  disabledReason="Phone unavailable"
                   toastMessage="Opening text app"
                 >
                   Text
@@ -429,7 +433,7 @@ export function CommunicationWorkspace({
                   href={emailHref}
                   protocolText={hasEmail ? `mailto:${email}` : "No email address"}
                   disabled={!hasEmail}
-                  disabledReason="No email address"
+                  disabledReason="Email unavailable"
                   toastMessage="Opening email app"
                 >
                   Email
@@ -738,9 +742,9 @@ function ActivityItem({ activity }: { activity: CommunicationActivity }) {
   );
 }
 
-function keepCommunicationInView(panel: HTMLDivElement | null) {
+function restoreScrollPosition(scrollPosition: { left: number; top: number }) {
   window.requestAnimationFrame(() => {
-    panel?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    window.scrollTo(scrollPosition.left, scrollPosition.top);
   });
 }
 

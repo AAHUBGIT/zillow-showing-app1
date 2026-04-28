@@ -1,3 +1,4 @@
+import { ContactActionLink } from "@/components/contact-action-link";
 import { LeadStatusBadge } from "@/components/lead-status-badge";
 import { LoadingLink } from "@/components/loading-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
@@ -329,20 +330,37 @@ function HighPriorityCard({ lead }: { lead: LeadWithProperties }) {
 }
 
 function QuickActions({ lead, includeMaps = false }: { lead: LeadWithProperties; includeMaps?: boolean }) {
+  const phone = lead.phone.trim();
+  const email = lead.email.trim();
+  const hasPhone = phone.length > 0;
+  const hasEmail = email.length > 0;
+
   return (
     <div className="flex w-full flex-wrap gap-2 lg:w-auto lg:justify-end">
       <LoadingLink href={`/leads/${lead.id}`} className="app-button-primary min-h-[48px] px-4 py-2.5">
         View Lead
       </LoadingLink>
-      <a href={`tel:${lead.phone}`} className="app-button-secondary min-h-[48px] px-4 py-2.5">
-        Call
-      </a>
-      <a href={getLeadTextHref(lead)} className="app-button-secondary min-h-[48px] px-4 py-2.5">
-        Text
-      </a>
-      <a href={getLeadEmailHref(lead)} className="app-button-secondary min-h-[48px] px-4 py-2.5">
-        Email
-      </a>
+      <ContactActionLink
+        href={`tel:${phone}`}
+        label="Call"
+        toastMessage="Opening phone app"
+        disabled={!hasPhone}
+        disabledLabel="Phone unavailable"
+      />
+      <ContactActionLink
+        href={getLeadTextHref(lead)}
+        label="Text"
+        toastMessage="Opening text app"
+        disabled={!hasPhone}
+        disabledLabel="Phone unavailable"
+      />
+      <ContactActionLink
+        href={getLeadEmailHref(lead)}
+        label="Email"
+        toastMessage="Opening email app"
+        disabled={!hasEmail}
+        disabledLabel="Email unavailable"
+      />
       {includeMaps ? (
         <a
           href={buildGoogleMapsSearchLink(lead.propertyAddress)}
