@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { InlineSpinner } from "@/components/inline-spinner";
@@ -46,16 +46,35 @@ export function CommunicationWorkspace({
   const [recentActivities, setRecentActivities] = useState(activities);
   const [isLoggingActivity, setIsLoggingActivity] = useState(false);
   const [pendingQuickLog, setPendingQuickLog] = useState("");
+  const [quickNote, setQuickNote] = useState("");
+  const [quickNoteError, setQuickNoteError] = useState("");
+  const [isMessageCopied, setIsMessageCopied] = useState(false);
+  const communicationPanelRef = useRef<HTMLDivElement | null>(null);
+  const saveInFlightRef = useRef(false);
+  const copyResetTimeoutRef = useRef<number | null>(null);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId),
     [selectedTemplateId, templates]
   );
 
-  const smsHref = `sms:${lead.phone}?body=${encodeURIComponent(body)}`;
-  const emailHref = `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const phone = lead.phone.trim();
+  const email = lead.email.trim();
+  const hasPhone = phone.length > 0;
+  const hasEmail = email.length > 0;
+  const phoneHref = hasPhone ? `tel:${normalizePhoneForHref(phone)}` : "";
+  const smsHref = hasPhone ? buildSmsHref(phone, body) : "";
+  const emailHref = hasEmail ? buildEmailHref(email, subject, body) : "";
   const canLogActivity = body.trim().length > 0;
   const canSaveTemplate = templateName.trim().length > 0 && body.trim().length > 0;
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current) {
+        window.clearTimeout(copyResetTimeoutRef.current);
+      }
+    };
+  }, []);
 
   function applyTemplate(templateId: string) {
     setSelectedTemplateId(templateId);
@@ -90,16 +109,28 @@ export function CommunicationWorkspace({
   }
 
   async function copyMessage() {
-    if (!body.trim()) {
+    const messageBody = body.trim();
+
+    if (!messageBody) {
       emitAppToast({ message: "Add a message before copying." });
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(body);
-      emitAppToast({ toastKey: "message-copied" });
+      await navigator.clipboard.writeText(messageBody);
+      setIsMessageCopied(true);
+      emitAppToast({ message: "Message copied" });
+
+      if (copyResetTimeoutRef.current) {
+        window.clearTimeout(copyResetTimeoutRef.current);
+      }
+
+      copyResetTimeoutRef.current = window.setTimeout(() => {
+        setIsMessageCopied(false);
+      }, 1600);
     } catch {
-      emitAppToast({ message: "Copy failed. Select the message and copy it manually." });
+      setIsMessageCopied(false);
+      emitAppToast({ message: "Unable to copy message" });
     }
   }
 
@@ -109,20 +140,23 @@ export function CommunicationWorkspace({
     subject: string;
     body: string;
     outcome: string;
-  }> = {}) {
+  }> = {}, options: { successMessage?: string; keepInView?: boolean } = {}) {
+    if (saveInFlightRef.current) {
+      return false;
+    }
+
     const activityBody = (overrides.body ?? body).trim();
 
     if (!activityBody) {
       emitAppToast({ message: "Add communication text before logging activity." });
-      return;
+      return false;
     }
 
+    saveInFlightRef.current = true;
     setIsLoggingActivity(true);
 
-    let result: Awaited<ReturnType<typeof logCommunicationActivityInline>>;
-
     try {
-      result = await logCommunicationActivityInline({
+      const result = await logCommunicationActivityInline({
         leadId: lead.id,
         channel: overrides.channel || channel,
         direction: overrides.direction || direction,
@@ -131,24 +165,48 @@ export function CommunicationWorkspace({
         body: activityBody,
         outcome: overrides.outcome ?? outcome
       });
+
+      if (!result.success) {
+        emitAppToast({ toastKey: result.toastKey });
+        return false;
+      }
+
+      setRecentActivities((current) => [result.activity, ...current]);
+      setOutcome("");
+
+      if (options.keepInView) {
+        keepCommunicationInView(communicationPanelRef.current);
+      }
+
+      if (options.successMessage) {
+        emitAppToast({ message: options.successMessage });
+      } else {
+        emitAppToast({ toastKey: result.toastKey });
+      }
+
+      return true;
     } catch {
-      setIsLoggingActivity(false);
       emitAppToast({ toastKey: "save-error" });
-      return;
+      return false;
+    } finally {
+      saveInFlightRef.current = false;
+      setIsLoggingActivity(false);
     }
-
-    setIsLoggingActivity(false);
-    if (!result.success) {
-      emitAppToast({ toastKey: result.toastKey });
-      return;
-    }
-
-    setRecentActivities((current) => [result.activity, ...current]);
-    setOutcome("");
-    emitAppToast({ toastKey: result.toastKey });
   }
 
   async function logQuickActivity(kind: "call" | "text" | "email" | "no-answer" | "note") {
+    if (saveInFlightRef.current) {
+      return;
+    }
+
+    const noteBody = quickNote.trim();
+
+    if (kind === "note" && !noteBody) {
+      setQuickNoteError("Type a note before logging it.");
+      return;
+    }
+
+    setQuickNoteError("");
     setPendingQuickLog(kind);
 
     const firstName = lead.fullName.split(" ").filter(Boolean)[0] || lead.fullName;
@@ -185,17 +243,35 @@ export function CommunicationWorkspace({
         channel: "note" as const,
         direction: "internal" as const,
         subject: subject.trim() || "Internal note",
-        body: body.trim() || "Internal note added.",
-        outcome: outcome.trim()
+        body: noteBody,
+        outcome: ""
       }
     }[kind];
 
-    await logActivity(quickLogConfig);
-    setPendingQuickLog("");
+    const quickLogToastMessages = {
+      call: "Call logged",
+      text: "Text logged",
+      email: "Email logged",
+      "no-answer": "No answer logged",
+      note: "Note logged"
+    }[kind];
+
+    try {
+      const didLog = await logActivity(quickLogConfig, {
+        successMessage: quickLogToastMessages,
+        keepInView: true
+      });
+
+      if (didLog && kind === "note") {
+        setQuickNote("");
+      }
+    } finally {
+      setPendingQuickLog("");
+    }
   }
 
   return (
-    <div className="app-panel p-5 sm:p-6">
+    <div ref={communicationPanelRef} className="app-panel scroll-mt-28 p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="app-eyebrow">Communication Center</p>
@@ -331,22 +407,40 @@ export function CommunicationWorkspace({
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-2">
-                <ContactLink href={`tel:${lead.phone}`} protocolText={`tel:${lead.phone}`} disabled={channel === "note"}>
+                <ContactLink
+                  href={phoneHref}
+                  protocolText={hasPhone ? `tel:${phone}` : "No phone number"}
+                  disabled={!hasPhone}
+                  disabledReason="No phone number"
+                  toastMessage="Opening phone app"
+                >
                   Call
                 </ContactLink>
-                <ContactLink href={smsHref} protocolText="sms:?body=" disabled={!body.trim() || channel === "note"}>
+                <ContactLink
+                  href={smsHref}
+                  protocolText={hasPhone ? `sms:${phone}` : "No phone number"}
+                  disabled={!hasPhone}
+                  disabledReason="No phone number"
+                  toastMessage="Opening text app"
+                >
                   Text
                 </ContactLink>
-                <ContactLink href={emailHref} protocolText="mailto:?subject=&body=" disabled={!body.trim() || channel === "note"}>
+                <ContactLink
+                  href={emailHref}
+                  protocolText={hasEmail ? `mailto:${email}` : "No email address"}
+                  disabled={!hasEmail}
+                  disabledReason="No email address"
+                  toastMessage="Opening email app"
+                >
                   Email
                 </ContactLink>
                 <button
                   type="button"
                   onClick={copyMessage}
                   disabled={!body.trim()}
-                  className="app-button-secondary disabled:cursor-not-allowed disabled:opacity-55"
+                  className="app-button-secondary min-h-[52px] px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
                 >
-                  Copy message
+                  {isMessageCopied ? "Copied" : "Copy message"}
                 </button>
               </div>
 
@@ -367,37 +461,67 @@ export function CommunicationWorkspace({
                   </p>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <QuickLogButton
-                  label="Log Call"
-                  isPending={pendingQuickLog === "call"}
-                  disabled={isPreviewReadonly || isLoggingActivity}
-                  onClick={() => void logQuickActivity("call")}
-                />
-                <QuickLogButton
-                  label="Log Text"
-                  isPending={pendingQuickLog === "text"}
-                  disabled={isPreviewReadonly || isLoggingActivity}
-                  onClick={() => void logQuickActivity("text")}
-                />
-                <QuickLogButton
-                  label="Log Email"
-                  isPending={pendingQuickLog === "email"}
-                  disabled={isPreviewReadonly || isLoggingActivity}
-                  onClick={() => void logQuickActivity("email")}
-                />
-                <QuickLogButton
-                  label="No Answer"
-                  isPending={pendingQuickLog === "no-answer"}
-                  disabled={isPreviewReadonly || isLoggingActivity}
-                  onClick={() => void logQuickActivity("no-answer")}
-                />
-                <QuickLogButton
-                  label="Add Note"
-                  isPending={pendingQuickLog === "note"}
-                  disabled={isPreviewReadonly || isLoggingActivity}
-                  onClick={() => void logQuickActivity("note")}
-                />
+              <div className="mt-4 grid gap-3">
+                <label className="flex min-w-0 flex-col gap-2">
+                  <span className="text-sm font-medium text-slate-700">Quick note</span>
+                  <AutoResizeTextarea
+                    rows={3}
+                    value={quickNote}
+                    maxLength={fieldMaxLengths.communicationBody}
+                    onChange={(event) => {
+                      setQuickNote(event.target.value);
+                      if (event.target.value.trim()) {
+                        setQuickNoteError("");
+                      }
+                    }}
+                    aria-label="Quick internal note"
+                    aria-invalid={Boolean(quickNoteError)}
+                    aria-describedby="quick-note-helper"
+                    className={`app-textarea min-h-[96px] ${
+                      quickNoteError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100" : ""
+                    }`}
+                    placeholder="Type an internal note before using Add Note."
+                  />
+                  <p
+                    id="quick-note-helper"
+                    className={`text-xs ${quickNoteError ? "font-medium text-rose-600" : "text-slate-500"}`}
+                  >
+                    {quickNoteError || "Required only when using Add Note."}
+                  </p>
+                </label>
+
+                <div className="flex flex-wrap gap-2">
+                  <QuickLogButton
+                    label="Log Call"
+                    isPending={pendingQuickLog === "call"}
+                    disabled={isPreviewReadonly || isLoggingActivity}
+                    onClick={() => void logQuickActivity("call")}
+                  />
+                  <QuickLogButton
+                    label="Log Text"
+                    isPending={pendingQuickLog === "text"}
+                    disabled={isPreviewReadonly || isLoggingActivity}
+                    onClick={() => void logQuickActivity("text")}
+                  />
+                  <QuickLogButton
+                    label="Log Email"
+                    isPending={pendingQuickLog === "email"}
+                    disabled={isPreviewReadonly || isLoggingActivity}
+                    onClick={() => void logQuickActivity("email")}
+                  />
+                  <QuickLogButton
+                    label="No Answer"
+                    isPending={pendingQuickLog === "no-answer"}
+                    disabled={isPreviewReadonly || isLoggingActivity}
+                    onClick={() => void logQuickActivity("no-answer")}
+                  />
+                  <QuickLogButton
+                    label="Add Note"
+                    isPending={pendingQuickLog === "note"}
+                    disabled={isPreviewReadonly || isLoggingActivity}
+                    onClick={() => void logQuickActivity("note")}
+                  />
+                </div>
               </div>
             </div>
           </form>
@@ -475,24 +599,35 @@ function ContactLink({
   href,
   protocolText,
   disabled,
+  disabledReason,
+  toastMessage,
   children
 }: {
   href: string;
   protocolText: string;
   disabled?: boolean;
+  disabledReason?: string;
+  toastMessage: string;
   children: ReactNode;
 }) {
   if (disabled) {
     return (
-      <span className="app-button-secondary cursor-not-allowed opacity-50" aria-disabled="true">
+      <span
+        className="app-button-secondary min-h-[52px] cursor-not-allowed px-4 py-3 opacity-50"
+        aria-disabled="true"
+      >
         <span>{children}</span>
-        <span className="text-[11px] font-semibold text-slate-400">{protocolText}</span>
+        <span className="text-[11px] font-semibold text-slate-400">{disabledReason || protocolText}</span>
       </span>
     );
   }
 
   return (
-    <a href={href} className="app-button-secondary">
+    <a
+      href={href}
+      onClick={() => emitAppToast({ message: toastMessage })}
+      className="app-button-secondary min-h-[52px] px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
+    >
       <span>{children}</span>
       <span className="text-[11px] font-semibold text-slate-400">{protocolText}</span>
     </a>
@@ -510,7 +645,7 @@ function LogActivityButton({
     <button
       type="submit"
       disabled={disabled || pending}
-      className="app-button-primary disabled:cursor-not-allowed disabled:opacity-55"
+      className="app-button-primary min-h-[52px] px-5 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
     >
       {pending ? (
         <>
@@ -540,7 +675,7 @@ function QuickLogButton({
       type="button"
       onClick={onClick}
       disabled={disabled || isPending}
-      className="app-button-secondary disabled:cursor-not-allowed disabled:opacity-55"
+      className="app-button-secondary min-h-[52px] px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
     >
       {isPending ? (
         <>
@@ -561,7 +696,7 @@ function SaveTemplateButton({ disabled = false }: { disabled?: boolean }) {
     <button
       type="submit"
       disabled={disabled || pending}
-      className="app-button-secondary disabled:cursor-not-allowed disabled:opacity-55"
+      className="app-button-secondary min-h-[52px] px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
     >
       {pending ? (
         <>
@@ -601,6 +736,44 @@ function ActivityItem({ activity }: { activity: CommunicationActivity }) {
       ) : null}
     </article>
   );
+}
+
+function keepCommunicationInView(panel: HTMLDivElement | null) {
+  window.requestAnimationFrame(() => {
+    panel?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+}
+
+function normalizePhoneForHref(phone: string) {
+  return phone.replace(/[^\d+]/g, "") || phone;
+}
+
+function buildSmsHref(phone: string, message: string) {
+  const normalizedPhone = normalizePhoneForHref(phone);
+  const trimmedMessage = message.trim();
+
+  if (!trimmedMessage) {
+    return `sms:${normalizedPhone}`;
+  }
+
+  return `sms:${normalizedPhone}?body=${encodeURIComponent(trimmedMessage)}`;
+}
+
+function buildEmailHref(email: string, subject: string, message: string) {
+  const params = new URLSearchParams();
+  const trimmedSubject = subject.trim();
+  const trimmedMessage = message.trim();
+
+  if (trimmedSubject) {
+    params.set("subject", trimmedSubject);
+  }
+
+  if (trimmedMessage) {
+    params.set("body", trimmedMessage);
+  }
+
+  const query = params.toString();
+  return query ? `mailto:${email}?${query}` : `mailto:${email}`;
 }
 
 function formatActivityDate(value: string) {
