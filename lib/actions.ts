@@ -420,6 +420,124 @@ export async function createLead(formData: FormData) {
   redirect(withToast("/", "lead-created"));
 }
 
+export async function createImportedLead(formData: FormData) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(
+      withToast("/import", isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
+    );
+  }
+
+  const prisma = getPrismaClient();
+  const now = new Date().toISOString();
+  const fullName = getString(formData, "fullName");
+  const phone = getString(formData, "phone");
+  const email = getString(formData, "email");
+  const propertyAddress = getString(formData, "propertyAddress");
+  const desiredMoveInDate = getString(formData, "desiredMoveInDate");
+  const source = getSource(formData);
+  const message = getString(formData, "message");
+  const rawText = getString(formData, "rawText");
+
+  if (
+    getRequiredTextError(fullName) ||
+    getPhoneError(phone) ||
+    getEmailError(email) ||
+    getRequiredSelectError(source) ||
+    getMaxLengthError(propertyAddress, fieldMaxLengths.propertyAddress) ||
+    getMaxLengthError(message, fieldMaxLengths.notes) ||
+    !isIsoDate(desiredMoveInDate)
+  ) {
+    redirectValidation("/import");
+  }
+
+  const leadId = crypto.randomUUID();
+  const importedNotes = message || rawText;
+  const agentNotes = rawText
+    ? `Imported inquiry:\n${rawText}`.slice(0, fieldMaxLengths.agentNotes)
+    : importedNotes.slice(0, fieldMaxLengths.agentNotes);
+  const lead: Lead = {
+    id: leadId,
+    userId: sessionUser.id,
+    fullName,
+    phone,
+    email,
+    propertyAddress,
+    desiredMoveInDate,
+    notes: importedNotes.slice(0, fieldMaxLengths.notes),
+    budgetMin: "",
+    budgetMax: "",
+    bedrooms: "",
+    bathrooms: "",
+    preferredNeighborhoods: "",
+    moveInUrgency: "",
+    mustHaves: "",
+    dealBreakers: "",
+    pets: "",
+    incomeQualified: false,
+    creditConcern: false,
+    hasGuarantor: false,
+    applicationReady: false,
+    preScreeningNotes: "",
+    status: "new",
+    priority: "medium",
+    source,
+    nextFollowUpDate: "",
+    showingDate: "",
+    showingTime: "",
+    routeStopOrder: 0,
+    routeCompleted: false,
+    routeNote: "",
+    agentNotes,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  const propertyInterest: PropertyInterest | null = propertyAddress
+    ? {
+        id: crypto.randomUUID(),
+        leadId,
+        address: propertyAddress,
+        listingTitle: propertyAddress,
+        source,
+        listingUrl: "",
+        rent: "",
+        beds: "",
+        baths: "",
+        neighborhood: "",
+        status: "interested",
+        rating: 3,
+        clientFeedback: "",
+        pros: "",
+        cons: "",
+        agentNotes,
+        showingDate: "",
+        showingTime: "",
+        createdAt: now,
+        updatedAt: now
+      }
+    : null;
+
+  try {
+    await prisma.$transaction([
+      prisma.lead.create({ data: lead }),
+      ...(propertyInterest ? [prisma.propertyInterest.create({ data: propertyInterest })] : [])
+    ]);
+  } catch (error) {
+    redirectSaveError("/import", error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath("/routes");
+  revalidatePath(`/leads/${leadId}`);
+  redirect(withToast(`/leads/${leadId}`, "lead-imported"));
+}
+
 export async function updateLeadSchedule(formData: FormData) {
   const id = getString(formData, "id");
   const sessionUser = await getSessionUser();

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 const toastMessages: Record<string, string> = {
   "lead-created": "Lead created successfully.",
+  "lead-imported": "Imported lead created successfully.",
   "status-updated": "Lead status updated.",
   "showing-scheduled": "Showing scheduled successfully.",
   "route-copied": "Route link copied to clipboard.",
