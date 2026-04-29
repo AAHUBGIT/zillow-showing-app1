@@ -256,6 +256,7 @@ export default async function LeadDetailsPage({
                       {activeProperties.map((propertyInterest) => (
                         <PropertyInterestCard
                           key={propertyInterest.id}
+                          lead={lead}
                           leadId={lead.id}
                           propertyInterest={propertyInterest}
                           isTopRated={topRatedProperty?.id === propertyInterest.id}
@@ -277,6 +278,7 @@ export default async function LeadDetailsPage({
                       {rejectedProperties.map((propertyInterest) => (
                         <PropertyInterestCard
                           key={propertyInterest.id}
+                          lead={lead}
                           leadId={lead.id}
                           propertyInterest={propertyInterest}
                         />

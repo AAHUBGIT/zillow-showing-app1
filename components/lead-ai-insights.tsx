@@ -93,7 +93,7 @@ export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
             <p className="app-kicker">Property Recommendation</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               {insights.recommendedProperty?.reason ||
-                "Add properties to this customer record to generate a property recommendation."}
+                "No saved properties yet. Add properties to compare against preferences."}
             </p>
           </div>
           {insights.recommendedProperty ? (
@@ -155,7 +155,7 @@ export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
           </div>
         ) : (
           <div className="mt-4 rounded-3xl border border-dashed border-line/80 bg-white px-4 py-6 text-sm text-slate-500">
-            No property recommendation yet because this customer does not have tracked listings.
+            No saved properties yet. Add properties to compare against preferences.
           </div>
         )}
       </div>

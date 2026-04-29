@@ -22,11 +22,19 @@ export type ClientPreferenceFields = Pick<
   | "preScreeningNotes"
 >;
 
-export type PropertyPreferenceFitStatus = "match" | "miss" | "review";
+export type PropertyPreferenceFitStatus = "match" | "miss" | "review" | "unknown";
+export type PropertyPreferenceFitLabel =
+  | "Good fit"
+  | "Partial fit"
+  | "Needs review"
+  | "Outside budget"
+  | "Bed mismatch"
+  | "Neighborhood mismatch"
+  | "Possible dealbreaker";
 
 export type PropertyPreferenceFitItem = {
-  key: "budget" | "bedrooms" | "neighborhood" | "mustHaves" | "dealBreakers";
-  label: string;
+  key: "budget" | "bedrooms" | "neighborhood" | "dealBreakers";
+  label: PropertyPreferenceFitLabel;
   status: PropertyPreferenceFitStatus;
   detail: string;
 };
@@ -173,108 +181,125 @@ export function getPropertyPreferenceFit(
   lead: LeadWithProperties
 ) {
   const items: PropertyPreferenceFitItem[] = [];
-  const positivePropertyText = [
+  const propertyText = [
     propertyInterest.listingTitle,
     propertyInterest.address,
     propertyInterest.neighborhood,
     propertyInterest.pros,
+    propertyInterest.cons,
     propertyInterest.clientFeedback,
     propertyInterest.agentNotes
   ]
     .join(" ")
     .toLowerCase();
-  const propertyText = `${positivePropertyText} ${propertyInterest.cons}`.toLowerCase();
+  const dealBreakerText = [
+    propertyInterest.address,
+    propertyInterest.pros,
+    propertyInterest.cons,
+    propertyInterest.clientFeedback,
+    propertyInterest.agentNotes
+  ]
+    .join(" ")
+    .toLowerCase();
 
   const minBudget = parsePreferenceNumber(lead.budgetMin);
   const maxBudget = parsePreferenceNumber(lead.budgetMax);
   const rent = parsePreferenceNumber(propertyInterest.rent);
 
-  if (minBudget !== null || maxBudget !== null) {
-    if (rent === null) {
-      items.push({
-        key: "budget",
-        label: "Budget",
-        status: "review",
-        detail: "Price missing"
-      });
-    } else if (
+  if (minBudget === null && maxBudget === null) {
+    items.push({
+      key: "budget",
+      label: "Needs review",
+      status: "unknown",
+      detail: "Budget not set"
+    });
+  } else if (rent === null) {
+    items.push({
+      key: "budget",
+      label: "Needs review",
+      status: "unknown",
+      detail: "Price missing"
+    });
+  } else if (
       (minBudget === null || rent >= minBudget) &&
       (maxBudget === null || rent <= maxBudget)
     ) {
-      items.push({
-        key: "budget",
-        label: "Budget",
-        status: "match",
-        detail: `${formatBudgetValue(propertyInterest.rent)} fits ${getBudgetLabel(lead)}`
-      });
-    } else {
-      items.push({
-        key: "budget",
-        label: "Budget",
-        status: "miss",
-        detail: `${formatBudgetValue(propertyInterest.rent)} outside ${getBudgetLabel(lead)}`
-      });
-    }
+    items.push({
+      key: "budget",
+      label: "Good fit",
+      status: "match",
+      detail: `${formatBudgetValue(propertyInterest.rent)} within ${getBudgetLabel(lead)}`
+    });
+  } else {
+    items.push({
+      key: "budget",
+      label: "Outside budget",
+      status: "miss",
+      detail: `${formatBudgetValue(propertyInterest.rent)} outside ${getBudgetLabel(lead)}`
+    });
   }
 
   const desiredBedrooms = parsePreferenceNumber(lead.bedrooms);
   const propertyBedrooms = parsePreferenceNumber(propertyInterest.beds);
 
-  if (desiredBedrooms !== null) {
-    if (propertyBedrooms === null) {
-      items.push({
-        key: "bedrooms",
-        label: "Bedrooms",
-        status: "review",
-        detail: "Bedroom count missing"
-      });
-    } else if (propertyBedrooms >= desiredBedrooms) {
-      items.push({
-        key: "bedrooms",
-        label: "Bedrooms",
-        status: "match",
-        detail: `${propertyInterest.beds} bd meets ${lead.bedrooms} bd preference`
-      });
-    } else {
-      items.push({
-        key: "bedrooms",
-        label: "Bedrooms",
-        status: "miss",
-        detail: `${propertyInterest.beds} bd below ${lead.bedrooms} bd preference`
-      });
-    }
+  if (desiredBedrooms === null) {
+    items.push({
+      key: "bedrooms",
+      label: "Needs review",
+      status: "unknown",
+      detail: "Bedroom preference missing"
+    });
+  } else if (propertyBedrooms === null) {
+    items.push({
+      key: "bedrooms",
+      label: "Needs review",
+      status: "unknown",
+      detail: "Bedroom count missing"
+    });
+  } else if (propertyBedrooms === desiredBedrooms) {
+    items.push({
+      key: "bedrooms",
+      label: "Good fit",
+      status: "match",
+      detail: `${propertyInterest.beds} bd matches preference`
+    });
+  } else {
+    items.push({
+      key: "bedrooms",
+      label: "Bed mismatch",
+      status: "miss",
+      detail: `${propertyInterest.beds} bd does not match ${lead.bedrooms} bd`
+    });
   }
 
   const preferredNeighborhoods = splitPreferenceList(lead.preferredNeighborhoods);
 
-  if (preferredNeighborhoods.length > 0) {
+  if (preferredNeighborhoods.length === 0) {
+    items.push({
+      key: "neighborhood",
+      label: "Needs review",
+      status: "unknown",
+      detail: "Neighborhood preference missing"
+    });
+  } else if (!propertyInterest.neighborhood && !propertyInterest.address) {
+    items.push({
+      key: "neighborhood",
+      label: "Needs review",
+      status: "unknown",
+      detail: "Neighborhood missing"
+    });
+  } else {
     const matchedNeighborhood = preferredNeighborhoods.find((neighborhood) =>
       propertyText.includes(neighborhood.toLowerCase())
     );
 
     items.push({
       key: "neighborhood",
-      label: "Neighborhood",
+      label: matchedNeighborhood ? "Good fit" : "Neighborhood mismatch",
       status: matchedNeighborhood ? "match" : "miss",
       detail: matchedNeighborhood
         ? `Matches ${matchedNeighborhood}`
-        : `Outside ${formatList(preferredNeighborhoods.slice(0, 3))}`
-    });
-  }
-
-  const mustHaves = splitPreferenceList(lead.mustHaves);
-
-  if (mustHaves.length > 0) {
-    const missingMustHaves = mustHaves.filter((item) => !positivePropertyText.includes(item.toLowerCase()));
-
-    items.push({
-      key: "mustHaves",
-      label: "Must-haves",
-      status: missingMustHaves.length === 0 ? "match" : "review",
-      detail:
-        missingMustHaves.length === 0
-          ? "All must-haves appear covered"
-          : `Review ${formatList(missingMustHaves.slice(0, 3))}`
+        : `Does not match ${formatList(preferredNeighborhoods.slice(0, 3))}`
     });
   }
 
@@ -282,12 +307,12 @@ export function getPropertyPreferenceFit(
 
   if (dealBreakers.length > 0) {
     const triggeredDealBreakers = dealBreakers.filter((item) =>
-      propertyText.includes(item.toLowerCase())
+      dealBreakerText.includes(item.toLowerCase())
     );
 
     items.push({
       key: "dealBreakers",
-      label: "Dealbreakers",
+      label: triggeredDealBreakers.length === 0 ? "Good fit" : "Possible dealbreaker",
       status: triggeredDealBreakers.length === 0 ? "match" : "miss",
       detail:
         triggeredDealBreakers.length === 0
@@ -299,15 +324,20 @@ export function getPropertyPreferenceFit(
   const matches = items.filter((item) => item.status === "match").length;
   const misses = items.filter((item) => item.status === "miss").length;
   const reviews = items.filter((item) => item.status === "review").length;
-  const score = matches * 2 + reviews - misses * 2;
+  const unknowns = items.filter((item) => item.status === "unknown").length;
+  const score = matches * 2 - misses * 3 - reviews - unknowns;
+  const outsideBudget = items.some((item) => item.label === "Outside budget");
+  const possibleDealbreaker = items.some((item) => item.label === "Possible dealbreaker");
   const label =
-    items.length === 0
-      ? "Add preferences"
-      : misses > 0
-        ? "Review fit"
-        : reviews > 0
-          ? "Likely fit"
-          : "Strong fit";
+    outsideBudget
+      ? "Outside budget"
+      : possibleDealbreaker
+        ? "Needs review"
+        : misses > 0
+          ? "Partial fit"
+          : unknowns > 0 || reviews > 0
+            ? "Needs review"
+            : "Good fit";
 
   return {
     label,
@@ -315,6 +345,7 @@ export function getPropertyPreferenceFit(
     matches,
     misses,
     reviews,
+    unknowns,
     score
   };
 }

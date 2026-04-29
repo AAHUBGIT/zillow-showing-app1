@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useMemo, useRef, useState, useId, type InputHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { DateTimePickerFields, DateTimePickerHandle } from "@/components/date-time-picker-fields";
 import { InlineSpinner } from "@/components/inline-spinner";
+import { emitPropertyFormDirtyChange } from "@/components/property-back-link";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { emitAppToast } from "@/lib/client-toast";
 import {
@@ -59,6 +60,25 @@ const fieldOrder = [
   "agentNotes"
 ];
 const alwaysVisibleErrorFields: Array<keyof PropertyFormValues> = ["listingTitle", "address"];
+
+function getInitialPropertyFormValues(propertyInterest?: PropertyInterest): PropertyFormValues {
+  return {
+    listingTitle: propertyInterest?.listingTitle || "",
+    address: propertyInterest?.address || "",
+    source: propertyInterest?.source || "other",
+    listingUrl: propertyInterest?.listingUrl || "",
+    rent: propertyInterest?.rent || "",
+    neighborhood: propertyInterest?.neighborhood || "",
+    beds: propertyInterest?.beds || "",
+    baths: propertyInterest?.baths || "",
+    status: propertyInterest?.status || "interested",
+    rating: String(propertyInterest?.rating || 3),
+    clientFeedback: propertyInterest?.clientFeedback || "",
+    pros: propertyInterest?.pros || "",
+    cons: propertyInterest?.cons || "",
+    agentNotes: propertyInterest?.agentNotes || ""
+  };
+}
 
 function getFieldError(name: keyof PropertyFormValues, value: string) {
   switch (name) {
@@ -116,35 +136,29 @@ export function PropertyInterestForm({
   action,
   leadId,
   propertyInterest,
+  dirtyScope,
   submitLabel,
   isPreviewReadonly = false
 }: {
   action: (formData: FormData) => void | Promise<void>;
   leadId: string;
   propertyInterest?: PropertyInterest;
+  dirtyScope?: string;
   submitLabel: string;
   isPreviewReadonly?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const scheduleRef = useRef<DateTimePickerHandle>(null);
+  const isSubmittingRef = useRef(false);
+  const initialValuesRef = useRef(getInitialPropertyFormValues(propertyInterest));
+  const initialScheduleRef = useRef({
+    date: propertyInterest?.showingDate || "",
+    time: propertyInterest?.showingTime || ""
+  });
+  const isCreateMode = !propertyInterest;
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [touched, setTouched] = useState<TouchedFields>({});
-  const [values, setValues] = useState<PropertyFormValues>({
-    listingTitle: propertyInterest?.listingTitle || "",
-    address: propertyInterest?.address || "",
-    source: propertyInterest?.source || "other",
-    listingUrl: propertyInterest?.listingUrl || "",
-    rent: propertyInterest?.rent || "",
-    neighborhood: propertyInterest?.neighborhood || "",
-    beds: propertyInterest?.beds || "",
-    baths: propertyInterest?.baths || "",
-    status: propertyInterest?.status || "interested",
-    rating: String(propertyInterest?.rating || 3),
-    clientFeedback: propertyInterest?.clientFeedback || "",
-    pros: propertyInterest?.pros || "",
-    cons: propertyInterest?.cons || "",
-    agentNotes: propertyInterest?.agentNotes || ""
-  });
+  const [values, setValues] = useState<PropertyFormValues>(() => initialValuesRef.current);
   const [scheduleState, setScheduleState] = useState({
     date: propertyInterest?.showingDate || "",
     time: propertyInterest?.showingTime || "",
@@ -176,6 +190,44 @@ export function PropertyInterestForm({
       !(values.status === "scheduled" && (!scheduleState.date || !scheduleState.time)),
     [liveErrors, scheduleState, values.status]
   );
+  const hasUnsavedChanges = useMemo(
+    () =>
+      fieldOrder.some(
+        (name) =>
+          values[name as keyof PropertyFormValues] !==
+          initialValuesRef.current[name as keyof PropertyFormValues]
+      ) ||
+      scheduleState.date !== initialScheduleRef.current.date ||
+      scheduleState.time !== initialScheduleRef.current.time,
+    [scheduleState.date, scheduleState.time, values]
+  );
+
+  useEffect(() => {
+    if (!dirtyScope) {
+      return;
+    }
+
+    emitPropertyFormDirtyChange(dirtyScope, hasUnsavedChanges);
+  }, [dirtyScope, hasUnsavedChanges]);
+
+  useEffect(() => {
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!hasUnsavedChanges || isSubmittingRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (dirtyScope) {
+        emitPropertyFormDirtyChange(dirtyScope, false);
+      }
+    };
+  }, [dirtyScope, hasUnsavedChanges]);
 
   function updateField(name: keyof PropertyFormValues, value: string) {
     const nextValue =
@@ -234,14 +286,34 @@ export function PropertyInterestForm({
       onSubmit={(event) => {
         if (!validateForm()) {
           event.preventDefault();
+          return;
         }
+
+        isSubmittingRef.current = true;
       }}
       className="grid gap-5"
     >
       <input type="hidden" name="leadId" value={leadId} />
       {propertyInterest ? <input type="hidden" name="propertyInterestId" value={propertyInterest.id} /> : null}
+      {isCreateMode ? (
+        <>
+          <input type="hidden" name="status" value={values.status} />
+          <input type="hidden" name="rating" value={values.rating} />
+          <input type="hidden" name="clientFeedback" value={values.clientFeedback} />
+        </>
+      ) : null}
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="rounded-3xl border border-line/80 bg-white/85 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="app-kicker">Required Basics</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Add a recognizable name and address first. Everything else can be filled in later.
+            </p>
+          </div>
+          <div className="app-chip">Required</div>
+        </div>
+        <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <Field
           label="Listing title or nickname"
           name="listingTitle"
@@ -264,30 +336,20 @@ export function PropertyInterestForm({
           onChange={updateField}
           onBlur={markFieldTouched}
         />
-        <SelectField
-          label="Source"
-          name="source"
-          value={values.source}
-          required
-          error={visibleErrors.source}
-          onChange={updateField}
-          onBlur={markFieldTouched}
-          options={leadSourceOptions.map((option) => ({
-            value: option,
-            label: getPropertyInterestSourceLabel(option)
-          }))}
-        />
-        <Field
-          label="Listing URL"
-          name="listingUrl"
-          value={values.listingUrl}
-          type="url"
-          maxLength={fieldMaxLengths.listingUrl}
-          helpText="Optional. Paste the live listing link if you want one-click access later."
-          error={visibleErrors.listingUrl}
-          onChange={updateField}
-          onBlur={markFieldTouched}
-        />
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-line/80 bg-slate-50/80 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="app-kicker">Optional Listing Details</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Price, layout, neighborhood, source, and listing URL power comparison and fit checks.
+            </p>
+          </div>
+          <div className="app-chip">Optional</div>
+        </div>
+        <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <Field
           label="Rent / price"
           name="rent"
@@ -333,32 +395,61 @@ export function PropertyInterestForm({
           onChange={updateField}
           onBlur={markFieldTouched}
         />
-        <SelectField
-          label="Status"
-          name="status"
-          value={values.status}
-          required
-          error={visibleErrors.status}
+        <Field
+          label="Listing URL"
+          name="listingUrl"
+          value={values.listingUrl}
+          type="url"
+          maxLength={fieldMaxLengths.listingUrl}
+          helpText="Optional. Paste the live listing link if you want one-click access later."
+          error={visibleErrors.listingUrl}
           onChange={updateField}
           onBlur={markFieldTouched}
-          options={propertyInterestStatusOptions.map((option) => ({
+        />
+        <SelectField
+          label="Source"
+          name="source"
+          value={values.source}
+          error={visibleErrors.source}
+          onChange={updateField}
+          onBlur={markFieldTouched}
+          options={leadSourceOptions.map((option) => ({
             value: option,
-            label: getPropertyInterestStatusLabel(option)
+            label: getPropertyInterestSourceLabel(option)
           }))}
         />
-        <SelectField
-          label="Client rating"
-          name="rating"
-          value={values.rating}
-          onChange={updateField}
-          onBlur={markFieldTouched}
-          options={[1, 2, 3, 4, 5].map((rating) => ({
-            value: String(rating),
-            label: `${rating} / 5`
-          }))}
-        />
+        {!isCreateMode ? (
+          <>
+            <SelectField
+              label="Status"
+              name="status"
+              value={values.status}
+              required
+              error={visibleErrors.status}
+              onChange={updateField}
+              onBlur={markFieldTouched}
+              options={propertyInterestStatusOptions.map((option) => ({
+                value: option,
+                label: getPropertyInterestStatusLabel(option)
+              }))}
+            />
+            <SelectField
+              label="Client rating"
+              name="rating"
+              value={values.rating}
+              onChange={updateField}
+              onBlur={markFieldTouched}
+              options={[1, 2, 3, 4, 5].map((rating) => ({
+                value: String(rating),
+                label: `${rating} / 5`
+              }))}
+            />
+          </>
+        ) : null}
+        </div>
       </div>
 
+      {!isCreateMode ? (
       <div className="app-subpanel p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -391,21 +482,35 @@ export function PropertyInterestForm({
           ) : null}
         </div>
       </div>
+      ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="rounded-3xl border border-line/80 bg-white/85 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="app-kicker">Optional Notes</p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Add quick context that will help compare this listing against the client&apos;s preferences.
+            </p>
+          </div>
+          <div className="app-chip">Optional</div>
+        </div>
+
+      <div className={`mt-5 grid gap-5 ${isCreateMode ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
+        {!isCreateMode ? (
+          <TextAreaField
+            label="Client feedback"
+            name="clientFeedback"
+            rows={5}
+            value={values.clientFeedback}
+            maxLength={fieldMaxLengths.notes}
+            error={visibleErrors.clientFeedback}
+            placeholder="What did the customer say after seeing or reviewing this listing?"
+            onChange={updateField}
+            onBlur={markFieldTouched}
+          />
+        ) : null}
         <TextAreaField
-          label="Client feedback"
-          name="clientFeedback"
-          rows={5}
-          value={values.clientFeedback}
-          maxLength={fieldMaxLengths.notes}
-          error={visibleErrors.clientFeedback}
-          placeholder="What did the customer say after seeing or reviewing this listing?"
-          onChange={updateField}
-          onBlur={markFieldTouched}
-        />
-        <TextAreaField
-          label="Agent feedback"
+          label="Agent notes"
           name="agentNotes"
           rows={5}
           value={values.agentNotes}
@@ -415,9 +520,6 @@ export function PropertyInterestForm({
           onChange={updateField}
           onBlur={markFieldTouched}
         />
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-3">
         <TextAreaField
           label="Pros"
           name="pros"
@@ -440,13 +542,16 @@ export function PropertyInterestForm({
           onChange={updateField}
           onBlur={markFieldTouched}
         />
-        <div className="rounded-3xl border border-line/70 bg-slate-50/90 px-4 py-4">
+        {!isCreateMode ? (
+          <div className="rounded-3xl border border-line/70 bg-slate-50/90 px-4 py-4">
           <p className="app-kicker">Workflow Tip</p>
           <p className="mt-2 text-sm leading-6 text-slate-600">
             Use the property schedule plus client feedback to decide which homes move to touring,
             applying, or approval.
           </p>
         </div>
+        ) : null}
+      </div>
       </div>
 
       <div className="flex justify-end">
@@ -515,13 +620,17 @@ function Field({
   onChange: (name: keyof PropertyFormValues, value: string) => void;
   onBlur: (name: keyof PropertyFormValues) => void;
 }) {
-  const helpId = `${name}-help`;
-  const errorId = `${name}-error`;
+  const inputId = useId();
+  const helpId = `${inputId}-help`;
+  const errorId = `${inputId}-error`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+    <div className="flex min-w-0 flex-col gap-2">
+      <label htmlFor={inputId} className="text-sm font-medium text-slate-700">
+        {label}
+      </label>
       <input
+        id={inputId}
         type={type}
         name={name}
         value={value}
@@ -541,7 +650,7 @@ function Field({
         {helpText || (required ? "Required field." : "Optional field.")}
       </p>
       <FieldError id={errorId} message={error} />
-    </label>
+    </div>
   );
 }
 
@@ -564,13 +673,17 @@ function SelectField({
   onChange: (name: keyof PropertyFormValues, value: string) => void;
   onBlur: (name: keyof PropertyFormValues) => void;
 }) {
-  const helpId = `${name}-help`;
-  const errorId = `${name}-error`;
+  const inputId = useId();
+  const helpId = `${inputId}-help`;
+  const errorId = `${inputId}-error`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+    <div className="flex min-w-0 flex-col gap-2">
+      <label htmlFor={inputId} className="text-sm font-medium text-slate-700">
+        {label}
+      </label>
       <select
+        id={inputId}
         name={name}
         value={value}
         data-field={name}
@@ -591,7 +704,7 @@ function SelectField({
         {required ? "Required field." : "Optional field."}
       </p>
       <FieldError id={errorId} message={error} />
-    </label>
+    </div>
   );
 }
 
@@ -616,13 +729,17 @@ function TextAreaField({
   onChange: (name: keyof PropertyFormValues, value: string) => void;
   onBlur: (name: keyof PropertyFormValues) => void;
 }) {
-  const helpId = `${name}-help`;
-  const errorId = `${name}-error`;
+  const inputId = useId();
+  const helpId = `${inputId}-help`;
+  const errorId = `${inputId}-error`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
-      <span className="text-sm font-medium text-slate-700">{label}</span>
+    <div className="flex min-w-0 flex-col gap-2">
+      <label htmlFor={inputId} className="text-sm font-medium text-slate-700">
+        {label}
+      </label>
       <AutoResizeTextarea
+        id={inputId}
         name={name}
         rows={rows}
         value={value}
@@ -640,7 +757,7 @@ function TextAreaField({
         Optional field.
       </p>
       <FieldError id={errorId} message={error} />
-    </label>
+    </div>
   );
 }
 

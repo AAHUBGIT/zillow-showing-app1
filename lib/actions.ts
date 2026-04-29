@@ -843,6 +843,7 @@ export async function createPropertyInterest(formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath("/today");
   revalidatePath("/routes");
   revalidatePath(`/leads/${leadId}`);
   revalidatePath(`/leads/${leadId}/properties/${propertyInterest.id}`);
@@ -960,6 +961,7 @@ export async function updatePropertyInterest(formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath("/today");
   revalidatePath("/routes");
   revalidatePath(`/leads/${leadId}`);
   revalidatePath(`/leads/${leadId}/properties/${propertyInterestId}`);

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { LoadingLink } from "@/components/loading-link";
+import { PropertyBackLink } from "@/components/property-back-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PropertyInterestForm } from "@/components/property-interest-form";
 import { createPropertyInterest } from "@/lib/actions";
@@ -19,6 +19,7 @@ export default async function NewPropertyInterestPage({
   }
 
   const isPreviewReadonly = isPreviewReadonlyMode();
+  const dirtyScope = `property-${lead.id}-new`;
 
   return (
     <main className="space-y-6">
@@ -38,9 +39,7 @@ export default async function NewPropertyInterestPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <LoadingLink href={`/leads/${lead.id}`} className="app-button-secondary">
-              Back to Customer
-            </LoadingLink>
+            <PropertyBackLink href={`/leads/${lead.id}`} scope={dirtyScope} />
           </div>
         </div>
 
@@ -63,6 +62,7 @@ export default async function NewPropertyInterestPage({
           <PropertyInterestForm
             action={createPropertyInterest}
             leadId={lead.id}
+            dirtyScope={dirtyScope}
             submitLabel="Add Property"
             isPreviewReadonly={isPreviewReadonly}
           />

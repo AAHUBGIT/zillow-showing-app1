@@ -1,15 +1,18 @@
 import { LoadingLink } from "@/components/loading-link";
+import { PropertyFitBadges } from "@/components/property-fit-badges";
 import { PropertyRatingStars } from "@/components/property-rating-stars";
 import { PropertyInterestStatusBadge } from "@/components/property-interest-status-badge";
 import { formatDateTimeLabel } from "@/lib/date";
 import { getPropertyInterestSourceLabel } from "@/lib/property-interest-utils";
-import { PropertyInterest } from "@/lib/types";
+import { LeadWithProperties, PropertyInterest } from "@/lib/types";
 
 export function PropertyInterestCard({
+  lead,
   leadId,
   propertyInterest,
   isTopRated = false
 }: {
+  lead: LeadWithProperties;
   leadId: string;
   propertyInterest: PropertyInterest;
   isTopRated?: boolean;
@@ -41,6 +44,15 @@ export function PropertyInterestCard({
         <PropertyRatingStars rating={propertyInterest.rating} />
         <div className="app-chip">{getPropertyInterestSourceLabel(propertyInterest.source)}</div>
         {propertyInterest.neighborhood ? <div className="app-chip">{propertyInterest.neighborhood}</div> : null}
+      </div>
+
+      <div className="mt-4 rounded-3xl border border-line/70 bg-white/80 px-4 py-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          Property Fit
+        </p>
+        <div className="mt-3">
+          <PropertyFitBadges lead={lead} propertyInterest={propertyInterest} compact />
+        </div>
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

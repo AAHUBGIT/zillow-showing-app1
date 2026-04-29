@@ -223,14 +223,17 @@ function getRecommendedProperty(
       }
 
       const strongestFit = fit.items.find((item) => item.status === "match");
-      const fitConcern = fit.items.find((item) => item.status === "miss");
+      const fitConcern =
+        fit.items.find((item) => item.label === "Outside budget") ||
+        fit.items.find((item) => item.label === "Possible dealbreaker") ||
+        fit.items.find((item) => item.status === "miss");
       const fitReview = fit.items.find((item) => item.status === "review");
       const fitReason = fitConcern
-        ? `Preference review needed: ${fitConcern.detail}.`
+        ? `${fitConcern.label}: ${fitConcern.detail}.`
         : strongestFit
-          ? `Preference fit: ${strongestFit.detail}.`
+          ? `${strongestFit.label}: ${strongestFit.detail}.`
           : fitReview
-            ? `Needs confirmation: ${fitReview.detail}.`
+            ? `${fitReview.label}: ${fitReview.detail}.`
             : `${fit.label} based on budget, bedrooms, neighborhood, and dealbreaker checks.`;
       const notePreferenceReason =
         matchedPreferences.length > 0
@@ -245,6 +248,7 @@ function getRecommendedProperty(
 
       return {
         property: propertyInterest,
+        fit,
         score,
         reasons
       };
@@ -255,11 +259,44 @@ function getRecommendedProperty(
 
   return {
     property: best.property,
-    reason: `Best fit right now based on rating, status, and how closely it matches budget, bedrooms, neighborhood, must-haves, and dealbreakers.`,
+    reason:
+      best.fit.label === "Good fit" || best.fit.label === "Partial fit"
+        ? `Best fit appears to be ${best.property.listingTitle} because ${getPrimaryFitReason(best.fit)}.`
+        : `Review ${best.property.listingTitle} because ${getPrimaryFitReason(best.fit)}.`,
     reasons: best.reasons,
     confidenceLabel:
-      best.score >= 65 ? "High confidence" : best.score >= 48 ? "Good fit" : "Worth reviewing"
+      best.fit.label === "Outside budget" || best.fit.label === "Needs review"
+        ? "Needs review"
+        : best.fit.label
   };
+}
+
+function getPrimaryFitReason(fit: ReturnType<typeof getPropertyPreferenceFit>) {
+  const budgetMatch = fit.items.find((item) => item.key === "budget" && item.status === "match");
+  const bedroomMatch = fit.items.find((item) => item.key === "bedrooms" && item.status === "match");
+  const concern =
+    fit.items.find((item) => item.label === "Outside budget") ||
+    fit.items.find((item) => item.label === "Possible dealbreaker") ||
+    fit.items.find((item) => item.label === "Bed mismatch") ||
+    fit.items.find((item) => item.label === "Neighborhood mismatch");
+
+  if (concern) {
+    return concern.detail.toLowerCase();
+  }
+
+  if (budgetMatch && bedroomMatch) {
+    return "it is within budget and matches bedrooms";
+  }
+
+  if (budgetMatch) {
+    return budgetMatch.detail.toLowerCase();
+  }
+
+  if (bedroomMatch) {
+    return bedroomMatch.detail.toLowerCase();
+  }
+
+  return fit.items[0]?.detail.toLowerCase() || "it has the strongest available fit data";
 }
 
 function getSuggestedNextAction(

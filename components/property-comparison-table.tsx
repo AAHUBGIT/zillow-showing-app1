@@ -244,7 +244,7 @@ function PropertyFitSummary({
   const toneClass =
     fit.misses > 0
       ? "border-rose-200 bg-rose-50 text-rose-700"
-      : fit.reviews > 0
+      : fit.reviews > 0 || fit.unknowns > 0
         ? "border-amber-200 bg-amber-50 text-amber-700"
         : fit.items.length > 0
           ? "border-emerald-200 bg-emerald-50 text-emerald-700"

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { LoadingLink } from "@/components/loading-link";
+import { PropertyBackLink } from "@/components/property-back-link";
+import { PropertyFitBadges } from "@/components/property-fit-badges";
 import { PropertyInterestForm } from "@/components/property-interest-form";
 import { PropertyInterestQuickActions } from "@/components/property-interest-quick-actions";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
@@ -33,6 +34,7 @@ export default async function PropertyInterestDetailsPage({
 
   const isPreviewReadonly = isPreviewReadonlyMode();
   const mapsLink = buildGoogleMapsSearchLink(propertyInterest.address);
+  const dirtyScope = `property-${lead.id}-${propertyInterest.id}`;
   const suggestedShowing = getSuggestedPropertyShowing(
     propertyInterest,
     lead.showingDate,
@@ -62,9 +64,7 @@ export default async function PropertyInterestDetailsPage({
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <LoadingLink href={`/leads/${lead.id}`} className="app-button-secondary">
-                  Back to Customer
-                </LoadingLink>
+                <PropertyBackLink href={`/leads/${lead.id}`} scope={dirtyScope} />
                 <a href={mapsLink} target="_blank" rel="noreferrer" className="app-button-secondary">
                   Open in Google Maps
                 </a>
@@ -99,6 +99,15 @@ export default async function PropertyInterestDetailsPage({
                     : "Not scheduled"
                 }
               />
+            </div>
+
+            <div className="mt-5 rounded-3xl border border-line/70 bg-slate-50 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Property Fit
+              </p>
+              <div className="mt-3">
+                <PropertyFitBadges lead={lead} propertyInterest={propertyInterest} />
+              </div>
             </div>
           </div>
 
@@ -159,6 +168,7 @@ export default async function PropertyInterestDetailsPage({
               action={updatePropertyInterest}
               leadId={lead.id}
               propertyInterest={propertyInterest}
+              dirtyScope={dirtyScope}
               submitLabel="Update Property"
               isPreviewReadonly={isPreviewReadonly}
             />
