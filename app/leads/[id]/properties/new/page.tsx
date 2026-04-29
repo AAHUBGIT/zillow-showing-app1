@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
+import { AddPropertyForm } from "@/components/add-property-form";
 import { PropertyBackLink } from "@/components/property-back-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
-import { PropertyInterestForm } from "@/components/property-interest-form";
 import { createPropertyInterest } from "@/lib/actions";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
 import { getLeadById } from "@/lib/storage";
@@ -59,11 +59,10 @@ export default async function NewPropertyInterestPage({
         </div>
 
         <div className="mt-8">
-          <PropertyInterestForm
+          <AddPropertyForm
             action={createPropertyInterest}
             leadId={lead.id}
             dirtyScope={dirtyScope}
-            submitLabel="Add Property"
             isPreviewReadonly={isPreviewReadonly}
           />
         </div>
