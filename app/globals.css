@@ -71,6 +71,17 @@ button {
     @apply min-h-[48px] w-full min-w-0 rounded-2xl border border-line bg-white px-4 py-3 text-[15px] text-slate-800 shadow-sm transition placeholder:text-slate-400 focus:border-accent focus:ring-4 focus:ring-accent/20 focus:shadow-soft sm:text-sm;
   }
 
+  select.app-input {
+    color-scheme: light;
+    background-color: #ffffff;
+    color: #1e293b;
+  }
+
+  select.app-input option {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
   .app-date-input {
     @apply cursor-text;
   }

@@ -49,6 +49,7 @@ export default async function LeadDetailsPage({
   const rejectedProperties = lead.propertyInterests.filter(isRejectedPropertyInterest);
   const activePropertyCount = activeProperties.length;
   const topRatedProperty = getTopRatedProperty(activeProperties);
+  const addPropertyHref = `/leads/${lead.id}/properties/new`;
   const comparisonProperties =
     activeProperties.length > 0
       ? [...activeProperties, ...rejectedProperties]
@@ -185,7 +186,7 @@ export default async function LeadDetailsPage({
                   <div className="app-chip">{getPropertyInterestCountLabel(lead.propertyInterests.length)}</div>
                   <div className="app-chip">{activePropertyCount} active</div>
                 </div>
-                <Link href={`/leads/${lead.id}/properties/new`} className="app-button-primary">
+                <Link href={addPropertyHref} className="app-button-primary">
                   Add Property
                 </Link>
               </div>
@@ -198,10 +199,7 @@ export default async function LeadDetailsPage({
                   Add the listings this customer is considering so you can compare options, capture
                   pros and cons, and keep touring decisions in one place.
                 </p>
-                <Link
-                  href={`/leads/${lead.id}/properties/new`}
-                  className="app-button-primary mt-6"
-                >
+                <Link href={addPropertyHref} className="app-button-primary mt-6">
                   Add First Property
                 </Link>
               </div>
