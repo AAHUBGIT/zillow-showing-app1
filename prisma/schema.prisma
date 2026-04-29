@@ -45,6 +45,7 @@ model Lead {
   updatedAt         String
   propertyInterests PropertyInterest[]
   communicationActivities CommunicationActivity[]
+  inboundEmails     InboundEmail[]
 }
 
 model PropertyInterest {
@@ -101,4 +102,35 @@ model CommunicationActivity {
 
   @@index([leadId, occurredAt])
   @@index([userId, occurredAt])
+}
+
+model LeadInbox {
+  id         String  @id
+  userId     String
+  userEmail  String?
+  inboxSlug  String  @unique
+  inboxEmail String  @unique
+  createdAt  String
+
+  @@index([userId])
+}
+
+model InboundEmail {
+  id           String  @id
+  userId       String
+  inboxSlug    String
+  recipient    String
+  fromEmail    String
+  fromName     String?
+  subject      String?
+  rawBody      String
+  parseStatus  String
+  parsedLeadId String?
+  errorMessage String?
+  createdAt    String
+  parsedLead   Lead?   @relation(fields: [parsedLeadId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([inboxSlug, createdAt])
+  @@index([parseStatus, createdAt])
 }

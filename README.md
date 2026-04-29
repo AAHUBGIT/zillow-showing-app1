@@ -22,6 +22,7 @@ The app is still using the Vercel URL for beta testing. Do not add a custom doma
 - Provides AI-style customer and property insights
 - Manages property workflow stages
 - Reorders route stops and persists the saved order
+- Provides a Lead Capture Inbox foundation for forwarded rental inquiries
 - Gives agents a daily operating screen at `/today`
 
 ## Today Command Center
@@ -50,6 +51,33 @@ The page uses existing lead fields:
 - `email`
 
 No new database tables are required for the Today page.
+
+## Lead Capture Inbox Architecture
+
+The Lead Capture Inbox is the scalable foundation for creating leads from forwarded
+Zillow, portal, and rental inquiry emails without per-account scripts or scraping.
+
+Current flow:
+
+```text
+Inbound email provider -> /api/inbound-email -> parser -> dedupe -> lead + property + activity
+```
+
+The `/lead-capture` page shows the beta inbox workflow and recent captures when data
+exists. The webhook route requires a shared secret through `POSTMARK_WEBHOOK_SECRET`
+or `IMPORT_SECRET`; do not store real secrets in the repository.
+
+Future provider options:
+
+- Postmark inbound webhook
+- SendGrid Inbound Parse
+- Mailgun Routes
+
+Planned setup work:
+
+- unique inbox per user
+- inbound email webhook provider configuration
+- Gmail/Outlook forwarding instructions
 
 ## Core Features
 
@@ -113,6 +141,7 @@ POSTGRES_DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=req
 AUTH_EMAIL="demo@showingscrm.com"
 AUTH_PASSWORD="changeme123"
 AUTH_SECRET="replace-this-with-a-long-random-secret"
+IMPORT_SECRET="replace-this-with-a-provider-shared-secret"
 ```
 
 Generate Prisma clients:
@@ -191,6 +220,7 @@ POSTGRES_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=requ
 AUTH_EMAIL=demo@showingscrm.com
 AUTH_PASSWORD=changeme123
 AUTH_SECRET=replace-this-with-a-long-random-secret
+IMPORT_SECRET=replace-this-with-a-provider-shared-secret
 ```
 
 ## Prisma Commands
