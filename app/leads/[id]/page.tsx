@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { ClientPreferencesForm } from "@/components/client-preferences-form";
 import { FollowUpBadge } from "@/components/follow-up-badge";
 import { CommunicationWorkspace } from "@/components/communication-workspace";
@@ -184,9 +185,9 @@ export default async function LeadDetailsPage({
                   <div className="app-chip">{getPropertyInterestCountLabel(lead.propertyInterests.length)}</div>
                   <div className="app-chip">{activePropertyCount} active</div>
                 </div>
-                <LoadingLink href={`/leads/${lead.id}/properties/new`} className="app-button-primary">
+                <Link href={`/leads/${lead.id}/properties/new`} className="app-button-primary">
                   Add Property
-                </LoadingLink>
+                </Link>
               </div>
             </div>
 
@@ -197,12 +198,12 @@ export default async function LeadDetailsPage({
                   Add the listings this customer is considering so you can compare options, capture
                   pros and cons, and keep touring decisions in one place.
                 </p>
-                <LoadingLink
+                <Link
                   href={`/leads/${lead.id}/properties/new`}
                   className="app-button-primary mt-6"
                 >
                   Add First Property
-                </LoadingLink>
+                </Link>
               </div>
             ) : (
               <div className="mt-6 space-y-6">

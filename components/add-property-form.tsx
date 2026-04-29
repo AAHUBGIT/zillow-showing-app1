@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type InputHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
 import { InlineSpinner } from "@/components/inline-spinner";
-import { emitPropertyFormDirtyChange } from "@/components/property-back-link";
+import { emitPropertyFormDirtyChange } from "@/components/property-form-dirty";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { emitAppToast } from "@/lib/client-toast";
 import { fieldMaxLengths, getMaxLengthError, getNumericError } from "@/lib/form-validation";
@@ -114,15 +114,35 @@ export function AddPropertyForm({
   isPreviewReadonly?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  const dirtyRef = useRef(false);
   const isSubmittingRef = useRef(false);
   const baseId = useId();
-  const [isDirty, setIsDirty] = useState(false);
-  const [isValid, setIsValid] = useState(false);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [touchedFields, setTouchedFields] = useState<TouchedFields>({});
   const [errors, setErrors] = useState<FieldErrors>({});
 
-  function refreshFormState() {
+  function setDirtyState(nextIsDirty: boolean) {
+    if (dirtyRef.current !== nextIsDirty) {
+      emitPropertyFormDirtyChange(dirtyScope, nextIsDirty);
+    }
+
+    dirtyRef.current = nextIsDirty;
+  }
+
+  function refreshDirtyState() {
+    const form = formRef.current;
+
+    if (!form) {
+      setDirtyState(false);
+      return;
+    }
+
+    const values = readFormValues(form);
+
+    setDirtyState(hasEnteredPropertyData(values));
+  }
+
+  function validateCurrentForm() {
     const form = formRef.current;
 
     if (!form) {
@@ -132,21 +152,19 @@ export function AddPropertyForm({
     const values = readFormValues(form);
     const nextErrors = buildErrors(values);
 
-    setIsDirty(hasEnteredPropertyData(values));
+    setDirtyState(hasEnteredPropertyData(values));
     setErrors(nextErrors);
-    setIsValid(canSubmitProperty(values, nextErrors));
-
     return { values, nextErrors };
   }
 
   function markTouched(fieldName: AddPropertyField) {
     setTouchedFields((current) => ({ ...current, [fieldName]: true }));
-    refreshFormState();
+    validateCurrentForm();
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     setHasAttemptedSubmit(true);
-    const { values, nextErrors } = refreshFormState();
+    const { values, nextErrors } = validateCurrentForm();
 
     if (!values || !canSubmitProperty(values, nextErrors)) {
       event.preventDefault();
@@ -166,12 +184,8 @@ export function AddPropertyForm({
   }
 
   useEffect(() => {
-    emitPropertyFormDirtyChange(dirtyScope, isDirty);
-  }, [dirtyScope, isDirty]);
-
-  useEffect(() => {
     function handleBeforeUnload(event: BeforeUnloadEvent) {
-      if (!isDirty || isSubmittingRef.current) {
+      if (!dirtyRef.current || isSubmittingRef.current) {
         return;
       }
 
@@ -184,15 +198,15 @@ export function AddPropertyForm({
       window.removeEventListener("beforeunload", handleBeforeUnload);
       emitPropertyFormDirtyChange(dirtyScope, false);
     };
-  }, [dirtyScope, isDirty]);
+  }, [dirtyScope]);
 
   return (
     <form
       ref={formRef}
       action={action}
       noValidate
-      onInput={refreshFormState}
-      onChange={refreshFormState}
+      onInput={refreshDirtyState}
+      onChange={refreshDirtyState}
       onSubmit={handleSubmit}
       className="grid gap-5"
     >
@@ -352,7 +366,7 @@ export function AddPropertyForm({
           disabled={isPreviewReadonly}
           message="This preview workspace is read-only. Use a live workspace to save property changes."
         >
-          <SubmitButton disabled={isPreviewReadonly || !isValid} />
+          <SubmitButton disabled={isPreviewReadonly} />
         </TooltipShell>
       </div>
     </form>

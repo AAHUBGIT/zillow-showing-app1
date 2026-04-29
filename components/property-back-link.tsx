@@ -1,17 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { LoadingLink } from "@/components/loading-link";
-
-export const propertyFormDirtyEventName = "property-form-dirty-change";
-
-export function emitPropertyFormDirtyChange(scope: string, isDirty: boolean) {
-  window.dispatchEvent(
-    new CustomEvent(propertyFormDirtyEventName, {
-      detail: { scope, isDirty }
-    })
-  );
-}
+export { emitPropertyFormDirtyChange, propertyFormDirtyEventName } from "@/components/property-form-dirty";
 
 export function PropertyBackLink({
   href,
@@ -22,33 +12,12 @@ export function PropertyBackLink({
   scope: string;
   className?: string;
 }) {
-  const [isDirty, setIsDirty] = useState(false);
-
-  useEffect(() => {
-    function handleDirtyChange(event: Event) {
-      const customEvent = event as CustomEvent<{ scope?: string; isDirty?: boolean }>;
-
-      if (customEvent.detail?.scope === scope) {
-        setIsDirty(Boolean(customEvent.detail.isDirty));
-      }
-    }
-
-    window.addEventListener(propertyFormDirtyEventName, handleDirtyChange as EventListener);
-    return () => {
-      window.removeEventListener(propertyFormDirtyEventName, handleDirtyChange as EventListener);
-    };
-  }, [scope]);
-
   return (
     <LoadingLink
       href={href}
       className={className}
       loadingLabel="Back to Customer..."
-      onClick={(event) => {
-        if (isDirty && !window.confirm("Discard unsaved property details?")) {
-          event.preventDefault();
-        }
-      }}
+      dirtyScope={scope}
     >
       Back to Customer
     </LoadingLink>

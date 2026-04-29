@@ -4,6 +4,7 @@ import { ButtonHTMLAttributes } from "react";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { InlineSpinner } from "@/components/inline-spinner";
+import { confirmDiscardPropertyFormChanges } from "@/components/property-form-dirty";
 
 export function LoadingLink({
   href,
@@ -11,6 +12,7 @@ export function LoadingLink({
   children,
   loadingLabel,
   ariaLabel,
+  dirtyScope,
   disabled,
   onClick,
   ...buttonProps
@@ -20,6 +22,7 @@ export function LoadingLink({
   children: React.ReactNode;
   loadingLabel?: string;
   ariaLabel?: string;
+  dirtyScope?: string;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children">) {
   const pathname = usePathname();
   const [isPending, setIsPending] = useState(false);
@@ -47,6 +50,11 @@ export function LoadingLink({
         }
 
         if (disabled || pendingRef.current || isCurrentPath) {
+          return;
+        }
+
+        if (!confirmDiscardPropertyFormChanges(dirtyScope)) {
+          event.preventDefault();
           return;
         }
 
