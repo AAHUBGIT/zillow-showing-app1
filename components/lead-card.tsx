@@ -66,40 +66,54 @@ export function LeadCard({
         </a>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <InfoRow label="Move-in" value={formatDateLabel(lead.desiredMoveInDate)} />
-        <InfoRow label="Phone" value={lead.phone} />
-        <InfoRow label="Email" value={lead.email} />
-        <InfoRow
-          label="Next Follow-Up"
-          value={lead.nextFollowUpDate ? formatDateLabel(lead.nextFollowUpDate) : "Not set"}
-        />
-        <InfoRow label="Tracked Properties" value={String(propertyCount)} />
-        <InfoRow
-          label="Showing"
-          value={
-            lead.showingDate && lead.showingTime
-              ? formatDateTimeLabel(lead.showingDate, lead.showingTime)
-              : "Not scheduled"
-          }
-        />
-        <InfoRow label="Source" value={getSourceLabel(lead.source)} />
-      </div>
+      <details className="group mt-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl border border-line/80 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-accent hover:text-accent [&::-webkit-details-marker]:hidden">
+          <span>Lead details</span>
+          <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs text-slate-600 group-open:hidden">
+            Expand
+          </span>
+          <span className="hidden rounded-full border border-accent/30 bg-accentSoft px-3 py-1 text-xs text-accent group-open:inline-flex">
+            Collapse
+          </span>
+        </summary>
 
-      <div className="mt-5 rounded-3xl border border-line/70 bg-slate-50/90 p-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Lead Notes</p>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
-          {lead.notes || "No notes yet."}
-        </p>
-      </div>
+        <div className="mt-4 space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <InfoRow label="Move-in" value={formatDateLabel(lead.desiredMoveInDate)} />
+            <InfoRow label="Phone" value={lead.phone} />
+            <InfoRow label="Email" value={lead.email} />
+            <InfoRow
+              label="Next Follow-Up"
+              value={lead.nextFollowUpDate ? formatDateLabel(lead.nextFollowUpDate) : "Not set"}
+            />
+            <InfoRow label="Tracked Properties" value={String(propertyCount)} />
+            <InfoRow
+              label="Showing"
+              value={
+                lead.showingDate && lead.showingTime
+                  ? formatDateTimeLabel(lead.showingDate, lead.showingTime)
+                  : "Not scheduled"
+              }
+            />
+            <InfoRow label="Source" value={getSourceLabel(lead.source)} />
+          </div>
 
-      <div className="mt-5">
-        <LeadStatusForm
-          leadId={lead.id}
-          currentStatus={lead.status}
-          isPreviewReadonly={isPreviewReadonly}
-        />
-      </div>
+          <div className="rounded-3xl border border-line/70 bg-slate-50/90 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+              Lead Notes
+            </p>
+            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+              {lead.notes || "No notes yet."}
+            </p>
+          </div>
+
+          <LeadStatusForm
+            leadId={lead.id}
+            currentStatus={lead.status}
+            isPreviewReadonly={isPreviewReadonly}
+          />
+        </div>
+      </details>
 
       <div className="mt-5 flex flex-wrap gap-3">
         <LoadingLink href={`/leads/${lead.id}`} className="app-button-primary">
