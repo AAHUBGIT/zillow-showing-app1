@@ -20,6 +20,11 @@ import { communicationChannelOptions, communicationDirectionOptions } from "./co
 import { canUseDatabase, isPreviewReadonlyMode } from "./deployment";
 import { leadPriorityOptions, leadSourceOptions, leadStatusOptions } from "./lead-utils";
 import { getPrismaClient } from "./prisma";
+import {
+  normalizePropertyListingStatus,
+  propertyListingStatusOptions
+} from "./property-listing-utils";
+import { getPropertyListingByIdForUser } from "./property-listings";
 import { propertyInterestStatusOptions } from "./property-interest-utils";
 import { isRouteReadyLead, sortRouteStops } from "./route-planner";
 import {
@@ -32,6 +37,8 @@ import {
   CommunicationChannel,
   CommunicationDirection,
   PropertyInterest,
+  PropertyListing,
+  PropertyListingStatus,
   PropertyInterestStatus
 } from "./types";
 
@@ -58,9 +65,16 @@ function getStatus(formData: FormData) {
   return leadStatusOptions.includes(value) ? value : "new";
 }
 
+function normalizeLeadSource(value: string): LeadSource {
+  return leadSourceOptions.includes(value as LeadSource) ? (value as LeadSource) : "other";
+}
+
 function getSource(formData: FormData) {
-  const value = getString(formData, "source") as LeadSource;
-  return leadSourceOptions.includes(value) ? value : "other";
+  return normalizeLeadSource(getString(formData, "source"));
+}
+
+function getPropertyListingStatus(formData: FormData): PropertyListingStatus {
+  return normalizePropertyListingStatus(getString(formData, "status"));
 }
 
 function getClientPreferenceFields(formData: FormData): ClientPreferenceFields {
@@ -560,6 +574,9 @@ export async function updateLeadSchedule(formData: FormData) {
   const priority = getPriority(formData);
   const source = getSource(formData);
   const nextFollowUpDate = getString(formData, "nextFollowUpDate");
+  const showingLocationType = getString(formData, "showingLocationType");
+  const propertyInterestId = getString(formData, "propertyInterestId");
+  const propertyListingId = getString(formData, "propertyListingId");
 
   if (
     getRequiredSelectError(nextStatus) ||
@@ -578,7 +595,10 @@ export async function updateLeadSchedule(formData: FormData) {
 
   try {
     existingLead = await prisma.lead.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        propertyInterests: true
+      }
     });
   } catch (error) {
     redirectSaveError(`/leads/${id}`, error);
@@ -588,28 +608,123 @@ export async function updateLeadSchedule(formData: FormData) {
     redirect(withToast(`/leads/${id}`, "save-error"));
   }
 
-  try {
-    await prisma.lead.update({
-      where: { id },
-      data: {
-        status:
-          showingDate && showingTime && nextStatus !== "closed"
-            ? "scheduled"
-            : nextStatus,
-        priority,
-        source,
-        nextFollowUpDate,
-        showingDate,
-        showingTime,
-        ...getRouteResetData(existingLead, {
-          propertyAddress: existingLead.propertyAddress,
+  const propertyInterests = ((existingLead as unknown as LeadWithProperties).propertyInterests || []) as PropertyInterest[];
+  let showingLocationAddress = existingLead.propertyAddress;
+  let selectedPropertyInterest: PropertyInterest | null = null;
+  let selectedPropertyListing: PropertyListing | null = null;
+
+  if (showingLocationType === "propertyInterest") {
+    selectedPropertyInterest =
+      propertyInterests.find((propertyInterest) => propertyInterest.id === propertyInterestId) || null;
+    showingLocationAddress = selectedPropertyInterest?.address || "";
+  } else if (showingLocationType === "propertyListing") {
+    selectedPropertyListing = propertyListingId
+      ? await getPropertyListingByIdForUser(sessionUser.id, propertyListingId)
+      : null;
+    showingLocationAddress = selectedPropertyListing?.address || "";
+  }
+
+  if (getRequiredTextError(showingLocationAddress)) {
+    redirectValidation(`/leads/${id}`);
+  }
+
+  const now = new Date().toISOString();
+  const schedulePropertyUpdates = [];
+
+  if (selectedPropertyInterest && showingDate && showingTime) {
+    schedulePropertyUpdates.push(
+      prisma.propertyInterest.update({
+        where: { id: selectedPropertyInterest.id },
+        data: {
+          status: "scheduled",
           showingDate,
-          showingTime
-        }),
-        agentNotes: getString(formData, "agentNotes"),
-        updatedAt: new Date().toISOString()
-      }
+          showingTime,
+          updatedAt: now
+        }
+      })
+    );
+  }
+
+  if (selectedPropertyListing) {
+    const normalizedListingAddress = selectedPropertyListing.address.trim().toLowerCase();
+    const normalizedListingUrl = selectedPropertyListing.listingUrl.trim().toLowerCase();
+    const existingInventoryInterest = propertyInterests.find((propertyInterest) => {
+      const sameAddress = propertyInterest.address.trim().toLowerCase() === normalizedListingAddress;
+      const sameListingUrl =
+        normalizedListingUrl &&
+        propertyInterest.listingUrl.trim().toLowerCase() === normalizedListingUrl;
+
+      return sameAddress || sameListingUrl;
     });
+
+    if (existingInventoryInterest && showingDate && showingTime) {
+      schedulePropertyUpdates.push(
+        prisma.propertyInterest.update({
+          where: { id: existingInventoryInterest.id },
+          data: {
+            status: "scheduled",
+            showingDate,
+            showingTime,
+            updatedAt: now
+          }
+        })
+      );
+    } else if (!existingInventoryInterest) {
+      schedulePropertyUpdates.push(
+        prisma.propertyInterest.create({
+          data: {
+            id: crypto.randomUUID(),
+            leadId: existingLead.id,
+            address: selectedPropertyListing.address,
+            listingTitle: selectedPropertyListing.title,
+            source: normalizeLeadSource(selectedPropertyListing.source),
+            listingUrl: selectedPropertyListing.listingUrl,
+            rent: selectedPropertyListing.price,
+            beds: selectedPropertyListing.beds,
+            baths: selectedPropertyListing.baths,
+            neighborhood: selectedPropertyListing.neighborhood,
+            status: showingDate && showingTime ? "scheduled" : "interested",
+            rating: 3,
+            clientFeedback: "",
+            pros: "",
+            cons: "",
+            agentNotes: selectedPropertyListing.notes,
+            showingDate,
+            showingTime,
+            createdAt: now,
+            updatedAt: now
+          }
+        })
+      );
+    }
+  }
+
+  try {
+    await prisma.$transaction([
+      prisma.lead.update({
+        where: { id },
+        data: {
+          propertyAddress: showingLocationAddress,
+          status:
+            showingDate && showingTime && nextStatus !== "closed"
+              ? "scheduled"
+              : nextStatus,
+          priority,
+          source,
+          nextFollowUpDate,
+          showingDate,
+          showingTime,
+          ...getRouteResetData(existingLead, {
+            propertyAddress: showingLocationAddress,
+            showingDate,
+            showingTime
+          }),
+          agentNotes: getString(formData, "agentNotes"),
+          updatedAt: now
+        }
+      }),
+      ...schedulePropertyUpdates
+    ]);
   } catch (error) {
     redirectSaveError(`/leads/${id}`, error);
   }
@@ -618,6 +733,7 @@ export async function updateLeadSchedule(formData: FormData) {
   revalidatePath("/today");
   revalidatePath(`/leads/${id}`);
   revalidatePath("/routes");
+  revalidatePath("/properties");
   redirect(withToast(`/leads/${id}`, showingDate && showingTime ? "showing-scheduled" : "status-updated"));
 }
 
@@ -708,6 +824,95 @@ export async function updateLeadStatus(formData: FormData) {
   revalidatePath("/routes");
   revalidatePath(`/leads/${id}`);
   redirect(withToast(redirectTo, "status-updated"));
+}
+
+export async function createPropertyListing(formData: FormData) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(
+      withToast("/properties", isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
+    );
+  }
+
+  const title = getString(formData, "title");
+  const address = getString(formData, "address");
+  const price = getString(formData, "price");
+  const beds = getString(formData, "beds");
+  const baths = getString(formData, "baths");
+  const neighborhood = getString(formData, "neighborhood");
+  const source = getSource(formData);
+  const listingUrl = getString(formData, "listingUrl");
+  const notes = getString(formData, "notes");
+  const status = getPropertyListingStatus(formData);
+
+  if (
+    getRequiredTextError(title) ||
+    getRequiredTextError(address) ||
+    !propertyListingStatusOptions.includes(status) ||
+    getNumericError(price) ||
+    getNumericError(beds, false) ||
+    getNumericError(baths) ||
+    getMaxLengthError(title, fieldMaxLengths.listingTitle) ||
+    getMaxLengthError(address, fieldMaxLengths.address) ||
+    getMaxLengthError(price, fieldMaxLengths.rent) ||
+    getMaxLengthError(beds, fieldMaxLengths.beds) ||
+    getMaxLengthError(baths, fieldMaxLengths.baths) ||
+    getMaxLengthError(neighborhood, fieldMaxLengths.neighborhood) ||
+    getMaxLengthError(listingUrl, fieldMaxLengths.listingUrl) ||
+    getMaxLengthError(notes, fieldMaxLengths.notes)
+  ) {
+    redirectValidation("/properties");
+  }
+
+  const prisma = getPrismaClient();
+  const now = new Date().toISOString();
+
+  try {
+    await prisma.$executeRaw`
+      INSERT INTO "PropertyListing" (
+        "id",
+        "userId",
+        "title",
+        "address",
+        "neighborhood",
+        "price",
+        "beds",
+        "baths",
+        "source",
+        "listingUrl",
+        "status",
+        "notes",
+        "createdAt",
+        "updatedAt"
+      )
+      VALUES (
+        ${crypto.randomUUID()},
+        ${sessionUser.id},
+        ${title},
+        ${address},
+        ${neighborhood},
+        ${price},
+        ${beds},
+        ${baths},
+        ${source},
+        ${listingUrl},
+        ${status},
+        ${notes},
+        ${now},
+        ${now}
+      )
+    `;
+  } catch (error) {
+    redirectSaveError("/properties", error);
+  }
+
+  revalidatePath("/properties");
+  redirect(withToast("/properties", "property-listing-added"));
 }
 
 export async function createCommunicationActivity(formData: FormData) {

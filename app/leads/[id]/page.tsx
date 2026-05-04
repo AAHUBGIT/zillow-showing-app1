@@ -26,6 +26,7 @@ import {
   isActivePropertyInterest,
   isRejectedPropertyInterest
 } from "@/lib/property-interest-utils";
+import { getPropertyListings } from "@/lib/property-listings";
 import { getCommunicationWorkspace, getLeadById } from "@/lib/storage";
 
 export default async function LeadDetailsPage({
@@ -34,9 +35,10 @@ export default async function LeadDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [lead, communicationWorkspace] = await Promise.all([
+  const [lead, communicationWorkspace, propertyListings] = await Promise.all([
     getLeadById(id),
-    getCommunicationWorkspace(id)
+    getCommunicationWorkspace(id),
+    getPropertyListings()
   ]);
 
   if (!lead) {
@@ -309,7 +311,11 @@ export default async function LeadDetailsPage({
             </p>
           </div>
 
-          <LeadScheduleForm lead={lead} isPreviewReadonly={isPreviewReadonly} />
+          <LeadScheduleForm
+            lead={lead}
+            propertyListings={propertyListings}
+            isPreviewReadonly={isPreviewReadonly}
+          />
         </aside>
       </div>
     </main>

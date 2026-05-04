@@ -15,6 +15,7 @@ The app is still using the Vercel URL for beta testing. Do not add a custom doma
 - Protects the workspace behind login
 - Tracks renter leads and customer profiles
 - Supports multiple interested properties per customer
+- Maintains an internal property inventory for searchable showing scheduling
 - Compares property options
 - Schedules showings and follow-ups
 - Opens Google Maps route and property links
@@ -79,6 +80,27 @@ Planned setup work:
 - inbound email webhook provider configuration
 - Gmail/Outlook forwarding instructions
 
+## Property Inventory Foundation
+
+`PropertyListing` is the internal property pool for manually entered listings today and the
+future destination for Zillow, portal, or imported property feeds. The current feature is
+manual inventory only. It does not call Zillow APIs, scrape Zillow, or connect to external
+listing services.
+
+Scheduling can now choose a showing location from:
+
+- the lead's primary target address
+- saved interested properties on the lead
+- searchable property inventory
+
+If an inventory listing is selected while scheduling, Showings CRM can attach it to the lead
+as an interested property and use that address for the lead's showing, Today, Routes, and
+Google Calendar links.
+
+Current limitation: the existing lead model stores one active showing date, time, and address
+per lead. Multi-stop customer tours need a future tour-stop model before they can be persisted
+cleanly.
+
 ## Core Features
 
 - Login and logout
@@ -87,6 +109,7 @@ Planned setup work:
 - Lead creation and editing
 - Customer profile pages
 - Property creation and editing
+- Property inventory search and manual listing creation
 - Property comparison view
 - Property workflow actions
 - Showing schedule form

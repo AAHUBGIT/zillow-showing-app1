@@ -7,6 +7,7 @@ import { CalendarLinkButton } from "@/components/calendar-link-button";
 import { DateInputField } from "@/components/date-input-field";
 import { DateTimePickerFields, DateTimePickerHandle } from "@/components/date-time-picker-fields";
 import { InlineSpinner } from "@/components/inline-spinner";
+import { PropertyFitBadges } from "@/components/property-fit-badges";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { emitAppToast } from "@/lib/client-toast";
 import { updateLeadSchedule } from "@/lib/actions";
@@ -25,9 +26,24 @@ import {
   leadSourceOptions,
   leadStatusOptions
 } from "@/lib/lead-utils";
-import { Lead } from "@/lib/types";
+import {
+  formatPropertyListingPrice,
+  getPropertyListingLayout,
+  propertyListingToFitPropertyInterest
+} from "@/lib/property-listing-utils";
+import type { Lead, LeadWithProperties, PropertyListing } from "@/lib/types";
 
 type FieldErrors = Partial<Record<string, string>>;
+type ScheduleLocationType = "primary" | "propertyInterest" | "propertyListing";
+type ScheduleLocationOption = {
+  value: string;
+  type: ScheduleLocationType;
+  label: string;
+  address: string;
+  detail: string;
+  propertyInterestId: string;
+  propertyListingId: string;
+};
 
 type ScheduleFormValues = {
   status: string;
@@ -68,13 +84,17 @@ function buildErrors(values: ScheduleFormValues) {
 
 export function LeadScheduleForm({
   lead,
+  propertyListings = [],
   isPreviewReadonly = false
 }: {
-  lead: Lead;
+  lead: LeadWithProperties;
+  propertyListings?: PropertyListing[];
   isPreviewReadonly?: boolean;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const scheduleRef = useRef<DateTimePickerHandle>(null);
+  const [locationSearch, setLocationSearch] = useState("");
+  const [selectedLocationValue, setSelectedLocationValue] = useState("primary");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [values, setValues] = useState<ScheduleFormValues>({
     status: lead.status,
@@ -89,11 +109,75 @@ export function LeadScheduleForm({
     isValid: true,
     isPastDate: false
   });
+  const primaryLocation: ScheduleLocationOption = {
+    value: "primary",
+    type: "primary",
+    label: "Lead primary target",
+    address: lead.propertyAddress,
+    detail: "Use the address already saved on this customer.",
+    propertyInterestId: "",
+    propertyListingId: ""
+  };
+  const savedPropertyOptions = useMemo<ScheduleLocationOption[]>(
+    () =>
+      lead.propertyInterests.map((propertyInterest) => ({
+        value: `propertyInterest:${propertyInterest.id}`,
+        type: "propertyInterest",
+        label: propertyInterest.listingTitle || propertyInterest.address,
+        address: propertyInterest.address,
+        detail: [
+          propertyInterest.rent ? `Rent ${propertyInterest.rent}` : "",
+          propertyInterest.beds ? `${propertyInterest.beds} bd` : "",
+          propertyInterest.neighborhood
+        ]
+          .filter(Boolean)
+          .join(" - ") || "Saved interested property",
+        propertyInterestId: propertyInterest.id,
+        propertyListingId: ""
+      })),
+    [lead.propertyInterests]
+  );
+  const inventoryMatches = useMemo(() => {
+    const query = locationSearch.trim().toLowerCase();
+
+    return propertyListings
+      .filter((listing) => {
+        if (!query) {
+          return listing.status !== "unavailable";
+        }
+
+        return [listing.title, listing.address, listing.neighborhood]
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+      })
+      .slice(0, 6);
+  }, [locationSearch, propertyListings]);
+  const inventoryOptions = useMemo<ScheduleLocationOption[]>(
+    () =>
+      inventoryMatches.map((listing) => ({
+        value: `propertyListing:${listing.id}`,
+        type: "propertyListing",
+        label: listing.title,
+        address: listing.address,
+        detail: [formatPropertyListingPrice(listing.price), getPropertyListingLayout(listing), listing.neighborhood]
+          .filter(Boolean)
+          .join(" - "),
+        propertyInterestId: "",
+        propertyListingId: listing.id
+      })),
+    [inventoryMatches]
+  );
+  const selectedLocation =
+    [primaryLocation, ...savedPropertyOptions, ...inventoryOptions].find(
+      (option) => option.value === selectedLocationValue
+    ) || primaryLocation;
 
   const calendarUrl =
     scheduleState.date && scheduleState.time && scheduleState.isValid
       ? buildGoogleCalendarUrlFromDraft({
           ...lead,
+          propertyAddress: selectedLocation.address,
           showingDate: scheduleState.date,
           showingTime: scheduleState.time,
           status: values.status as Lead["status"],
@@ -101,7 +185,7 @@ export function LeadScheduleForm({
           source: values.source as Lead["source"],
           nextFollowUpDate: values.nextFollowUpDate,
           agentNotes: values.agentNotes
-        })
+        } as Lead)
       : null;
 
   useEffect(() => {
@@ -198,13 +282,104 @@ export function LeadScheduleForm({
       className="mt-5 grid gap-4"
     >
       <input type="hidden" name="id" value={lead.id} />
+      <input type="hidden" name="showingLocationType" value={selectedLocation.type} />
+      <input type="hidden" name="showingLocationAddress" value={selectedLocation.address} />
+      <input type="hidden" name="propertyInterestId" value={selectedLocation.propertyInterestId} />
+      <input type="hidden" name="propertyListingId" value={selectedLocation.propertyListingId} />
 
       <div className="rounded-3xl border border-line/70 bg-slate-50/90 p-4">
         <p className="app-kicker">Showing Location</p>
-        <p className="mt-2 text-sm font-semibold leading-6 text-ink">{lead.propertyAddress}</p>
-        <p className="mt-2 text-xs leading-5 text-slate-500">
-          Uses the lead's primary target address, so a saved interested property is not required.
-        </p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-ink">{selectedLocation.address}</p>
+        <p className="mt-2 text-xs leading-5 text-slate-500">{selectedLocation.detail}</p>
+      </div>
+
+      <div className="rounded-3xl border border-line/70 bg-white/90 p-4">
+        <p className="text-sm font-semibold text-ink">Choose where this showing is happening</p>
+        <div className="mt-3 grid gap-3">
+          <ScheduleLocationRadio
+            option={primaryLocation}
+            checked={selectedLocationValue === primaryLocation.value}
+            onChange={setSelectedLocationValue}
+          />
+
+          {savedPropertyOptions.length > 0 ? (
+            <div className="grid gap-2">
+              <p className="app-kicker">Saved properties</p>
+              {savedPropertyOptions.map((option) => (
+                <ScheduleLocationRadio
+                  key={option.value}
+                  option={option}
+                  checked={selectedLocationValue === option.value}
+                  onChange={setSelectedLocationValue}
+                />
+              ))}
+            </div>
+          ) : null}
+
+          <div className="grid gap-2">
+            <label className="flex flex-col gap-2">
+              <span className="app-kicker">Search property inventory</span>
+              <input
+                type="search"
+                value={locationSearch}
+                onChange={(event) => setLocationSearch(event.target.value)}
+                placeholder="Search property inventory"
+                className="app-input"
+              />
+            </label>
+
+            {inventoryMatches.length > 0 ? (
+              <div className="grid gap-2">
+                {inventoryMatches.map((listing, index) => {
+                  const option = inventoryOptions[index];
+
+                  return (
+                    <label
+                      key={listing.id}
+                      className={`cursor-pointer rounded-2xl border px-4 py-3 transition ${
+                        selectedLocationValue === option.value
+                          ? "border-accent bg-accentSoft/70"
+                          : "border-line/80 bg-slate-50/80 hover:border-accent"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="location-picker"
+                          value={option.value}
+                          checked={selectedLocationValue === option.value}
+                          onChange={() => setSelectedLocationValue(option.value)}
+                          className="mt-1 h-4 w-4 accent-blue-600"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-ink">{listing.title}</p>
+                          <p className="mt-1 text-xs leading-5 text-slate-600">{listing.address}</p>
+                          <p className="mt-1 text-xs text-slate-500">{option.detail}</p>
+                          <div className="mt-2">
+                            <PropertyFitBadges
+                              lead={lead}
+                              propertyInterest={propertyListingToFitPropertyInterest(listing, lead.id)}
+                              compact
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="rounded-2xl border border-dashed border-line bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                No inventory matches yet. Add listings from the Properties page.
+              </p>
+            )}
+          </div>
+
+          <p className="text-xs leading-5 text-slate-500">
+            Current data model saves one showing per lead. Choose one property now; multi-stop
+            tours will need a dedicated tour-stop model later.
+          </p>
+        </div>
       </div>
 
       <ValidatedSelect
@@ -332,6 +507,40 @@ function UpdateLeadButton({ disabled = false }: { disabled?: boolean }) {
         "Update Lead"
       )}
     </button>
+  );
+}
+
+function ScheduleLocationRadio({
+  option,
+  checked,
+  onChange
+}: {
+  option: ScheduleLocationOption;
+  checked: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label
+      className={`cursor-pointer rounded-2xl border px-4 py-3 transition ${
+        checked ? "border-accent bg-accentSoft/70" : "border-line/80 bg-slate-50/80 hover:border-accent"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <input
+          type="radio"
+          name="location-picker"
+          value={option.value}
+          checked={checked}
+          onChange={() => onChange(option.value)}
+          className="mt-1 h-4 w-4 accent-blue-600"
+        />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-ink">{option.label}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-600">{option.address}</p>
+          <p className="mt-1 text-xs text-slate-500">{option.detail}</p>
+        </div>
+      </div>
+    </label>
   );
 }
 

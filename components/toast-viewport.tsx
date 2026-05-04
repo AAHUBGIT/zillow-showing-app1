@@ -10,6 +10,7 @@ const toastMessages: Record<string, string> = {
   "showing-scheduled": "Showing scheduled successfully.",
   "route-copied": "Route link copied to clipboard.",
   "property-added": "Property added to this customer.",
+  "property-listing-added": "Property listing added to inventory.",
   "property-updated": "Property details updated.",
   "property-toured": "Property marked as toured.",
   "property-scheduled": "Property showing scheduled.",

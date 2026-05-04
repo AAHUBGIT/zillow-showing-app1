@@ -16,6 +16,7 @@ export type PropertyInterestStatus =
   | "applying"
   | "approved"
   | "closed";
+export type PropertyListingStatus = "available" | "unavailable" | "unknown";
 export type CommunicationChannel = "call" | "text" | "email" | "note";
 export type CommunicationDirection = "outbound" | "inbound" | "internal";
 
@@ -75,6 +76,23 @@ export type PropertyInterest = {
   agentNotes: string;
   showingDate: string;
   showingTime: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PropertyListing = {
+  id: string;
+  userId: string;
+  title: string;
+  address: string;
+  neighborhood: string;
+  price: string;
+  beds: string;
+  baths: string;
+  source: string;
+  listingUrl: string;
+  status: PropertyListingStatus;
+  notes: string;
   createdAt: string;
   updatedAt: string;
 };

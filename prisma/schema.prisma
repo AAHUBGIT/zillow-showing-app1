@@ -72,6 +72,27 @@ model PropertyInterest {
   lead         Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 }
 
+model PropertyListing {
+  id           String @id
+  userId       String
+  title        String
+  address      String
+  neighborhood String
+  price        String
+  beds         String
+  baths        String
+  source       String
+  listingUrl   String
+  status       String
+  notes        String
+  createdAt    String
+  updatedAt    String
+
+  @@index([userId, updatedAt])
+  @@index([userId, status])
+  @@index([userId, neighborhood])
+}
+
 model CommunicationTemplate {
   id        String @id
   userId    String

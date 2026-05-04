@@ -12,6 +12,7 @@ const navItems = [
   { href: "/today", label: "Today" },
   { href: "/", label: "Dashboard" },
   { href: "/leads/new", label: "New Lead" },
+  { href: "/properties", label: "Properties" },
   { href: "/lead-capture", label: "Lead Capture" },
   { href: "/routes", label: "Routes" }
 ];
