@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const protectedPaths = ["/", "/leads", "/routes"];
+const protectedPaths = ["/", "/today", "/routes", "/properties", "/lead-capture", "/import", "/leads"];
+// Inbound email is intentionally public because providers cannot hold a user session;
+// the route enforces its own webhook secret.
+const publicApiPaths = ["/api/inbound-email"];
 const SESSION_COOKIE = "showing-agent-session";
 const encoder = new TextEncoder();
 
 function isProtectedPath(pathname: string) {
   return protectedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+function isProtectedApiPath(pathname: string) {
+  return pathname.startsWith("/api") && !publicApiPaths.some((path) => pathname === path);
 }
 
 function getAuthSecret() {
@@ -40,6 +47,10 @@ export async function middleware(request: NextRequest) {
     const response = NextResponse.next();
     response.cookies.delete(SESSION_COOKIE);
     return response;
+  }
+
+  if (isProtectedApiPath(pathname) && !hasValidSession) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
   if (isProtectedPath(pathname) && !hasValidSession) {

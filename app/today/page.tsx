@@ -5,6 +5,7 @@ import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PriorityBadge } from "@/components/priority-badge";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { getCommunicationChannelLabel } from "@/lib/communication";
+import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
 import { formatDateLabel, formatDateTimeLabel, formatTimeForManualEntry } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
 import { buildGoogleMapsSearchLink } from "@/lib/property-interest-utils";
@@ -30,12 +31,22 @@ export default async function TodayPage() {
     .filter((lead) => lead.showingDate === today && isRouteReadyLead(lead))
     .sort(sortByShowingTimeThenName);
 
+  const upcomingShowings = leads
+    .filter((lead) => lead.showingDate > today && isRouteReadyLead(lead))
+    .sort(sortByShowingDateThenTimeThenName)
+    .slice(0, 5);
+
   const overdueFollowUps = leads
-    .filter((lead) => Boolean(lead.nextFollowUpDate) && lead.nextFollowUpDate < today)
+    .filter(
+      (lead) =>
+        lead.status !== "closed" &&
+        Boolean(lead.nextFollowUpDate) &&
+        lead.nextFollowUpDate < today
+    )
     .sort((first, second) => first.nextFollowUpDate.localeCompare(second.nextFollowUpDate));
 
   const followUpsDueToday = leads
-    .filter((lead) => lead.nextFollowUpDate === today)
+    .filter((lead) => lead.status !== "closed" && lead.nextFollowUpDate === today)
     .sort(sortByPriorityThenName);
 
   const highPriorityOpenLeads = leads
@@ -92,20 +103,38 @@ export default async function TodayPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <CommandSection
-          id={todaySectionIds.showings}
-          title="Today's Showings"
-          eyebrow="Showing Schedule"
-          emptyTitle="No showings today"
-          emptyDetail="You're clear for now. New scheduled showings for today will appear here automatically."
-          isEmpty={todaysShowings.length === 0}
-        >
-          <div className="grid gap-3">
-            {todaysShowings.map((lead) => (
-              <ShowingCard key={lead.id} lead={lead} />
-            ))}
-          </div>
-        </CommandSection>
+        <div className="space-y-6">
+          <CommandSection
+            id={todaySectionIds.showings}
+            title="Today's Showings"
+            eyebrow="Showing Schedule"
+            emptyTitle="No showings today"
+            emptyDetail="You're clear for now. New scheduled showings for today will appear here automatically."
+            isEmpty={todaysShowings.length === 0}
+          >
+            <div className="grid gap-3">
+              {todaysShowings.map((lead) => (
+                <ShowingCard key={lead.id} lead={lead} />
+              ))}
+            </div>
+          </CommandSection>
+
+          {todaysShowings.length === 0 && upcomingShowings.length > 0 ? (
+            <CommandSection
+              title="Upcoming Next"
+              eyebrow="Next Scheduled"
+              emptyTitle="No upcoming showings"
+              emptyDetail="Upcoming scheduled showings will appear here."
+              isEmpty={false}
+            >
+              <div className="grid gap-3">
+                {upcomingShowings.map((lead) => (
+                  <UpcomingShowingCard key={lead.id} lead={lead} />
+                ))}
+              </div>
+            </CommandSection>
+          ) : null}
+        </div>
 
         <CommandSection
           title="Route Snapshot"
@@ -266,6 +295,27 @@ function ShowingCard({ lead }: { lead: LeadWithProperties }) {
   );
 }
 
+function UpcomingShowingCard({ lead }: { lead: LeadWithProperties }) {
+  return (
+    <article className="rounded-3xl border border-line/80 bg-white px-4 py-4 shadow-sm">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              {formatDateTimeLabel(lead.showingDate, lead.showingTime)}
+            </div>
+            <PriorityBadge priority={lead.priority} />
+            <LeadStatusBadge status={lead.status} />
+          </div>
+          <p className="mt-3 text-base font-semibold tracking-tight text-ink">{lead.fullName}</p>
+          <p className="mt-1 text-sm leading-5 text-slate-600">{lead.propertyAddress}</p>
+        </div>
+        <QuickActions lead={lead} includeMaps />
+      </div>
+    </article>
+  );
+}
+
 function LeadList({
   leads,
   showBadges = false,
@@ -345,21 +395,21 @@ function QuickActions({ lead, includeMaps = false }: { lead: LeadWithProperties;
         View Lead
       </LoadingLink>
       <ContactActionLink
-        href={`tel:${phone}`}
+        href={buildCallHref(phone)}
         label="Call"
         toastMessage="Opening phone app"
         disabled={!hasPhone}
         disabledLabel="Phone unavailable"
       />
       <ContactActionLink
-        href={getLeadTextHref(lead)}
+        href={buildLeadTextHref(lead)}
         label="Text"
         toastMessage="Opening text app"
         disabled={!hasPhone}
         disabledLabel="Phone unavailable"
       />
       <ContactActionLink
-        href={getLeadEmailHref(lead)}
+        href={buildLeadEmailHref(lead)}
         label="Email"
         toastMessage="Opening email app"
         disabled={!hasEmail}
@@ -457,23 +507,16 @@ function EmptyState({ title, detail }: { title: string; detail: string }) {
   );
 }
 
-function getLeadTextHref(lead: LeadWithProperties) {
-  const message = `Hi ${getFirstName(lead.fullName)}, following up on ${lead.propertyAddress}.`;
-  return `sms:${lead.phone}?body=${encodeURIComponent(message)}`;
-}
-
-function getLeadEmailHref(lead: LeadWithProperties) {
-  const subject = `Following up on ${lead.propertyAddress}`;
-  const message = `Hi ${getFirstName(lead.fullName)},\n\nFollowing up on ${lead.propertyAddress}. Let me know what questions you have or what timing works best.\n\nBest,`;
-  return `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-}
-
-function getFirstName(fullName: string) {
-  return fullName.split(" ").filter(Boolean)[0] || fullName;
-}
-
 function sortByShowingTimeThenName(first: LeadWithProperties, second: LeadWithProperties) {
   return first.showingTime.localeCompare(second.showingTime) || first.fullName.localeCompare(second.fullName);
+}
+
+function sortByShowingDateThenTimeThenName(first: LeadWithProperties, second: LeadWithProperties) {
+  return (
+    first.showingDate.localeCompare(second.showingDate) ||
+    first.showingTime.localeCompare(second.showingTime) ||
+    first.fullName.localeCompare(second.fullName)
+  );
 }
 
 const priorityRank = {

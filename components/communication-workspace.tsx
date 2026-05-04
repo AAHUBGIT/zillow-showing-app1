@@ -7,6 +7,7 @@ import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { createCommunicationTemplate, logCommunicationActivityInline } from "@/lib/actions";
 import { emitAppToast } from "@/lib/client-toast";
+import { buildEmailHref, buildTextHref, normalizePhoneForHref } from "@/lib/contact-actions";
 import {
   communicationChannelOptions,
   communicationDirectionOptions,
@@ -748,36 +749,8 @@ function restoreScrollPosition(scrollPosition: { left: number; top: number }) {
   });
 }
 
-function normalizePhoneForHref(phone: string) {
-  return phone.replace(/[^\d+]/g, "") || phone;
-}
-
 function buildSmsHref(phone: string, message: string) {
-  const normalizedPhone = normalizePhoneForHref(phone);
-  const trimmedMessage = message.trim();
-
-  if (!trimmedMessage) {
-    return `sms:${normalizedPhone}`;
-  }
-
-  return `sms:${normalizedPhone}?body=${encodeURIComponent(trimmedMessage)}`;
-}
-
-function buildEmailHref(email: string, subject: string, message: string) {
-  const params = new URLSearchParams();
-  const trimmedSubject = subject.trim();
-  const trimmedMessage = message.trim();
-
-  if (trimmedSubject) {
-    params.set("subject", trimmedSubject);
-  }
-
-  if (trimmedMessage) {
-    params.set("body", trimmedMessage);
-  }
-
-  const query = params.toString();
-  return query ? `mailto:${email}?${query}` : `mailto:${email}`;
+  return buildTextHref(phone, message);
 }
 
 function formatActivityDate(value: string) {

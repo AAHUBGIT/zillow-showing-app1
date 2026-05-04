@@ -12,7 +12,9 @@ import { PropertyInterestCard } from "@/components/property-interest-card";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PriorityBadge } from "@/components/priority-badge";
 import { SourceBadge } from "@/components/source-badge";
+import { ContactActionLink } from "@/components/contact-action-link";
 import { buildGoogleCalendarUrl } from "@/lib/calendar";
+import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import {
   getPriorityLabel,
@@ -52,6 +54,10 @@ export default async function LeadDetailsPage({
   const activePropertyCount = activeProperties.length;
   const topRatedProperty = getTopRatedProperty(activeProperties);
   const addPropertyHref = `/leads/${lead.id}/properties/new`;
+  const phone = lead.phone.trim();
+  const email = lead.email.trim();
+  const hasPhone = phone.length > 0;
+  const hasEmail = email.length > 0;
   const comparisonProperties =
     activeProperties.length > 0
       ? [...activeProperties, ...rejectedProperties]
@@ -121,15 +127,27 @@ export default async function LeadDetailsPage({
               <div className="app-subpanel p-5">
                 <p className="app-kicker">Contact Shortcuts</p>
                 <div className="mt-3 flex flex-wrap gap-3">
-                  <a href={`tel:${lead.phone}`} className="app-button-secondary">
-                    Call
-                  </a>
-                  <a href={`sms:${lead.phone}`} className="app-button-secondary">
-                    Text
-                  </a>
-                  <a href={`mailto:${lead.email}`} className="app-button-secondary">
-                    Email
-                  </a>
+                  <ContactActionLink
+                    href={buildCallHref(phone)}
+                    label="Call"
+                    toastMessage="Opening phone app"
+                    disabled={!hasPhone}
+                    disabledLabel="Phone unavailable"
+                  />
+                  <ContactActionLink
+                    href={buildLeadTextHref(lead)}
+                    label="Text"
+                    toastMessage="Opening text app"
+                    disabled={!hasPhone}
+                    disabledLabel="Phone unavailable"
+                  />
+                  <ContactActionLink
+                    href={buildLeadEmailHref(lead)}
+                    label="Email"
+                    toastMessage="Opening email app"
+                    disabled={!hasEmail}
+                    disabledLabel="Email unavailable"
+                  />
                 </div>
               </div>
             </div>

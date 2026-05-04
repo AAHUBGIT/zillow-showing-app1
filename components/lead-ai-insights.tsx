@@ -17,16 +17,16 @@ export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
     <section className="app-panel p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="app-eyebrow">AI Assist</p>
+          <p className="app-eyebrow">Smart Assist</p>
           <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
             Productivity suggestions for this customer
           </h3>
           <p className="app-copy mt-2 max-w-3xl">
-            Lightweight AI-style guidance helps summarize preferences, recommend the next outreach
+            Lightweight workflow guidance helps summarize preferences, recommend the next outreach
             move, and surface the strongest property fit without interrupting the normal workflow.
           </p>
         </div>
-        <div className="app-chip">Heuristic assistant</div>
+        <div className="app-chip">Rule-based suggestions</div>
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">

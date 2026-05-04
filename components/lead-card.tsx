@@ -1,5 +1,7 @@
+import { ContactActionLink } from "@/components/contact-action-link";
 import { LoadingLink } from "@/components/loading-link";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
+import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import { getSourceLabel } from "@/lib/lead-utils";
 import { getPropertyInterestCountLabel } from "@/lib/property-interest-utils";
@@ -18,6 +20,10 @@ export function LeadCard({
   isPreviewReadonly?: boolean;
 }) {
   const propertyCount = lead.propertyInterests.length;
+  const phone = lead.phone.trim();
+  const email = lead.email.trim();
+  const hasPhone = phone.length > 0;
+  const hasEmail = email.length > 0;
 
   return (
     <article className="group rounded-4xl border border-line/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-panel">
@@ -55,15 +61,30 @@ export function LeadCard({
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        <a href={`tel:${lead.phone}`} className="app-button-secondary px-3 py-2 text-xs">
-          Call
-        </a>
-        <a href={`sms:${lead.phone}`} className="app-button-secondary px-3 py-2 text-xs">
-          Text
-        </a>
-        <a href={`mailto:${lead.email}`} className="app-button-secondary px-3 py-2 text-xs">
-          Email
-        </a>
+        <ContactActionLink
+          href={buildCallHref(phone)}
+          label="Call"
+          toastMessage="Opening phone app"
+          disabled={!hasPhone}
+          disabledLabel="Phone unavailable"
+          className="app-button-secondary px-3 py-2 text-xs"
+        />
+        <ContactActionLink
+          href={buildLeadTextHref(lead)}
+          label="Text"
+          toastMessage="Opening text app"
+          disabled={!hasPhone}
+          disabledLabel="Phone unavailable"
+          className="app-button-secondary px-3 py-2 text-xs"
+        />
+        <ContactActionLink
+          href={buildLeadEmailHref(lead)}
+          label="Email"
+          toastMessage="Opening email app"
+          disabled={!hasEmail}
+          disabledLabel="Email unavailable"
+          className="app-button-secondary px-3 py-2 text-xs"
+        />
       </div>
 
       <details className="group mt-5">
