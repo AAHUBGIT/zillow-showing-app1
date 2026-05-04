@@ -592,7 +592,10 @@ export async function updateLeadSchedule(formData: FormData) {
     await prisma.lead.update({
       where: { id },
       data: {
-        status: showingDate && showingTime && nextStatus === "new" ? "scheduled" : nextStatus,
+        status:
+          showingDate && showingTime && nextStatus !== "closed"
+            ? "scheduled"
+            : nextStatus,
         priority,
         source,
         nextFollowUpDate,
@@ -612,6 +615,7 @@ export async function updateLeadSchedule(formData: FormData) {
   }
 
   revalidatePath("/");
+  revalidatePath("/today");
   revalidatePath(`/leads/${id}`);
   revalidatePath("/routes");
   redirect(withToast(`/leads/${id}`, showingDate && showingTime ? "showing-scheduled" : "status-updated"));

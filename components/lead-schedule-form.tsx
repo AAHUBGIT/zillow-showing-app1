@@ -115,6 +115,24 @@ export function LeadScheduleForm({
     );
   }, [calendarUrl, lead.id]);
 
+  useEffect(() => {
+    if (!scheduleState.date || !scheduleState.time) {
+      return;
+    }
+
+    setValues((current) => {
+      if (current.status === "closed" || current.status === "scheduled") {
+        return current;
+      }
+
+      return { ...current, status: "scheduled" };
+    });
+    setErrors((current) => {
+      const { status: _ignored, ...rest } = current;
+      return rest;
+    });
+  }, [scheduleState.date, scheduleState.time]);
+
   const isFormValid = useMemo(
     () => Object.keys(buildErrors(values)).length === 0 && scheduleState.isValid,
     [scheduleState.isValid, values]
@@ -180,6 +198,14 @@ export function LeadScheduleForm({
       className="mt-5 grid gap-4"
     >
       <input type="hidden" name="id" value={lead.id} />
+
+      <div className="rounded-3xl border border-line/70 bg-slate-50/90 p-4">
+        <p className="app-kicker">Showing Location</p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-ink">{lead.propertyAddress}</p>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          Uses the lead's primary target address, so a saved interested property is not required.
+        </p>
+      </div>
 
       <ValidatedSelect
         label="Status"

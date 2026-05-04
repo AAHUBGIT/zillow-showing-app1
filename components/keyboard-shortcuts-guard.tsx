@@ -26,12 +26,15 @@ export function KeyboardShortcutsGuard() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const pressedSelectAll = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a";
+      const pressedBackspace = event.key === "Backspace";
 
-      if (!pressedSelectAll || isTextInputTarget(event.target)) {
+      if (isTextInputTarget(event.target)) {
         return;
       }
 
-      event.preventDefault();
+      if (pressedSelectAll || pressedBackspace) {
+        event.preventDefault();
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown, true);

@@ -119,7 +119,11 @@ export function LeadCard({
         <LoadingLink href={`/leads/${lead.id}`} className="app-button-primary">
           Open Details
         </LoadingLink>
-        <LoadingLink href={`/leads/${lead.id}`} className="app-button-secondary">
+        <LoadingLink
+          href={`/leads/${lead.id}#schedule-showing`}
+          className="app-button-secondary"
+          loadingLabel="Opening Schedule..."
+        >
           Schedule Showing
         </LoadingLink>
       </div>

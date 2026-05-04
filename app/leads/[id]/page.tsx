@@ -290,14 +290,14 @@ export default async function LeadDetailsPage({
           </div>
         </section>
 
-        <aside className="app-panel p-5 sm:p-6">
+        <aside id="schedule-showing" className="scroll-mt-28 app-panel p-5 sm:p-6">
           <p className="app-eyebrow">Scheduling</p>
           <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink">
             Assign or update showing
           </h3>
           <p className="app-copy mt-2">
-            Update the showing date, time, notes, and status. When a showing is scheduled, you can
-            also send it straight to Google Calendar.
+            Update the showing date, time, notes, and status using this lead's primary target
+            address. When a showing is scheduled, you can also send it straight to Google Calendar.
           </p>
 
           <div className="mt-5 app-subpanel p-4">
