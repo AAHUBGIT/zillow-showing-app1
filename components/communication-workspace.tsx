@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
+import { ContactActionLink } from "@/components/contact-action-link";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { createCommunicationTemplate, logCommunicationActivityInline } from "@/lib/actions";
 import { emitAppToast } from "@/lib/client-toast";
-import { buildEmailHref, buildTextHref, normalizePhoneForHref } from "@/lib/contact-actions";
+import { buildCallHref, buildEmailHref, buildTextHref } from "@/lib/contact-actions";
 import {
   communicationChannelOptions,
   communicationDirectionOptions,
@@ -63,7 +64,7 @@ export function CommunicationWorkspace({
   const email = lead.email.trim();
   const hasPhone = phone.length > 0;
   const hasEmail = email.length > 0;
-  const phoneHref = hasPhone ? `tel:${normalizePhoneForHref(phone)}` : "";
+  const phoneHref = hasPhone ? buildCallHref(phone) : "";
   const smsHref = hasPhone ? buildSmsHref(phone, body) : "";
   const emailHref = hasEmail ? buildEmailHref(email, subject, body) : "";
   const canLogActivity = body.trim().length > 0;
@@ -412,33 +413,27 @@ export function CommunicationWorkspace({
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-2">
-                <ContactLink
+                <ContactActionLink
+                  action="call"
                   href={phoneHref}
-                  protocolText={hasPhone ? `tel:${phone}` : "No phone number"}
                   disabled={!hasPhone}
-                  disabledReason="Phone unavailable"
-                  toastMessage="Opening phone app"
-                >
-                  Call
-                </ContactLink>
-                <ContactLink
+                  helperText={hasPhone ? `tel:${phone}` : undefined}
+                  className="app-button-secondary min-h-[52px] flex-col items-start justify-center gap-1 px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
+                />
+                <ContactActionLink
+                  action="text"
                   href={smsHref}
-                  protocolText={hasPhone ? `sms:${phone}` : "No phone number"}
                   disabled={!hasPhone}
-                  disabledReason="Phone unavailable"
-                  toastMessage="Opening text app"
-                >
-                  Text
-                </ContactLink>
-                <ContactLink
+                  helperText={hasPhone ? `sms:${phone}` : undefined}
+                  className="app-button-secondary min-h-[52px] flex-col items-start justify-center gap-1 px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
+                />
+                <ContactActionLink
+                  action="email"
                   href={emailHref}
-                  protocolText={hasEmail ? `mailto:${email}` : "No email address"}
                   disabled={!hasEmail}
-                  disabledReason="Email unavailable"
-                  toastMessage="Opening email app"
-                >
-                  Email
-                </ContactLink>
+                  helperText={hasEmail ? `mailto:${email}` : undefined}
+                  className="app-button-secondary min-h-[52px] flex-col items-start justify-center gap-1 px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
+                />
                 <button
                   type="button"
                   onClick={copyMessage}
@@ -597,45 +592,6 @@ export function CommunicationWorkspace({
         </section>
       </div>
     </div>
-  );
-}
-
-function ContactLink({
-  href,
-  protocolText,
-  disabled,
-  disabledReason,
-  toastMessage,
-  children
-}: {
-  href: string;
-  protocolText: string;
-  disabled?: boolean;
-  disabledReason?: string;
-  toastMessage: string;
-  children: ReactNode;
-}) {
-  if (disabled) {
-    return (
-      <span
-        className="app-button-secondary min-h-[52px] cursor-not-allowed px-4 py-3 opacity-50"
-        aria-disabled="true"
-      >
-        <span>{children}</span>
-        <span className="text-[11px] font-semibold text-slate-400">{disabledReason || protocolText}</span>
-      </span>
-    );
-  }
-
-  return (
-    <a
-      href={href}
-      onClick={() => emitAppToast({ message: toastMessage })}
-      className="app-button-secondary min-h-[52px] px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
-    >
-      <span>{children}</span>
-      <span className="text-[11px] font-semibold text-slate-400">{protocolText}</span>
-    </a>
   );
 }
 

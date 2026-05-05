@@ -18,6 +18,7 @@ import {
   isActivePropertyInterest,
   normalizePropertyInterestStatus
 } from "./property-interest-utils";
+import { buildCallHref, buildEmailHref, buildTextHref } from "./contact-actions";
 import { LeadWithProperties, PropertyInterest } from "./types";
 
 type PreferenceSignal = {
@@ -322,7 +323,7 @@ function getSuggestedNextAction(
       label: "Application step",
       reason: "The lead is marked application ready, so the best follow-up is a clear next-step email tied to the strongest property fit.",
       draft,
-      href: `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(draft)}`
+      href: buildEmailHref(lead.email, subject, draft)
     };
   }
 
@@ -334,7 +335,7 @@ function getSuggestedNextAction(
       label: "Pre-screen follow-up",
       reason: "Qualification details need review before investing more time in showings.",
       draft,
-      href: `sms:${lead.phone}?body=${encodeURIComponent(draft)}`
+      href: buildTextHref(lead.phone, draft)
     };
   }
 
@@ -349,7 +350,7 @@ function getSuggestedNextAction(
       label: "Call recommended",
       reason: "A live call is the fastest way to move an urgent, new, or overdue lead forward while confirming preferences.",
       draft,
-      href: `tel:${lead.phone}`
+      href: buildCallHref(lead.phone)
     };
   }
 
@@ -364,7 +365,7 @@ function getSuggestedNextAction(
       label: "Text recommended",
       reason: "A short text works best for confirming an upcoming showing and keeping momentum high.",
       draft,
-      href: `sms:${lead.phone}?body=${encodeURIComponent(draft)}`
+      href: buildTextHref(lead.phone, draft)
     };
   }
 
@@ -376,7 +377,7 @@ function getSuggestedNextAction(
     label: "Email recommended",
     reason: "An email recap works well when the lead needs a preference-based property recommendation and a clear written next step.",
     draft,
-    href: `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(draft)}`
+    href: buildEmailHref(lead.email, subject, draft)
   };
 }
 

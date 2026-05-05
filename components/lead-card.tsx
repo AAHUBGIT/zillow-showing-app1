@@ -62,27 +62,21 @@ export function LeadCard({
 
       <div className="mt-5 flex flex-wrap gap-2">
         <ContactActionLink
+          action="call"
           href={buildCallHref(phone)}
-          label="Call"
-          toastMessage="Opening phone app"
           disabled={!hasPhone}
-          disabledLabel="Phone unavailable"
           className="app-button-secondary px-3 py-2 text-xs"
         />
         <ContactActionLink
+          action="text"
           href={buildLeadTextHref(lead)}
-          label="Text"
-          toastMessage="Opening text app"
           disabled={!hasPhone}
-          disabledLabel="Phone unavailable"
           className="app-button-secondary px-3 py-2 text-xs"
         />
         <ContactActionLink
+          action="email"
           href={buildLeadEmailHref(lead)}
-          label="Email"
-          toastMessage="Opening email app"
           disabled={!hasEmail}
-          disabledLabel="Email unavailable"
           className="app-button-secondary px-3 py-2 text-xs"
         />
       </div>

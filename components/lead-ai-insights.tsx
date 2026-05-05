@@ -1,17 +1,31 @@
+import { ContactActionLink } from "@/components/contact-action-link";
 import { LoadingLink } from "@/components/loading-link";
 import { PropertyInterestStatusBadge } from "@/components/property-interest-status-badge";
 import { PropertyRatingStars } from "@/components/property-rating-stars";
 import { getLeadAiInsights } from "@/lib/ai-insights";
+import { buildEmailHref, buildTextHref } from "@/lib/contact-actions";
 import { LeadWithProperties } from "@/lib/types";
 
 export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
   const insights = getLeadAiInsights(lead);
+  const phone = lead.phone.trim();
+  const email = lead.email.trim();
+  const hasPhone = phone.length > 0;
+  const hasEmail = email.length > 0;
   const nextActionLabel =
     insights.nextAction.type === "call"
       ? "Call Client"
       : insights.nextAction.type === "text"
         ? "Open Text Draft"
         : "Open Email Draft";
+  const primaryDisabled =
+    insights.nextAction.type === "email" ? !hasEmail : !hasPhone;
+  const alternateAction = insights.nextAction.type === "call" ? "text" : "email";
+  const alternateHref =
+    alternateAction === "text"
+      ? buildTextHref(phone, insights.nextAction.draft)
+      : buildEmailHref(email, `Follow-up for ${lead.fullName}`, insights.nextAction.draft);
+  const alternateDisabled = alternateAction === "text" ? !hasPhone : !hasEmail;
 
   return (
     <section className="app-panel p-5 sm:p-6">
@@ -68,21 +82,20 @@ export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
             </p>
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
-            <a href={insights.nextAction.href} className="app-button-primary">
-              {nextActionLabel}
-            </a>
-            <a
-              href={
-                insights.nextAction.type === "call"
-                  ? `sms:${lead.phone}?body=${encodeURIComponent(insights.nextAction.draft)}`
-                  : `mailto:${lead.email}?subject=${encodeURIComponent(
-                      `Follow-up for ${lead.fullName}`
-                    )}&body=${encodeURIComponent(insights.nextAction.draft)}`
-              }
+            <ContactActionLink
+              action={insights.nextAction.type}
+              href={insights.nextAction.href}
+              label={nextActionLabel}
+              disabled={primaryDisabled}
+              className="app-button-primary"
+            />
+            <ContactActionLink
+              action={alternateAction}
+              href={alternateHref}
+              label="Save as Alternate Draft"
+              disabled={alternateDisabled}
               className="app-button-secondary"
-            >
-              Save as Alternate Draft
-            </a>
+            />
           </div>
         </div>
       </div>

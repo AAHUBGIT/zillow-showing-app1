@@ -128,25 +128,19 @@ export default async function LeadDetailsPage({
                 <p className="app-kicker">Contact Shortcuts</p>
                 <div className="mt-3 flex flex-wrap gap-3">
                   <ContactActionLink
+                    action="call"
                     href={buildCallHref(phone)}
-                    label="Call"
-                    toastMessage="Opening phone app"
                     disabled={!hasPhone}
-                    disabledLabel="Phone unavailable"
                   />
                   <ContactActionLink
+                    action="text"
                     href={buildLeadTextHref(lead)}
-                    label="Text"
-                    toastMessage="Opening text app"
                     disabled={!hasPhone}
-                    disabledLabel="Phone unavailable"
                   />
                   <ContactActionLink
+                    action="email"
                     href={buildLeadEmailHref(lead)}
-                    label="Email"
-                    toastMessage="Opening email app"
                     disabled={!hasEmail}
-                    disabledLabel="Email unavailable"
                   />
                 </div>
               </div>
