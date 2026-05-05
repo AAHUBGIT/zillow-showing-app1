@@ -342,29 +342,35 @@ function LeadList({
   isPreviewReadonly?: boolean;
 }) {
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-2.5">
       {leads.map((lead) => (
-        <article key={lead.id} className="rounded-3xl border border-line/80 bg-white px-4 py-4 shadow-sm">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <article key={lead.id} className="rounded-[1.35rem] border border-line/80 bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="text-base font-semibold tracking-tight text-ink">{lead.fullName}</p>
-              <p className="mt-1 text-sm text-slate-600">{lead.phone}</p>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <p className="text-base font-semibold tracking-tight text-ink">{lead.fullName}</p>
+                <p className="text-sm text-slate-600">{lead.phone}</p>
+              </div>
               <PreferenceIndicators lead={lead} />
               <LastActivity activity={lead.lastActivity} />
-              {showFollowUpDate ? (
-                <p className="mt-2 text-sm font-medium text-rose-700">
-                  Follow-up was due {formatDateLabel(lead.nextFollowUpDate)}
-                </p>
-              ) : null}
-              {allowMarkFollowedUp ? (
-                <form action={markFollowUpCompleted} className="mt-3">
-                  <input type="hidden" name="leadId" value={lead.id} />
-                  <input type="hidden" name="redirectTo" value="/today" />
-                  <MarkFollowUpCompleteButton disabled={isPreviewReadonly} />
-                </form>
+              {showFollowUpDate || allowMarkFollowedUp ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-rose-700">
+                    {showFollowUpDate
+                      ? `Follow-up was due ${formatDateLabel(lead.nextFollowUpDate)}`
+                      : "Follow-up due today"}
+                  </p>
+                  {allowMarkFollowedUp ? (
+                    <form action={markFollowUpCompleted}>
+                      <input type="hidden" name="leadId" value={lead.id} />
+                      <input type="hidden" name="redirectTo" value="/today" />
+                      <MarkFollowUpCompleteButton disabled={isPreviewReadonly} />
+                    </form>
+                  ) : null}
+                </div>
               ) : null}
               {showBadges ? (
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <PriorityBadge priority={lead.priority} />
                   <LeadStatusBadge status={lead.status} />
                 </div>
@@ -413,31 +419,34 @@ function QuickActions({ lead, includeMaps = false }: { lead: LeadWithProperties;
   const hasEmail = email.length > 0;
 
   return (
-    <div className="flex w-full flex-wrap gap-2 lg:w-auto lg:justify-end">
-      <LoadingLink href={`/leads/${lead.id}`} className="app-button-primary min-h-[48px] px-4 py-2.5">
+    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+      <LoadingLink href={`/leads/${lead.id}`} className="app-button-primary min-h-[42px] px-3.5 py-2 text-sm">
         View Lead
       </LoadingLink>
       <ContactActionLink
         action="call"
         href={buildCallHref(phone)}
         disabled={!hasPhone}
+        className="app-button-secondary min-h-[42px] px-3.5 py-2 text-sm"
       />
       <ContactActionLink
         action="text"
         href={buildLeadTextHref(lead)}
         disabled={!hasPhone}
+        className="app-button-secondary min-h-[42px] px-3.5 py-2 text-sm"
       />
       <ContactActionLink
         action="email"
         href={buildLeadEmailHref(lead)}
         disabled={!hasEmail}
+        className="app-button-secondary min-h-[42px] px-3.5 py-2 text-sm"
       />
       {includeMaps ? (
         <a
           href={buildGoogleMapsSearchLink(lead.propertyAddress)}
           target="_blank"
           rel="noreferrer"
-          className="app-button-secondary min-h-[48px] px-4 py-2.5"
+          className="app-button-secondary min-h-[42px] px-3.5 py-2 text-sm"
         >
           Open Maps
         </a>
@@ -457,18 +466,18 @@ function InfoPill({ label, value }: { label: string; value: string }) {
 
 function PreferenceIndicators({ lead }: { lead: LeadWithProperties }) {
   return (
-    <div className="mt-3 flex flex-wrap gap-2">
-      <span className="rounded-full border border-line/80 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      <span className="rounded-full border border-line/80 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
         Budget: {getBudgetLabel(lead)}
       </span>
-      <span className="rounded-full border border-line/80 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+      <span className="rounded-full border border-line/80 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
         {getBedroomBathroomLabel(lead)}
       </span>
-      <span className="rounded-full border border-line/80 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+      <span className="rounded-full border border-line/80 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
         {getPreScreenStatus(lead)}
       </span>
       {lead.applicationReady ? (
-        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
           Application ready
         </span>
       ) : null}
@@ -479,21 +488,21 @@ function PreferenceIndicators({ lead }: { lead: LeadWithProperties }) {
 function LastActivity({ activity }: { activity: LeadWithProperties["lastActivity"] }) {
   if (!activity) {
     return (
-      <p className="mt-2 text-sm text-slate-500">
+      <p className="mt-1.5 text-sm text-slate-500">
         Last activity: none logged
       </p>
     );
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-line/70 bg-slate-50 px-3 py-3">
+    <div className="mt-2 rounded-2xl border border-line/70 bg-slate-50 px-3 py-2">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
         Last activity
       </p>
       <p className="mt-1 text-sm font-semibold text-slate-700">
         {getCommunicationChannelLabel(activity.channel)} - {formatActivityDate(activity.createdAt)}
       </p>
-      <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">
+      <p className="mt-1 line-clamp-1 text-sm leading-5 text-slate-600">
         {activity.outcome || activity.subject || activity.body}
       </p>
     </div>

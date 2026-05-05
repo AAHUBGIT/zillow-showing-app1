@@ -10,7 +10,7 @@ export function MarkFollowUpCompleteButton({ disabled = false }: { disabled?: bo
     <button
       type="submit"
       disabled={disabled || pending}
-      className="app-button-secondary min-h-[42px] px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-55"
+      className="app-button-secondary min-h-[34px] px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-55"
     >
       {pending ? (
         <>
