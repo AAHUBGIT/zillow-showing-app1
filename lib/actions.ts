@@ -826,6 +826,103 @@ export async function updateLeadStatus(formData: FormData) {
   redirect(withToast(redirectTo, "status-updated"));
 }
 
+export async function markFollowUpCompleted(formData: FormData) {
+  const leadId = getString(formData, "leadId");
+  const redirectTo = getString(formData, "redirectTo") || "/today";
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!leadId) {
+    redirectValidation(redirectTo);
+  }
+
+  if (!canUseDatabase()) {
+    redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
+  }
+
+  const prisma = getPrismaClient();
+  const now = new Date().toISOString();
+  let lead;
+
+  try {
+    lead = await prisma.lead.findUnique({
+      where: { id: leadId }
+    });
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  if (!lead || lead.userId !== sessionUser.id) {
+    redirect(withToast(redirectTo, "save-error"));
+  }
+
+  const activity: CommunicationActivity = {
+    id: crypto.randomUUID(),
+    leadId,
+    userId: sessionUser.id,
+    templateId: "",
+    channel: "note",
+    direction: "internal",
+    subject: "Follow-up completed",
+    body: lead.nextFollowUpDate
+      ? `Follow-up due ${lead.nextFollowUpDate} was marked completed from Today.`
+      : "Follow-up was marked completed from Today.",
+    outcome: "Follow-up completed",
+    occurredAt: now,
+    createdAt: now
+  };
+
+  try {
+    await prisma.$transaction([
+      prisma.$executeRaw`
+        INSERT INTO "CommunicationActivity" (
+          "id",
+          "leadId",
+          "userId",
+          "templateId",
+          "channel",
+          "direction",
+          "subject",
+          "body",
+          "outcome",
+          "occurredAt",
+          "createdAt"
+        )
+        VALUES (
+          ${activity.id},
+          ${activity.leadId},
+          ${activity.userId},
+          ${activity.templateId},
+          ${activity.channel},
+          ${activity.direction},
+          ${activity.subject},
+          ${activity.body},
+          ${activity.outcome},
+          ${activity.occurredAt},
+          ${activity.createdAt}
+        )
+      `,
+      prisma.lead.update({
+        where: { id: leadId },
+        data: {
+          nextFollowUpDate: "",
+          updatedAt: now
+        }
+      })
+    ]);
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath(`/leads/${leadId}`);
+  redirect(withToast(redirectTo, "follow-up-completed"));
+}
+
 export async function createPropertyListing(formData: FormData) {
   const sessionUser = await getSessionUser();
 

@@ -1,8 +1,10 @@
 import { ContactActionLink } from "@/components/contact-action-link";
 import { LeadStatusBadge } from "@/components/lead-status-badge";
 import { LoadingLink } from "@/components/loading-link";
+import { MarkFollowUpCompleteButton } from "@/components/mark-follow-up-complete-button";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PriorityBadge } from "@/components/priority-badge";
+import { markFollowUpCompleted } from "@/lib/actions";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { getCommunicationChannelLabel } from "@/lib/communication";
 import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
@@ -174,7 +176,12 @@ export default async function TodayPage() {
           emptyDetail="You're clear for now."
           isEmpty={overdueFollowUps.length === 0}
         >
-          <LeadList leads={overdueFollowUps} showFollowUpDate />
+          <LeadList
+            leads={overdueFollowUps}
+            showFollowUpDate
+            allowMarkFollowedUp
+            isPreviewReadonly={isPreviewReadonly}
+          />
         </CommandSection>
 
         <CommandSection
@@ -185,7 +192,12 @@ export default async function TodayPage() {
           emptyDetail="You're clear for now."
           isEmpty={followUpsDueToday.length === 0}
         >
-          <LeadList leads={followUpsDueToday} showBadges />
+          <LeadList
+            leads={followUpsDueToday}
+            showBadges
+            allowMarkFollowedUp
+            isPreviewReadonly={isPreviewReadonly}
+          />
         </CommandSection>
       </section>
 
@@ -319,11 +331,15 @@ function UpcomingShowingCard({ lead }: { lead: LeadWithProperties }) {
 function LeadList({
   leads,
   showBadges = false,
-  showFollowUpDate = false
+  showFollowUpDate = false,
+  allowMarkFollowedUp = false,
+  isPreviewReadonly = false
 }: {
   leads: LeadWithProperties[];
   showBadges?: boolean;
   showFollowUpDate?: boolean;
+  allowMarkFollowedUp?: boolean;
+  isPreviewReadonly?: boolean;
 }) {
   return (
     <div className="grid gap-3">
@@ -339,6 +355,13 @@ function LeadList({
                 <p className="mt-2 text-sm font-medium text-rose-700">
                   Follow-up was due {formatDateLabel(lead.nextFollowUpDate)}
                 </p>
+              ) : null}
+              {allowMarkFollowedUp ? (
+                <form action={markFollowUpCompleted} className="mt-3">
+                  <input type="hidden" name="leadId" value={lead.id} />
+                  <input type="hidden" name="redirectTo" value="/today" />
+                  <MarkFollowUpCompleteButton disabled={isPreviewReadonly} />
+                </form>
               ) : null}
               {showBadges ? (
                 <div className="mt-3 flex flex-wrap gap-2">
