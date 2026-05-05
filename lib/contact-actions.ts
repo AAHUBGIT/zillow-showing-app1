@@ -36,18 +36,34 @@ export function buildLeadEmailHref(lead: Pick<Lead, "fullName" | "email" | "prop
 }
 
 export function buildEmailHref(email: string, subject: string, message: string) {
-  const params = new URLSearchParams();
+  const normalizedEmail = normalizeEmailForHref(email);
   const trimmedSubject = subject.trim();
   const trimmedMessage = message.trim();
+  const params: string[] = [];
 
   if (trimmedSubject) {
-    params.set("subject", trimmedSubject);
+    params.push(`subject=${encodeMailtoParam(trimmedSubject)}`);
   }
 
   if (trimmedMessage) {
-    params.set("body", trimmedMessage);
+    params.push(`body=${encodeMailtoParam(trimmedMessage)}`);
   }
 
-  const query = params.toString();
-  return query ? `mailto:${email}?${query}` : `mailto:${email}`;
+  const query = params.join("&");
+  return query ? `mailto:${normalizedEmail}?${query}` : `mailto:${normalizedEmail}`;
+}
+
+function normalizeEmailForHref(email: string) {
+  const trimmedEmail = email.trim();
+  const bracketMatch = trimmedEmail.match(/<([^<>@\s]+@[^<>@\s]+)>/);
+
+  if (bracketMatch) {
+    return bracketMatch[1];
+  }
+
+  return trimmedEmail;
+}
+
+function encodeMailtoParam(value: string) {
+  return encodeURIComponent(value).replace(/%0A/g, "%0D%0A");
 }
