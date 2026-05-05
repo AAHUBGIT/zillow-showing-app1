@@ -24,6 +24,11 @@ export default async function RoutesPage() {
   const days = Object.keys(routesByDay).sort();
   const activeDays = days.filter((day) => day >= today);
   const pastDays = days.filter((day) => day < today).reverse();
+  const activeStops = activeDays.flatMap((day) => routesByDay[day]);
+  const urgentStopCount = activeStops.filter((lead) => lead.priority === "urgent").length;
+  const priorityStopCount = activeStops.filter(
+    (lead) => lead.priority === "high" || lead.priority === "urgent"
+  ).length;
 
   return (
     <main className="space-y-6">
@@ -43,36 +48,31 @@ export default async function RoutesPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="app-grid-card">
-              <p className="app-kicker">Total Stops</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight text-ink">
-                {activeDays.reduce((total, day) => total + routesByDay[day].length, 0)}
-              </p>
-            </div>
-            <div className="app-grid-card">
-              <p className="app-kicker">Upcoming Days</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight text-ink">{activeDays.length}</p>
-            </div>
-            <div className="app-grid-card">
-              <p className="app-kicker">Urgent Stops</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight text-ink">
-                {activeDays
-                  .flatMap((day) => routesByDay[day])
-                  .filter((lead) => lead.priority === "urgent").length}
-              </p>
-            </div>
-            <div className="app-grid-card">
-              <p className="app-kicker">Priority Mix</p>
-              <p className="mt-2 text-base font-semibold text-ink">
-                {activeDays
-                  .flatMap((day) => routesByDay[day])
-                  .filter((lead) => lead.priority === "high" || lead.priority === "urgent").length} high-focus tours
-              </p>
-            </div>
+            <RouteMetricLink
+              href="#upcoming-routes"
+              label="Total Stops"
+              value={String(activeStops.length)}
+            />
+            <RouteMetricLink
+              href="#upcoming-routes"
+              label="Upcoming Days"
+              value={String(activeDays.length)}
+            />
+            <RouteMetricLink
+              href="#upcoming-routes"
+              label="Urgent Stops"
+              value={String(urgentStopCount)}
+            />
+            <RouteMetricLink
+              href="#upcoming-routes"
+              label="Priority Mix"
+              value={`${priorityStopCount} high-focus tours`}
+              compactValue
+            />
           </div>
         </div>
 
-        <div className="mt-6 space-y-5">
+        <div id="upcoming-routes" className="mt-6 scroll-mt-32 space-y-5">
           {activeDays.length === 0 ? (
             <div className="app-subpanel p-8 text-sm text-slate-600">
               No upcoming route stops.
@@ -108,6 +108,38 @@ export default async function RoutesPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function RouteMetricLink({
+  href,
+  label,
+  value,
+  compactValue = false
+}: {
+  href: string;
+  label: string;
+  value: string;
+  compactValue?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      className="app-grid-card block transition hover:-translate-y-0.5 hover:border-accent hover:shadow-panel focus-visible:ring-4 focus-visible:ring-accent/20"
+      aria-label={`${label}: ${value}. Open route details.`}
+    >
+      <p className="app-kicker">{label}</p>
+      <p
+        className={
+          compactValue
+            ? "mt-2 text-base font-semibold text-ink"
+            : "mt-2 text-3xl font-semibold tracking-tight text-ink"
+        }
+      >
+        {value}
+      </p>
+      <p className="mt-2 text-xs font-medium text-slate-500">View routes</p>
+    </a>
   );
 }
 

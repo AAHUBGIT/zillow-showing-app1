@@ -1,26 +1,16 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ClientPreferencesForm } from "@/components/client-preferences-form";
-import { FollowUpBadge } from "@/components/follow-up-badge";
 import { CommunicationWorkspace } from "@/components/communication-workspace";
+import { LeadRecordPanel } from "@/components/lead-record-panel";
 import { LeadAiInsights } from "@/components/lead-ai-insights";
-import { LiveCalendarLinkButton } from "@/components/live-calendar-link-button";
 import { LeadScheduleForm } from "@/components/lead-schedule-form";
 import { LoadingLink } from "@/components/loading-link";
 import { PropertyComparisonTable } from "@/components/property-comparison-table";
 import { PropertyInterestCard } from "@/components/property-interest-card";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
-import { PriorityBadge } from "@/components/priority-badge";
-import { SourceBadge } from "@/components/source-badge";
-import { ContactActionLink } from "@/components/contact-action-link";
 import { buildGoogleCalendarUrl } from "@/lib/calendar";
-import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
-import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
-import {
-  getPriorityLabel,
-  getSourceLabel,
-  getStatusLabel
-} from "@/lib/lead-utils";
+import { formatDateTimeLabel } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
 import {
   getPropertyInterestCountLabel,
@@ -54,10 +44,6 @@ export default async function LeadDetailsPage({
   const activePropertyCount = activeProperties.length;
   const topRatedProperty = getTopRatedProperty(activeProperties);
   const addPropertyHref = `/leads/${lead.id}/properties/new`;
-  const phone = lead.phone.trim();
-  const email = lead.email.trim();
-  const hasPhone = phone.length > 0;
-  const hasEmail = email.length > 0;
   const comparisonProperties =
     activeProperties.length > 0
       ? [...activeProperties, ...rejectedProperties]
@@ -69,83 +55,7 @@ export default async function LeadDetailsPage({
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="space-y-6">
-          <div className="app-panel p-5 sm:p-6">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="app-eyebrow">Customer Record</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-                  {lead.fullName}
-                </h2>
-                <p className="mt-2 text-sm text-slate-500">{lead.propertyAddress}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <PriorityBadge priority={lead.priority} />
-                  <SourceBadge source={lead.source} />
-                  <FollowUpBadge nextFollowUpDate={lead.nextFollowUpDate} />
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-3">
-                <LoadingLink href="/" className="app-button-secondary">
-                  Back to Dashboard
-                </LoadingLink>
-                <LiveCalendarLinkButton
-                  leadId={lead.id}
-                  initialCalendarUrl={calendarUrl}
-                  missingMessage="Add a showing date and time before creating a Google Calendar event."
-                />
-              </div>
-            </div>
- 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <InfoCard label="Phone" value={lead.phone} />
-              <InfoCard label="Email" value={lead.email} />
-              <InfoCard label="Desired move-in" value={formatDateLabel(lead.desiredMoveInDate)} />
-              <InfoCard label="Status" value={getStatusLabel(lead.status)} />
-              <InfoCard
-                label="Next follow-up"
-                value={lead.nextFollowUpDate ? formatDateLabel(lead.nextFollowUpDate) : "Not set"}
-              />
-              <InfoCard label="Priority" value={getPriorityLabel(lead.priority)} />
-              <InfoCard label="Source" value={getSourceLabel(lead.source)} />
-              <InfoCard
-                label="Showing"
-                value={
-                  lead.showingDate && lead.showingTime
-                    ? formatDateTimeLabel(lead.showingDate, lead.showingTime)
-                    : "Not scheduled"
-                }
-              />
-            </div>
-
-            <div className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="app-subpanel p-5">
-                <p className="app-kicker">Lead Notes</p>
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-                  {lead.notes || "No notes added yet."}
-                </p>
-              </div>
-
-              <div className="app-subpanel p-5">
-                <p className="app-kicker">Contact Shortcuts</p>
-                <div className="mt-3 flex flex-wrap gap-3">
-                  <ContactActionLink
-                    action="call"
-                    href={buildCallHref(phone)}
-                    disabled={!hasPhone}
-                  />
-                  <ContactActionLink
-                    action="text"
-                    href={buildLeadTextHref(lead)}
-                    disabled={!hasPhone}
-                  />
-                  <ContactActionLink
-                    action="email"
-                    href={buildLeadEmailHref(lead)}
-                    disabled={!hasEmail}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <LeadRecordPanel lead={lead} calendarUrl={calendarUrl} />
 
           <LeadAiInsights lead={lead} />
 
@@ -331,14 +241,5 @@ export default async function LeadDetailsPage({
         </aside>
       </div>
     </main>
-  );
-}
-
-function InfoCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-3xl border border-line/70 bg-slate-50 px-4 py-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-ink">{value}</p>
-    </div>
   );
 }
