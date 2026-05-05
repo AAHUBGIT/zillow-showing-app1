@@ -4,6 +4,9 @@ export const leadStatusOptions: LeadStatus[] = ["new", "contacted", "scheduled",
 export const leadPriorityOptions: LeadPriority[] = ["low", "medium", "high", "urgent"];
 export const leadSourceOptions: LeadSource[] = [
   "Zillow",
+  "Homes.com",
+  "StreetEasy",
+  "Apartments.com",
   "referral",
   "Facebook",
   "repeat client",

@@ -4,6 +4,7 @@ import { PropertyBackLink } from "@/components/property-back-link";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { createPropertyInterest } from "@/lib/actions";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
+import { getPropertyListings } from "@/lib/property-listings";
 import { getLeadById } from "@/lib/storage";
 
 export default async function NewPropertyInterestPage({
@@ -12,7 +13,10 @@ export default async function NewPropertyInterestPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const lead = await getLeadById(id);
+  const [lead, propertyListings] = await Promise.all([
+    getLeadById(id),
+    getPropertyListings()
+  ]);
 
   if (!lead) {
     notFound();
@@ -61,6 +65,8 @@ export default async function NewPropertyInterestPage({
         <div className="mt-8">
           <AddPropertyForm
             action={createPropertyInterest}
+            lead={lead}
+            propertyListings={propertyListings}
             leadId={lead.id}
             dirtyScope={dirtyScope}
             isPreviewReadonly={isPreviewReadonly}

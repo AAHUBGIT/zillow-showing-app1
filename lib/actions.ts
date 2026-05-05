@@ -577,6 +577,16 @@ export async function updateLeadSchedule(formData: FormData) {
   const showingLocationType = getString(formData, "showingLocationType");
   const propertyInterestId = getString(formData, "propertyInterestId");
   const propertyListingId = getString(formData, "propertyListingId");
+  const attachShowingLocationToLead = getBoolean(formData, "attachShowingLocationToLead");
+  const manualShowingTitle = getString(formData, "manualShowingTitle");
+  const manualShowingAddress = getString(formData, "manualShowingAddress");
+  const manualShowingSource = normalizeLeadSource(getString(formData, "manualShowingSource"));
+  const manualShowingUrl = getString(formData, "manualShowingUrl");
+  const manualShowingPrice = getString(formData, "manualShowingPrice");
+  const manualShowingBeds = getString(formData, "manualShowingBeds");
+  const manualShowingBaths = getString(formData, "manualShowingBaths");
+  const manualShowingNeighborhood = getString(formData, "manualShowingNeighborhood");
+  const manualShowingNotes = getString(formData, "manualShowingNotes");
 
   if (
     getRequiredSelectError(nextStatus) ||
@@ -586,7 +596,15 @@ export async function updateLeadSchedule(formData: FormData) {
     !isIsoDate(showingDate) ||
     !isTwentyFourHourTime(showingTime) ||
     hasScheduleMismatch(showingDate, showingTime) ||
-    hasBlockedPastShowingDate(showingDate, allowPastShowingDate)
+    hasBlockedPastShowingDate(showingDate, allowPastShowingDate) ||
+    getMaxLengthError(manualShowingTitle, fieldMaxLengths.listingTitle) ||
+    getMaxLengthError(manualShowingAddress, fieldMaxLengths.address) ||
+    getMaxLengthError(manualShowingUrl, fieldMaxLengths.listingUrl) ||
+    getNumericError(manualShowingPrice) ||
+    getNumericError(manualShowingBeds, false) ||
+    getNumericError(manualShowingBaths) ||
+    getMaxLengthError(manualShowingNeighborhood, fieldMaxLengths.neighborhood) ||
+    getMaxLengthError(manualShowingNotes, fieldMaxLengths.agentNotes)
   ) {
     redirectValidation(`/leads/${id}`);
   }
@@ -612,6 +630,7 @@ export async function updateLeadSchedule(formData: FormData) {
   let showingLocationAddress = existingLead.propertyAddress;
   let selectedPropertyInterest: PropertyInterest | null = null;
   let selectedPropertyListing: PropertyListing | null = null;
+  let manualPropertyDraft: PropertyInterest | null = null;
 
   if (showingLocationType === "propertyInterest") {
     selectedPropertyInterest =
@@ -622,6 +641,30 @@ export async function updateLeadSchedule(formData: FormData) {
       ? await getPropertyListingByIdForUser(sessionUser.id, propertyListingId)
       : null;
     showingLocationAddress = selectedPropertyListing?.address || "";
+  } else if (showingLocationType === "manualAddress") {
+    showingLocationAddress = manualShowingAddress;
+    manualPropertyDraft = {
+      id: crypto.randomUUID(),
+      leadId: existingLead.id,
+      address: manualShowingAddress,
+      listingTitle: manualShowingTitle || manualShowingAddress,
+      source: manualShowingSource,
+      listingUrl: manualShowingUrl,
+      rent: manualShowingPrice,
+      beds: manualShowingBeds,
+      baths: manualShowingBaths,
+      neighborhood: manualShowingNeighborhood,
+      status: showingDate && showingTime ? "scheduled" : "interested",
+      rating: 3,
+      clientFeedback: "",
+      pros: "",
+      cons: "",
+      agentNotes: manualShowingNotes,
+      showingDate,
+      showingTime,
+      createdAt: "",
+      updatedAt: ""
+    };
   }
 
   if (getRequiredTextError(showingLocationAddress)) {
@@ -645,7 +688,7 @@ export async function updateLeadSchedule(formData: FormData) {
     );
   }
 
-  if (selectedPropertyListing) {
+  if (selectedPropertyListing && attachShowingLocationToLead) {
     const normalizedListingAddress = selectedPropertyListing.address.trim().toLowerCase();
     const normalizedListingUrl = selectedPropertyListing.listingUrl.trim().toLowerCase();
     const existingInventoryInterest = propertyInterests.find((propertyInterest) => {
@@ -691,6 +734,43 @@ export async function updateLeadSchedule(formData: FormData) {
             agentNotes: selectedPropertyListing.notes,
             showingDate,
             showingTime,
+            createdAt: now,
+            updatedAt: now
+          }
+        })
+      );
+    }
+  }
+
+  if (manualPropertyDraft && attachShowingLocationToLead) {
+    const normalizedManualAddress = manualPropertyDraft.address.trim().toLowerCase();
+    const normalizedManualUrl = manualPropertyDraft.listingUrl.trim().toLowerCase();
+    const existingManualInterest = propertyInterests.find((propertyInterest) => {
+      const sameAddress = propertyInterest.address.trim().toLowerCase() === normalizedManualAddress;
+      const sameListingUrl =
+        normalizedManualUrl &&
+        propertyInterest.listingUrl.trim().toLowerCase() === normalizedManualUrl;
+
+      return sameAddress || sameListingUrl;
+    });
+
+    if (existingManualInterest && showingDate && showingTime) {
+      schedulePropertyUpdates.push(
+        prisma.propertyInterest.update({
+          where: { id: existingManualInterest.id },
+          data: {
+            status: "scheduled",
+            showingDate,
+            showingTime,
+            updatedAt: now
+          }
+        })
+      );
+    } else if (!existingManualInterest) {
+      schedulePropertyUpdates.push(
+        prisma.propertyInterest.create({
+          data: {
+            ...manualPropertyDraft,
             createdAt: now,
             updatedAt: now
           }

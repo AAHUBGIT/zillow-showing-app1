@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { AddPropertyWorkflowPanel } from "@/components/add-property-workflow-panel";
 import { AutoResizeTextarea } from "@/components/auto-resize-textarea";
 import { CalendarLinkButton } from "@/components/calendar-link-button";
 import { DateInputField } from "@/components/date-input-field";
 import { DateTimePickerFields, DateTimePickerHandle } from "@/components/date-time-picker-fields";
 import { InlineSpinner } from "@/components/inline-spinner";
-import { PropertyFitBadges } from "@/components/property-fit-badges";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { emitAppToast } from "@/lib/client-toast";
 import { updateLeadSchedule } from "@/lib/actions";
@@ -28,13 +28,13 @@ import {
 } from "@/lib/lead-utils";
 import {
   formatPropertyListingPrice,
-  getPropertyListingLayout,
-  propertyListingToFitPropertyInterest
+  getPropertyListingLayout
 } from "@/lib/property-listing-utils";
+import type { PropertyWorkflowDraft } from "@/lib/property-workflow";
 import type { Lead, LeadWithProperties, PropertyListing } from "@/lib/types";
 
 type FieldErrors = Partial<Record<string, string>>;
-type ScheduleLocationType = "primary" | "propertyInterest" | "propertyListing";
+type ScheduleLocationType = "primary" | "propertyInterest" | "propertyListing" | "manualAddress";
 type ScheduleLocationOption = {
   value: string;
   type: ScheduleLocationType;
@@ -93,8 +93,9 @@ export function LeadScheduleForm({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const scheduleRef = useRef<DateTimePickerHandle>(null);
-  const [locationSearch, setLocationSearch] = useState("");
   const [selectedLocationValue, setSelectedLocationValue] = useState("primary");
+  const [manualLocationDraft, setManualLocationDraft] = useState<PropertyWorkflowDraft | null>(null);
+  const [attachLocationToLead, setAttachLocationToLead] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [values, setValues] = useState<ScheduleFormValues>({
     status: lead.status,
@@ -137,41 +138,64 @@ export function LeadScheduleForm({
       })),
     [lead.propertyInterests]
   );
-  const inventoryMatches = useMemo(() => {
-    const query = locationSearch.trim().toLowerCase();
+  const selectedPropertyListing = useMemo(() => {
+    if (!selectedLocationValue.startsWith("propertyListing:")) {
+      return null;
+    }
 
-    return propertyListings
-      .filter((listing) => {
-        if (!query) {
-          return listing.status !== "unavailable";
-        }
-
-        return [listing.title, listing.address, listing.neighborhood]
-          .join(" ")
-          .toLowerCase()
-          .includes(query);
-      })
-      .slice(0, 6);
-  }, [locationSearch, propertyListings]);
-  const inventoryOptions = useMemo<ScheduleLocationOption[]>(
+    const id = selectedLocationValue.replace("propertyListing:", "");
+    return propertyListings.find((listing) => listing.id === id) || null;
+  }, [propertyListings, selectedLocationValue]);
+  const selectedInventoryOption = useMemo<ScheduleLocationOption | null>(
     () =>
-      inventoryMatches.map((listing) => ({
-        value: `propertyListing:${listing.id}`,
-        type: "propertyListing",
-        label: listing.title,
-        address: listing.address,
-        detail: [formatPropertyListingPrice(listing.price), getPropertyListingLayout(listing), listing.neighborhood]
-          .filter(Boolean)
-          .join(" - "),
-        propertyInterestId: "",
-        propertyListingId: listing.id
-      })),
-    [inventoryMatches]
+      selectedPropertyListing
+        ? {
+            value: `propertyListing:${selectedPropertyListing.id}`,
+            type: "propertyListing",
+            label: selectedPropertyListing.title,
+            address: selectedPropertyListing.address,
+            detail: [
+              formatPropertyListingPrice(selectedPropertyListing.price),
+              getPropertyListingLayout(selectedPropertyListing),
+              selectedPropertyListing.neighborhood
+            ]
+              .filter(Boolean)
+              .join(" - "),
+            propertyInterestId: "",
+            propertyListingId: selectedPropertyListing.id
+          }
+        : null,
+    [selectedPropertyListing]
   );
+  const manualLocationOption = useMemo<ScheduleLocationOption | null>(
+    () =>
+      manualLocationDraft?.address
+        ? {
+            value: "manualAddress",
+            type: "manualAddress",
+            label: manualLocationDraft.listingTitle || "Typed address",
+            address: manualLocationDraft.address,
+            detail: [
+              manualLocationDraft.neighborhood,
+              manualLocationDraft.listingUrl ? "Listing link saved for this schedule" : "",
+              "Typed or pasted address"
+            ]
+              .filter(Boolean)
+              .join(" - "),
+            propertyInterestId: "",
+            propertyListingId: ""
+          }
+        : null,
+    [manualLocationDraft]
+  );
+  const locationOptions = [
+    primaryLocation,
+    ...savedPropertyOptions,
+    ...(selectedInventoryOption ? [selectedInventoryOption] : []),
+    ...(manualLocationOption ? [manualLocationOption] : [])
+  ];
   const selectedLocation =
-    [primaryLocation, ...savedPropertyOptions, ...inventoryOptions].find(
-      (option) => option.value === selectedLocationValue
-    ) || primaryLocation;
+    locationOptions.find((option) => option.value === selectedLocationValue) || primaryLocation;
 
   const calendarUrl =
     scheduleState.date && scheduleState.time && scheduleState.isValid
@@ -269,6 +293,31 @@ export function LeadScheduleForm({
     return true;
   }
 
+  function selectWorkflowLocation(draft: PropertyWorkflowDraft) {
+    if (draft.propertyListingId) {
+      setManualLocationDraft(null);
+      setSelectedLocationValue(`propertyListing:${draft.propertyListingId}`);
+      setAttachLocationToLead(true);
+      emitAppToast({ message: "Showing location selected" });
+      return;
+    }
+
+    if (draft.address) {
+      setManualLocationDraft(draft);
+      setSelectedLocationValue("manualAddress");
+      setAttachLocationToLead(true);
+      emitAppToast({ message: "Showing location selected" });
+    }
+  }
+
+  function chooseLocation(value: string) {
+    setSelectedLocationValue(value);
+
+    if (value.startsWith("propertyListing:") || value === "manualAddress") {
+      setAttachLocationToLead(true);
+    }
+  }
+
   return (
     <form
       ref={formRef}
@@ -286,6 +335,16 @@ export function LeadScheduleForm({
       <input type="hidden" name="showingLocationAddress" value={selectedLocation.address} />
       <input type="hidden" name="propertyInterestId" value={selectedLocation.propertyInterestId} />
       <input type="hidden" name="propertyListingId" value={selectedLocation.propertyListingId} />
+      <input type="hidden" name="attachShowingLocationToLead" value={attachLocationToLead ? "true" : "false"} />
+      <input type="hidden" name="manualShowingTitle" value={manualLocationDraft?.listingTitle || ""} />
+      <input type="hidden" name="manualShowingAddress" value={manualLocationDraft?.address || ""} />
+      <input type="hidden" name="manualShowingSource" value={manualLocationDraft?.source || "other"} />
+      <input type="hidden" name="manualShowingUrl" value={manualLocationDraft?.listingUrl || ""} />
+      <input type="hidden" name="manualShowingPrice" value={manualLocationDraft?.rent || ""} />
+      <input type="hidden" name="manualShowingBeds" value={manualLocationDraft?.beds || ""} />
+      <input type="hidden" name="manualShowingBaths" value={manualLocationDraft?.baths || ""} />
+      <input type="hidden" name="manualShowingNeighborhood" value={manualLocationDraft?.neighborhood || ""} />
+      <input type="hidden" name="manualShowingNotes" value={manualLocationDraft?.agentNotes || ""} />
 
       <div className="rounded-3xl border border-line/70 bg-slate-50/90 p-4">
         <p className="app-kicker">Showing Location</p>
@@ -299,7 +358,7 @@ export function LeadScheduleForm({
           <ScheduleLocationRadio
             option={primaryLocation}
             checked={selectedLocationValue === primaryLocation.value}
-            onChange={setSelectedLocationValue}
+            onChange={chooseLocation}
           />
 
           {savedPropertyOptions.length > 0 ? (
@@ -310,70 +369,50 @@ export function LeadScheduleForm({
                   key={option.value}
                   option={option}
                   checked={selectedLocationValue === option.value}
-                  onChange={setSelectedLocationValue}
+                  onChange={chooseLocation}
                 />
               ))}
             </div>
           ) : null}
 
-          <div className="grid gap-2">
-            <label className="flex flex-col gap-2">
-              <span className="app-kicker">Search property inventory</span>
+          {manualLocationOption ? (
+            <ScheduleLocationRadio
+              option={manualLocationOption}
+              checked={selectedLocationValue === manualLocationOption.value}
+              onChange={chooseLocation}
+            />
+          ) : null}
+
+          {selectedInventoryOption ? (
+            <ScheduleLocationRadio
+              option={selectedInventoryOption}
+              checked={selectedLocationValue === selectedInventoryOption.value}
+              onChange={chooseLocation}
+            />
+          ) : null}
+
+          <AddPropertyWorkflowPanel
+            lead={lead}
+            propertyListings={propertyListings}
+            onApply={selectWorkflowLocation}
+            compact
+          />
+
+          {selectedLocation.type === "propertyListing" || selectedLocation.type === "manualAddress" ? (
+            <label className="flex items-start gap-3 rounded-2xl border border-line/80 bg-slate-50/90 px-4 py-3">
               <input
-                type="search"
-                value={locationSearch}
-                onChange={(event) => setLocationSearch(event.target.value)}
-                placeholder="Search property inventory"
-                className="app-input"
+                type="checkbox"
+                checked={attachLocationToLead}
+                onChange={(event) => setAttachLocationToLead(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-line accent-blue-600"
               />
+              <span className="text-sm leading-6 text-slate-700">
+                <span className="font-semibold text-ink">Also save this property to this customer</span>
+                <br />
+                Adds it to the interested properties list if it is not already attached.
+              </span>
             </label>
-
-            {inventoryMatches.length > 0 ? (
-              <div className="grid gap-2">
-                {inventoryMatches.map((listing, index) => {
-                  const option = inventoryOptions[index];
-
-                  return (
-                    <label
-                      key={listing.id}
-                      className={`cursor-pointer rounded-2xl border px-4 py-3 transition ${
-                        selectedLocationValue === option.value
-                          ? "border-accent bg-accentSoft/70"
-                          : "border-line/80 bg-slate-50/80 hover:border-accent"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="radio"
-                          name="location-picker"
-                          value={option.value}
-                          checked={selectedLocationValue === option.value}
-                          onChange={() => setSelectedLocationValue(option.value)}
-                          className="mt-1 h-4 w-4 accent-blue-600"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-ink">{listing.title}</p>
-                          <p className="mt-1 text-xs leading-5 text-slate-600">{listing.address}</p>
-                          <p className="mt-1 text-xs text-slate-500">{option.detail}</p>
-                          <div className="mt-2">
-                            <PropertyFitBadges
-                              lead={lead}
-                              propertyInterest={propertyListingToFitPropertyInterest(listing, lead.id)}
-                              compact
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="rounded-2xl border border-dashed border-line bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                No inventory matches yet. Add listings from the Properties page.
-              </p>
-            )}
-          </div>
+          ) : null}
 
           <p className="text-xs leading-5 text-slate-500">
             Current data model saves one showing per lead. Choose one property now; multi-stop

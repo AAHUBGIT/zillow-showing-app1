@@ -87,15 +87,32 @@ future destination for Zillow, portal, or imported property feeds. The current f
 manual inventory only. It does not call Zillow APIs, scrape Zillow, or connect to external
 listing services.
 
+## Add Property Workflow
+
+The Add Property workflow starts from three lightweight entry points before the agent reviews
+and edits the normal manual fields:
+
+- Search saved: searches existing `PropertyListing` records by title, address, or neighborhood
+  and can fill title, address, price, beds, baths, neighborhood, source, and listing URL.
+- Search address: provides a clean manual address entry path now. Address autocomplete can be
+  connected later with `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` and a Google Places client component.
+- Paste URL: detects common portal sources such as Zillow, Homes.com, StreetEasy, and
+  Apartments.com, saves the listing link, and extracts a readable title/address from obvious URL
+  slugs when possible.
+
+The workflow does not fetch, import, scrape, or enrich listing details from Zillow or any other
+portal. Future listing enrichment should use an approved data source or provider agreement.
+
 Scheduling can now choose a showing location from:
 
 - the lead's primary target address
 - saved interested properties on the lead
 - searchable property inventory
+- a typed/searched address
 
-If an inventory listing is selected while scheduling, Showings CRM can attach it to the lead
-as an interested property and use that address for the lead's showing, Today, Routes, and
-Google Calendar links.
+If an inventory listing or typed address is selected while scheduling, Showings CRM can optionally
+attach it to the lead as an interested property and use that address for the lead's showing, Today,
+Routes, and Google Calendar links.
 
 Current limitation: the existing lead model stores one active showing date, time, and address
 per lead. Multi-stop customer tours need a future tour-stop model before they can be persisted

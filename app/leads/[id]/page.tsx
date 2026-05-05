@@ -220,8 +220,8 @@ export default async function LeadDetailsPage({
             Assign or update showing
           </h3>
           <p className="app-copy mt-2">
-            Update the showing date, time, notes, and status using this lead's primary target
-            address. When a showing is scheduled, you can also send it straight to Google Calendar.
+            Update the showing date, time, notes, status, and location using the lead address,
+            saved properties, inventory, or a typed address. Calendar links update from the selected location.
           </p>
 
           <div className="mt-5 app-subpanel p-4">

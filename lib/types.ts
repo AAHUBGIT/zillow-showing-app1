@@ -2,6 +2,9 @@ export type LeadStatus = "new" | "contacted" | "scheduled" | "closed";
 export type LeadPriority = "low" | "medium" | "high" | "urgent";
 export type LeadSource =
   | "Zillow"
+  | "Homes.com"
+  | "StreetEasy"
+  | "Apartments.com"
   | "referral"
   | "Facebook"
   | "repeat client"

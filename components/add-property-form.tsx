@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type FormEvent, type InputHTMLAttributes } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type InputHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
+import { AddPropertyWorkflowPanel } from "@/components/add-property-workflow-panel";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { emitPropertyFormDirtyChange } from "@/components/property-form-dirty";
 import { TooltipShell } from "@/components/tooltip-shell";
 import { emitAppToast } from "@/lib/client-toast";
-import { fieldMaxLengths, getMaxLengthError, getNumericError } from "@/lib/form-validation";
+import { fieldMaxLengths, getMaxLengthError, getNumericError, sanitizeNumericInput } from "@/lib/form-validation";
 import { leadSourceOptions } from "@/lib/lead-utils";
 import { getPropertyInterestSourceLabel } from "@/lib/property-interest-utils";
+import type { PropertyWorkflowDraft } from "@/lib/property-workflow";
+import type { LeadWithProperties, PropertyListing } from "@/lib/types";
 
 type AddPropertyField =
   | "listingTitle"
@@ -40,15 +43,6 @@ const propertyFieldNames: AddPropertyField[] = [
   "cons",
   "agentNotes"
 ];
-
-function readFormValues(form: HTMLFormElement): AddPropertyValues {
-  const formData = new FormData(form);
-
-  return propertyFieldNames.reduce<AddPropertyValues>((values, fieldName) => {
-    values[fieldName] = String(formData.get(fieldName) ?? "");
-    return values;
-  }, {} as AddPropertyValues);
-}
 
 function hasEnteredPropertyData(values: AddPropertyValues) {
   return propertyFieldNames.some((fieldName) => values[fieldName].trim().length > 0);
@@ -102,13 +96,33 @@ function makeFieldId(baseId: string, fieldName: AddPropertyField) {
   return `${baseId}-${fieldName}`;
 }
 
+function getInitialValues(): AddPropertyValues {
+  return {
+    listingTitle: "",
+    address: "",
+    rent: "",
+    beds: "",
+    baths: "",
+    neighborhood: "",
+    source: "",
+    listingUrl: "",
+    pros: "",
+    cons: "",
+    agentNotes: ""
+  };
+}
+
 export function AddPropertyForm({
   action,
+  lead,
+  propertyListings = [],
   leadId,
   dirtyScope,
   isPreviewReadonly = false
 }: {
   action: (formData: FormData) => void | Promise<void>;
+  lead?: LeadWithProperties;
+  propertyListings?: PropertyListing[];
   leadId: string;
   dirtyScope: string;
   isPreviewReadonly?: boolean;
@@ -119,7 +133,8 @@ export function AddPropertyForm({
   const baseId = useId();
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [touchedFields, setTouchedFields] = useState<TouchedFields>({});
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const [values, setValues] = useState<AddPropertyValues>(() => getInitialValues());
+  const errors = useMemo(() => buildErrors(values), [values]);
 
   function setDirtyState(nextIsDirty: boolean) {
     if (dirtyRef.current !== nextIsDirty) {
@@ -129,50 +144,82 @@ export function AddPropertyForm({
     dirtyRef.current = nextIsDirty;
   }
 
-  function refreshDirtyState() {
-    const form = formRef.current;
+  function updateField(fieldName: AddPropertyField, value: string) {
+    const nextValue =
+      fieldName === "rent"
+        ? sanitizeNumericInput(value)
+        : fieldName === "beds"
+          ? sanitizeNumericInput(value, false)
+          : fieldName === "baths"
+            ? sanitizeNumericInput(value)
+            : value;
 
-    if (!form) {
-      setDirtyState(false);
-      return;
-    }
-
-    const values = readFormValues(form);
-
-    setDirtyState(hasEnteredPropertyData(values));
-  }
-
-  function validateCurrentForm() {
-    const form = formRef.current;
-
-    if (!form) {
-      return { values: null, nextErrors: {} };
-    }
-
-    const values = readFormValues(form);
-    const nextErrors = buildErrors(values);
-
-    setDirtyState(hasEnteredPropertyData(values));
-    setErrors(nextErrors);
-    return { values, nextErrors };
+    setValues((current) => ({ ...current, [fieldName]: nextValue }));
   }
 
   function markTouched(fieldName: AddPropertyField) {
     setTouchedFields((current) => ({ ...current, [fieldName]: true }));
-    validateCurrentForm();
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     setHasAttemptedSubmit(true);
-    const { values, nextErrors } = validateCurrentForm();
 
-    if (!values || !canSubmitProperty(values, nextErrors)) {
+    if (!canSubmitProperty(values, errors)) {
       event.preventDefault();
       emitAppToast({ toastKey: "validation-error" });
       return;
     }
 
     isSubmittingRef.current = true;
+  }
+
+  function applyWorkflowDraft(draft: PropertyWorkflowDraft) {
+    setValues((current) => {
+      const next = { ...current };
+
+      if (draft.listingTitle !== undefined) {
+        next.listingTitle = draft.listingTitle;
+      }
+
+      if (draft.address !== undefined) {
+        next.address = draft.address;
+
+        if (!draft.listingTitle && !next.listingTitle.trim()) {
+          next.listingTitle = draft.address;
+        }
+      }
+
+      if (draft.rent !== undefined) {
+        next.rent = sanitizeNumericInput(draft.rent);
+      }
+
+      if (draft.beds !== undefined) {
+        next.beds = sanitizeNumericInput(draft.beds, false);
+      }
+
+      if (draft.baths !== undefined) {
+        next.baths = sanitizeNumericInput(draft.baths);
+      }
+
+      if (draft.neighborhood !== undefined) {
+        next.neighborhood = draft.neighborhood;
+      }
+
+      if (draft.source !== undefined) {
+        next.source = draft.source;
+      }
+
+      if (draft.listingUrl !== undefined) {
+        next.listingUrl = draft.listingUrl;
+      }
+
+      if (draft.agentNotes !== undefined) {
+        next.agentNotes = draft.agentNotes;
+      }
+
+      return next;
+    });
+    emitAppToast({ message: "Property details filled" });
   }
 
   function getVisibleError(fieldName: AddPropertyField) {
@@ -182,6 +229,10 @@ export function AddPropertyForm({
 
     return undefined;
   }
+
+  useEffect(() => {
+    setDirtyState(hasEnteredPropertyData(values));
+  }, [values]);
 
   useEffect(() => {
     function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -205,8 +256,6 @@ export function AddPropertyForm({
       ref={formRef}
       action={action}
       noValidate
-      onInput={refreshDirtyState}
-      onChange={refreshDirtyState}
       onSubmit={handleSubmit}
       className="grid gap-5"
     >
@@ -214,6 +263,12 @@ export function AddPropertyForm({
       <input type="hidden" name="status" value="interested" />
       <input type="hidden" name="rating" value="3" />
       <input type="hidden" name="clientFeedback" value="" />
+
+      <AddPropertyWorkflowPanel
+        lead={lead}
+        propertyListings={propertyListings}
+        onApply={applyWorkflowDraft}
+      />
 
       <div className="rounded-3xl border border-line/80 bg-white/85 p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -231,20 +286,24 @@ export function AddPropertyForm({
             id={makeFieldId(baseId, "listingTitle")}
             label="Listing title / nickname"
             name="listingTitle"
+            value={values.listingTitle}
             required
             maxLength={fieldMaxLengths.listingTitle}
             helpText="Required."
             error={getVisibleError("listingTitle")}
+            onChange={updateField}
             onBlur={markTouched}
           />
           <TextInput
             id={makeFieldId(baseId, "address")}
             label="Address"
             name="address"
+            value={values.address}
             required
             maxLength={fieldMaxLengths.address}
             helpText="Required."
             error={getVisibleError("address")}
+            onChange={updateField}
             onBlur={markTouched}
           />
         </div>
@@ -266,54 +325,66 @@ export function AddPropertyForm({
             id={makeFieldId(baseId, "rent")}
             label="Price"
             name="rent"
+            value={values.rent}
             inputMode="decimal"
             maxLength={fieldMaxLengths.rent}
             helpText="Numbers only, like 2640 or 2640.50."
             error={getVisibleError("rent")}
+            onChange={updateField}
             onBlur={markTouched}
           />
           <TextInput
             id={makeFieldId(baseId, "beds")}
             label="Beds"
             name="beds"
+            value={values.beds}
             inputMode="numeric"
             maxLength={fieldMaxLengths.beds}
             helpText="Whole numbers only."
             error={getVisibleError("beds")}
+            onChange={updateField}
             onBlur={markTouched}
           />
           <TextInput
             id={makeFieldId(baseId, "baths")}
             label="Baths"
             name="baths"
+            value={values.baths}
             inputMode="decimal"
             maxLength={fieldMaxLengths.baths}
             helpText="Numbers only, like 1 or 1.5."
             error={getVisibleError("baths")}
+            onChange={updateField}
             onBlur={markTouched}
           />
           <TextInput
             id={makeFieldId(baseId, "neighborhood")}
             label="Neighborhood"
             name="neighborhood"
+            value={values.neighborhood}
             maxLength={fieldMaxLengths.neighborhood}
             error={getVisibleError("neighborhood")}
+            onChange={updateField}
             onBlur={markTouched}
           />
           <TextInput
             id={makeFieldId(baseId, "listingUrl")}
             label="Listing URL"
             name="listingUrl"
+            value={values.listingUrl}
             type="url"
             maxLength={fieldMaxLengths.listingUrl}
             error={getVisibleError("listingUrl")}
+            onChange={updateField}
             onBlur={markTouched}
           />
           <SelectInput
             id={makeFieldId(baseId, "source")}
             label="Source"
             name="source"
+            value={values.source}
             error={getVisibleError("source")}
+            onChange={updateField}
             onBlur={markTouched}
           />
         </div>
@@ -335,27 +406,33 @@ export function AddPropertyForm({
             id={makeFieldId(baseId, "pros")}
             label="Pros"
             name="pros"
+            value={values.pros}
             rows={5}
             maxLength={fieldMaxLengths.pros}
             error={getVisibleError("pros")}
+            onChange={updateField}
             onBlur={markTouched}
           />
           <TextAreaInput
             id={makeFieldId(baseId, "cons")}
             label="Cons"
             name="cons"
+            value={values.cons}
             rows={5}
             maxLength={fieldMaxLengths.cons}
             error={getVisibleError("cons")}
+            onChange={updateField}
             onBlur={markTouched}
           />
           <TextAreaInput
             id={makeFieldId(baseId, "agentNotes")}
             label="Agent notes"
             name="agentNotes"
+            value={values.agentNotes}
             rows={5}
             maxLength={fieldMaxLengths.agentNotes}
             error={getVisibleError("agentNotes")}
+            onChange={updateField}
             onBlur={markTouched}
           />
         </div>
@@ -377,23 +454,27 @@ function TextInput({
   id,
   label,
   name,
+  value,
   type = "text",
   required = false,
   inputMode,
   maxLength,
   helpText = "Optional.",
   error,
+  onChange,
   onBlur
 }: {
   id: string;
   label: string;
   name: AddPropertyField;
+  value: string;
   type?: string;
   required?: boolean;
   inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
   maxLength?: number;
   helpText?: string;
   error?: string;
+  onChange: (fieldName: AddPropertyField, value: string) => void;
   onBlur: (fieldName: AddPropertyField) => void;
 }) {
   const helpId = `${id}-help`;
@@ -408,11 +489,13 @@ function TextInput({
         id={id}
         name={name}
         type={type}
+        value={value}
         required={required}
         inputMode={inputMode}
         maxLength={maxLength}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
+        onChange={(event) => onChange(name, event.target.value)}
         onBlur={() => onBlur(name)}
         className={`app-input ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       />
@@ -428,13 +511,17 @@ function SelectInput({
   id,
   label,
   name,
+  value,
   error,
+  onChange,
   onBlur
 }: {
   id: string;
   label: string;
   name: AddPropertyField;
+  value: string;
   error?: string;
+  onChange: (fieldName: AddPropertyField, value: string) => void;
   onBlur: (fieldName: AddPropertyField) => void;
 }) {
   const helpId = `${id}-help`;
@@ -448,9 +535,10 @@ function SelectInput({
       <select
         id={id}
         name={name}
-        defaultValue=""
+        value={value}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
+        onChange={(event) => onChange(name, event.target.value)}
         onBlur={() => onBlur(name)}
         className={`app-input ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       >
@@ -473,17 +561,21 @@ function TextAreaInput({
   id,
   label,
   name,
+  value,
   rows,
   maxLength,
   error,
+  onChange,
   onBlur
 }: {
   id: string;
   label: string;
   name: AddPropertyField;
+  value: string;
   rows: number;
   maxLength: number;
   error?: string;
+  onChange: (fieldName: AddPropertyField, value: string) => void;
   onBlur: (fieldName: AddPropertyField) => void;
 }) {
   const helpId = `${id}-help`;
@@ -498,9 +590,11 @@ function TextAreaInput({
         id={id}
         name={name}
         rows={rows}
+        value={value}
         maxLength={maxLength}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${helpId} ${errorId}` : helpId}
+        onChange={(event) => onChange(name, event.target.value)}
         onBlur={() => onBlur(name)}
         className={`app-textarea resize-y ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
       />
