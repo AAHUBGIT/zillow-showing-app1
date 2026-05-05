@@ -12,6 +12,7 @@ import {
   getBudgetLabel,
   getMoveInUrgencyLabel,
   getPreScreenStatus,
+  hasClientPreferences,
   moveInUrgencyOptions
 } from "@/lib/client-preferences";
 import {
@@ -119,6 +120,8 @@ export function ClientPreferencesForm({
   const [values, setValues] = useState<PreferenceFormValues>(() => getInitialValues(lead));
   const [errors, setErrors] = useState<FieldErrors>({});
   const leadPreview = { ...lead, ...values };
+  const hasStoredPreferences = hasClientPreferences(lead);
+  const [isExpanded, setIsExpanded] = useState(() => !hasStoredPreferences);
 
   const isFormValid = useMemo(() => Object.keys(buildErrors(values)).length === 0, [values]);
 
@@ -166,13 +169,29 @@ export function ClientPreferencesForm({
   return (
     <section className="app-panel p-5 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="app-eyebrow">Client Preferences</p>
           <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
             Preferences and pre-screening
           </h3>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+            {hasStoredPreferences
+              ? "Budget, timing, qualification, and match criteria for this customer."
+              : "Capture budget, timing, qualification, and property fit criteria."}
+          </p>
         </div>
-        <div className="app-chip">{getPreScreenStatus(leadPreview)}</div>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <div className="app-chip">{getPreScreenStatus(leadPreview)}</div>
+          <button
+            type="button"
+            onClick={() => setIsExpanded((current) => !current)}
+            className="app-button-secondary min-h-[40px] px-4 py-2 text-xs"
+            aria-expanded={isExpanded}
+            aria-controls="client-preferences-editor"
+          >
+            {isExpanded ? "Collapse" : hasStoredPreferences ? "Edit preferences" : "Add preferences"}
+          </button>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-4">
@@ -188,179 +207,182 @@ export function ClientPreferencesForm({
         />
       </div>
 
-      <form
-        ref={formRef}
-        action={updateLeadPreferences}
-        noValidate
-        onSubmit={(event) => {
-          if (!validateForm()) {
-            event.preventDefault();
-          }
-        }}
-        className="mt-6 grid gap-5"
-      >
-        <input type="hidden" name="id" value={lead.id} />
+      {isExpanded ? (
+        <form
+          id="client-preferences-editor"
+          ref={formRef}
+          action={updateLeadPreferences}
+          noValidate
+          onSubmit={(event) => {
+            if (!validateForm()) {
+              event.preventDefault();
+            }
+          }}
+          className="mt-6 grid gap-5 border-t border-line pt-5"
+        >
+          <input type="hidden" name="id" value={lead.id} />
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <ValidatedField
-            label="Budget min"
-            name="budgetMin"
-            value={values.budgetMin}
-            error={errors.budgetMin}
-            inputMode="numeric"
-            maxLength={fieldMaxLengths.budget}
-            onChange={updateTextField}
-          />
-          <ValidatedField
-            label="Budget max"
-            name="budgetMax"
-            value={values.budgetMax}
-            error={errors.budgetMax}
-            inputMode="numeric"
-            maxLength={fieldMaxLengths.budget}
-            onChange={updateTextField}
-          />
-          <ValidatedField
-            label="Bedrooms"
-            name="bedrooms"
-            value={values.bedrooms}
-            error={errors.bedrooms}
-            inputMode="numeric"
-            maxLength={fieldMaxLengths.bedrooms}
-            onChange={updateTextField}
-          />
-          <ValidatedField
-            label="Bathrooms"
-            name="bathrooms"
-            value={values.bathrooms}
-            error={errors.bathrooms}
-            inputMode="decimal"
-            maxLength={fieldMaxLengths.bathrooms}
-            onChange={updateTextField}
-          />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
-          <ValidatedField
-            label="Preferred neighborhoods"
-            name="preferredNeighborhoods"
-            value={values.preferredNeighborhoods}
-            error={errors.preferredNeighborhoods}
-            maxLength={fieldMaxLengths.preferredNeighborhoods}
-            onChange={updateTextField}
-          />
-          <ValidatedSelect
-            label="Move-in urgency"
-            name="moveInUrgency"
-            value={values.moveInUrgency}
-            error={errors.moveInUrgency}
-            onChange={updateTextField}
-          />
-          <ValidatedField
-            label="Pets"
-            name="pets"
-            value={values.pets}
-            error={errors.pets}
-            maxLength={fieldMaxLengths.pets}
-            onChange={updateTextField}
-          />
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ValidatedTextarea
-            label="Must-haves"
-            name="mustHaves"
-            rows={4}
-            value={values.mustHaves}
-            error={errors.mustHaves}
-            maxLength={fieldMaxLengths.mustHaves}
-            onChange={updateTextField}
-          />
-          <ValidatedTextarea
-            label="Dealbreakers"
-            name="dealBreakers"
-            rows={4}
-            value={values.dealBreakers}
-            error={errors.dealBreakers}
-            maxLength={fieldMaxLengths.dealBreakers}
-            onChange={updateTextField}
-          />
-        </div>
-
-        <div className="app-subpanel p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="app-kicker">Pre-screening</p>
-              <p className="mt-2 text-sm font-semibold text-slate-700">
-                {getPreScreenStatus(leadPreview)}
-                {leadPreview.applicationReady ? " - Application ready" : ""}
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <PreferenceCheckbox
-                label="Income qualified"
-                name="incomeQualified"
-                checked={values.incomeQualified}
-                onChange={updateCheckbox}
-              />
-              <PreferenceCheckbox
-                label="Credit concern"
-                name="creditConcern"
-                checked={values.creditConcern}
-                onChange={updateCheckbox}
-              />
-              <PreferenceCheckbox
-                label="Has guarantor"
-                name="hasGuarantor"
-                checked={values.hasGuarantor}
-                onChange={updateCheckbox}
-              />
-              <PreferenceCheckbox
-                label="Application ready"
-                name="applicationReady"
-                checked={values.applicationReady}
-                onChange={updateCheckbox}
-              />
-            </div>
-          </div>
-
-          <div className="mt-5">
-            <ValidatedTextarea
-              label="Qualification notes"
-              name="preScreeningNotes"
-              rows={4}
-              value={values.preScreeningNotes}
-              error={errors.preScreeningNotes}
-              maxLength={fieldMaxLengths.preScreeningNotes}
+          <div className="grid gap-4 md:grid-cols-4">
+            <ValidatedField
+              label="Budget min"
+              name="budgetMin"
+              value={values.budgetMin}
+              error={errors.budgetMin}
+              inputMode="numeric"
+              maxLength={fieldMaxLengths.budget}
+              onChange={updateTextField}
+            />
+            <ValidatedField
+              label="Budget max"
+              name="budgetMax"
+              value={values.budgetMax}
+              error={errors.budgetMax}
+              inputMode="numeric"
+              maxLength={fieldMaxLengths.budget}
+              onChange={updateTextField}
+            />
+            <ValidatedField
+              label="Bedrooms"
+              name="bedrooms"
+              value={values.bedrooms}
+              error={errors.bedrooms}
+              inputMode="numeric"
+              maxLength={fieldMaxLengths.bedrooms}
+              onChange={updateTextField}
+            />
+            <ValidatedField
+              label="Bathrooms"
+              name="bathrooms"
+              value={values.bathrooms}
+              error={errors.bathrooms}
+              inputMode="decimal"
+              maxLength={fieldMaxLengths.bathrooms}
               onChange={updateTextField}
             />
           </div>
-        </div>
 
-        <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-700">
-              {getPreScreenStatus(leadPreview)}
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              {leadPreview.preScreeningNotes || "No qualification notes added yet."}
-            </p>
+          <div className="grid gap-4 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
+            <ValidatedField
+              label="Preferred neighborhoods"
+              name="preferredNeighborhoods"
+              value={values.preferredNeighborhoods}
+              error={errors.preferredNeighborhoods}
+              maxLength={fieldMaxLengths.preferredNeighborhoods}
+              onChange={updateTextField}
+            />
+            <ValidatedSelect
+              label="Move-in urgency"
+              name="moveInUrgency"
+              value={values.moveInUrgency}
+              error={errors.moveInUrgency}
+              onChange={updateTextField}
+            />
+            <ValidatedField
+              label="Pets"
+              name="pets"
+              value={values.pets}
+              error={errors.pets}
+              maxLength={fieldMaxLengths.pets}
+              onChange={updateTextField}
+            />
           </div>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            {!isFormValid ? (
-              <p className="text-xs font-medium text-slate-500">
-                Fix the highlighted fields before saving preferences.
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <ValidatedTextarea
+              label="Must-haves"
+              name="mustHaves"
+              rows={4}
+              value={values.mustHaves}
+              error={errors.mustHaves}
+              maxLength={fieldMaxLengths.mustHaves}
+              onChange={updateTextField}
+            />
+            <ValidatedTextarea
+              label="Dealbreakers"
+              name="dealBreakers"
+              rows={4}
+              value={values.dealBreakers}
+              error={errors.dealBreakers}
+              maxLength={fieldMaxLengths.dealBreakers}
+              onChange={updateTextField}
+            />
+          </div>
+
+          <div className="app-subpanel p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="app-kicker">Pre-screening</p>
+                <p className="mt-2 text-sm font-semibold text-slate-700">
+                  {getPreScreenStatus(leadPreview)}
+                  {leadPreview.applicationReady ? " - Application ready" : ""}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <PreferenceCheckbox
+                  label="Income qualified"
+                  name="incomeQualified"
+                  checked={values.incomeQualified}
+                  onChange={updateCheckbox}
+                />
+                <PreferenceCheckbox
+                  label="Credit concern"
+                  name="creditConcern"
+                  checked={values.creditConcern}
+                  onChange={updateCheckbox}
+                />
+                <PreferenceCheckbox
+                  label="Has guarantor"
+                  name="hasGuarantor"
+                  checked={values.hasGuarantor}
+                  onChange={updateCheckbox}
+                />
+                <PreferenceCheckbox
+                  label="Application ready"
+                  name="applicationReady"
+                  checked={values.applicationReady}
+                  onChange={updateCheckbox}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <ValidatedTextarea
+                label="Qualification notes"
+                name="preScreeningNotes"
+                rows={4}
+                value={values.preScreeningNotes}
+                error={errors.preScreeningNotes}
+                maxLength={fieldMaxLengths.preScreeningNotes}
+                onChange={updateTextField}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-700">
+                {getPreScreenStatus(leadPreview)}
               </p>
-            ) : null}
-            <TooltipShell
-              disabled={isPreviewReadonly}
-              message="This preview workspace is read-only. Use a live workspace to update leads."
-            >
-              <SavePreferencesButton disabled={isPreviewReadonly || !isFormValid} />
-            </TooltipShell>
+              <p className="mt-1 text-sm text-slate-500">
+                {leadPreview.preScreeningNotes || "No qualification notes added yet."}
+              </p>
+            </div>
+            <div className="flex flex-col items-stretch gap-2 sm:items-end">
+              {!isFormValid ? (
+                <p className="text-xs font-medium text-slate-500">
+                  Fix the highlighted fields before saving preferences.
+                </p>
+              ) : null}
+              <TooltipShell
+                disabled={isPreviewReadonly}
+                message="This preview workspace is read-only. Use a live workspace to update leads."
+              >
+                <SavePreferencesButton disabled={isPreviewReadonly || !isFormValid} />
+              </TooltipShell>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      ) : null}
     </section>
   );
 }
