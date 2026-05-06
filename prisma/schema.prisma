@@ -37,6 +37,11 @@ model Lead {
   nextFollowUpDate  String
   showingDate       String
   showingTime       String
+  showingStatus     String @default("")
+  showingOutcome    String @default("")
+  showingOutcomeNotes String @default("")
+  showingCompletedAt String @default("")
+  showingCanceledReason String @default("")
   routeStopOrder    Int    @default(0)
   routeCompleted    Boolean @default(false)
   routeNote         String @default("")

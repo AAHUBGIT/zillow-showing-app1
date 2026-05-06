@@ -12,6 +12,7 @@ import {
   syncLeadShowingToPropertyInterests
 } from "./property-interest-utils";
 import { getPrismaClient } from "./prisma";
+import { withShowingLifecycleDefaults } from "./showing-lifecycle";
 import {
   CommunicationActivity,
   CommunicationTemplate,
@@ -85,16 +86,18 @@ export async function getLeads(): Promise<LeadWithProperties[]> {
 
   return sortLeads(
     (leads as unknown as LeadWithProperties[]).map((lead) =>
-      withClientPreferenceDefaults({
-        ...lead,
-        lastActivity: lastActivitiesByLeadId.get(lead.id) ?? null,
-        propertyInterests: syncLeadShowingToPropertyInterests(
-          lead.propertyInterests || [],
-          lead.propertyAddress,
-          lead.showingDate,
-          lead.showingTime
-        )
-      })
+      withShowingLifecycleDefaults(
+        withClientPreferenceDefaults({
+          ...lead,
+          lastActivity: lastActivitiesByLeadId.get(lead.id) ?? null,
+          propertyInterests: syncLeadShowingToPropertyInterests(
+            lead.propertyInterests || [],
+            lead.propertyAddress,
+            lead.showingDate,
+            lead.showingTime
+          )
+        })
+      )
     )
   );
 }
@@ -127,7 +130,7 @@ export async function getLeadById(id: string): Promise<LeadWithProperties | null
   }
 
   return {
-    ...withClientPreferenceDefaults(lead as unknown as LeadWithProperties),
+    ...withShowingLifecycleDefaults(withClientPreferenceDefaults(lead as unknown as LeadWithProperties)),
     propertyInterests: syncLeadShowingToPropertyInterests(
       (lead as any).propertyInterests || [],
       lead.propertyAddress,
@@ -282,6 +285,11 @@ export async function saveLeads(leads: LeadWithProperties[]) {
           nextFollowUpDate: lead.nextFollowUpDate,
           showingDate: lead.showingDate,
           showingTime: lead.showingTime,
+          showingStatus: lead.showingStatus || "",
+          showingOutcome: lead.showingOutcome || "",
+          showingOutcomeNotes: lead.showingOutcomeNotes || "",
+          showingCompletedAt: lead.showingCompletedAt || "",
+          showingCanceledReason: lead.showingCanceledReason || "",
           routeStopOrder: lead.routeStopOrder || 0,
           routeCompleted: lead.routeCompleted || false,
           routeNote: lead.routeNote || "",

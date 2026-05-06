@@ -11,6 +11,21 @@ export type LeadSource =
   | "phone inquiry"
   | "other";
 export type FollowUpState = "overdue" | "today" | "upcoming" | "none";
+export type ShowingStatus =
+  | "scheduled"
+  | "confirmed"
+  | "completed"
+  | "no_show"
+  | "canceled"
+  | "rescheduled";
+export type ShowingOutcome =
+  | "liked"
+  | "disliked"
+  | "interested"
+  | "applying"
+  | "needs_follow_up"
+  | "rejected"
+  | "undecided";
 export type PropertyInterestStatus =
   | "interested"
   | "scheduled"
@@ -52,6 +67,11 @@ export type Lead = {
   nextFollowUpDate: string;
   showingDate: string;
   showingTime: string;
+  showingStatus: ShowingStatus | "";
+  showingOutcome: ShowingOutcome | "";
+  showingOutcomeNotes: string;
+  showingCompletedAt: string;
+  showingCanceledReason: string;
   routeStopOrder: number;
   routeCompleted: boolean;
   routeNote: string;

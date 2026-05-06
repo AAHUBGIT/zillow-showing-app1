@@ -6,6 +6,8 @@ import { LoadingLink } from "@/components/loading-link";
 import { PriorityBadge } from "@/components/priority-badge";
 import { RouteMapPreview } from "@/components/route-map-preview";
 import { RouteStopControls } from "@/components/route-stop-controls";
+import { ShowingLifecycleActions } from "@/components/showing-lifecycle-actions";
+import { ShowingLifecycleBadge } from "@/components/showing-lifecycle-badge";
 import { SourceBadge } from "@/components/source-badge";
 import { emitAppToast } from "@/lib/client-toast";
 import { moveRouteStopInline, toggleRouteStopCompletedInline, updateRouteStopNoteInline } from "@/lib/actions";
@@ -16,6 +18,7 @@ import {
   getRouteDaySummary,
   sortRouteStops
 } from "@/lib/route-planner";
+import { getEffectiveShowingStatus, isTerminalShowingStatus } from "@/lib/showing-lifecycle";
 import { LeadWithProperties } from "@/lib/types";
 
 export function RouteDayPlanner({
@@ -185,8 +188,58 @@ export function RouteDayPlanner({
 
         <div className="grid gap-3">
           {stops.map((lead, index) => (
-            <div key={lead.id} className="space-y-3">
-              {index > 0 ? (
+            <RouteStopCard
+              key={lead.id}
+              lead={lead}
+              index={index}
+              stopsLength={stops.length}
+              routeSummary={routeSummary}
+              isPreviewReadonly={isPreviewReadonly}
+              busyLeadId={busyLeadId}
+              onToggleCompleted={handleToggleCompleted}
+              onMove={handleMove}
+              onSaveNote={handleSaveNote}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RouteStopCard({
+  lead,
+  index,
+  stopsLength,
+  routeSummary,
+  isPreviewReadonly,
+  busyLeadId,
+  onToggleCompleted,
+  onMove,
+  onSaveNote
+}: {
+  lead: LeadWithProperties;
+  index: number;
+  stopsLength: number;
+  routeSummary: ReturnType<typeof getRouteDaySummary>;
+  isPreviewReadonly: boolean;
+  busyLeadId: string | null;
+  onToggleCompleted: (leadId: string, nextCompleted: boolean) => Promise<void>;
+  onMove: (leadId: string, direction: "up" | "down") => Promise<void>;
+  onSaveNote: (leadId: string, note: string) => Promise<void>;
+}) {
+  const showingStatus = getEffectiveShowingStatus(lead);
+  const isTerminal = isTerminalShowingStatus(showingStatus);
+  const terminalCardClass =
+    showingStatus === "canceled"
+      ? "border-rose-200 bg-rose-50/70"
+      : showingStatus === "no_show"
+        ? "border-amber-200 bg-amber-50/70"
+        : "border-emerald-200 bg-emerald-50/70";
+
+  return (
+    <div className="space-y-3">
+      {index > 0 ? (
                 <div
                   className={`rounded-2xl border px-4 py-3 text-sm ${
                     routeSummary.segments[index - 1]?.unrealistic
@@ -211,8 +264,8 @@ export function RouteDayPlanner({
 
               <div
                 className={`rounded-3xl border p-4 shadow-sm transition ${
-                  lead.routeCompleted
-                    ? "border-emerald-200 bg-emerald-50/70"
+                  lead.routeCompleted || isTerminal
+                    ? terminalCardClass
                     : "border-white/90 bg-white"
                 }`}
               >
@@ -227,6 +280,7 @@ export function RouteDayPlanner({
                           Completed
                         </span>
                       ) : null}
+                      <ShowingLifecycleBadge status={showingStatus} />
                     </div>
                     <p className="mt-1 text-base font-semibold tracking-tight text-ink">
                       {lead.fullName}
@@ -251,14 +305,22 @@ export function RouteDayPlanner({
                       routeCompleted={lead.routeCompleted}
                       routeNote={lead.routeNote}
                       canMoveUp={index > 0}
-                      canMoveDown={index < stops.length - 1}
+                      canMoveDown={index < stopsLength - 1}
                       isPreviewReadonly={isPreviewReadonly}
                       isRouteBusy={Boolean(busyLeadId)}
+                      showCompletionToggle={false}
                       onToggleCompleted={(nextCompleted) =>
-                        handleToggleCompleted(lead.id, nextCompleted)
+                        onToggleCompleted(lead.id, nextCompleted)
                       }
-                      onMove={(direction) => handleMove(lead.id, direction)}
-                      onSaveNote={(note) => handleSaveNote(lead.id, note)}
+                      onMove={(direction) => onMove(lead.id, direction)}
+                      onSaveNote={(note) => onSaveNote(lead.id, note)}
+                    />
+                    <ShowingLifecycleActions
+                      lead={lead}
+                      redirectTo="/routes#upcoming-routes"
+                      mode="route"
+                      isPreviewReadonly={isPreviewReadonly}
+                      rescheduleHref={`/leads/${lead.id}#schedule-showing`}
                     />
                     <LoadingLink
                       href={`/leads/${lead.id}`}
@@ -272,9 +334,5 @@ export function RouteDayPlanner({
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }

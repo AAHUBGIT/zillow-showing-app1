@@ -4,6 +4,8 @@ import { LoadingLink } from "@/components/loading-link";
 import { MarkFollowUpCompleteButton } from "@/components/mark-follow-up-complete-button";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PriorityBadge } from "@/components/priority-badge";
+import { ShowingLifecycleActions } from "@/components/showing-lifecycle-actions";
+import { ShowingLifecycleBadge } from "@/components/showing-lifecycle-badge";
 import { markFollowUpCompleted } from "@/lib/actions";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { getCommunicationChannelLabel } from "@/lib/communication";
@@ -12,6 +14,7 @@ import { formatDateLabel, formatDateTimeLabel, formatTimeForManualEntry } from "
 import { isPreviewReadonlyMode } from "@/lib/deployment";
 import { buildGoogleMapsSearchLink } from "@/lib/property-interest-utils";
 import { isRouteReadyLead, sortRouteStops } from "@/lib/route-planner";
+import { getEffectiveShowingStatus, isTerminalShowingStatus } from "@/lib/showing-lifecycle";
 import { getLeads } from "@/lib/storage";
 import { LeadWithProperties } from "@/lib/types";
 
@@ -116,7 +119,7 @@ export default async function TodayPage() {
           >
             <div className="grid gap-3">
               {todaysShowings.map((lead) => (
-                <ShowingCard key={lead.id} lead={lead} />
+                <ShowingCard key={lead.id} lead={lead} isPreviewReadonly={isPreviewReadonly} />
               ))}
             </div>
           </CommandSection>
@@ -283,15 +286,23 @@ function SummaryCard({
   );
 }
 
-function ShowingCard({ lead }: { lead: LeadWithProperties }) {
+function ShowingCard({ lead, isPreviewReadonly }: { lead: LeadWithProperties; isPreviewReadonly: boolean }) {
+  const showingStatus = getEffectiveShowingStatus(lead);
+  const isTerminal = isTerminalShowingStatus(showingStatus);
+
   return (
-    <article className="rounded-3xl border border-line/80 bg-white px-4 py-4 shadow-sm">
+    <article
+      className={`rounded-3xl border px-4 py-4 shadow-sm ${
+        isTerminal ? "border-slate-200 bg-slate-50/90 opacity-90" : "border-line/80 bg-white"
+      }`}
+    >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-full bg-accentSoft px-3 py-1 text-xs font-semibold text-accent">
               {formatTimeForManualEntry(lead.showingTime)}
             </div>
+            <ShowingLifecycleBadge status={showingStatus} />
             <PriorityBadge priority={lead.priority} />
             <LeadStatusBadge status={lead.status} />
           </div>
@@ -301,7 +312,16 @@ function ShowingCard({ lead }: { lead: LeadWithProperties }) {
           <PreferenceIndicators lead={lead} />
           <LastActivity activity={lead.lastActivity} />
         </div>
-        <QuickActions lead={lead} includeMaps />
+        <div className="flex flex-col gap-3 lg:items-end">
+          <QuickActions lead={lead} includeMaps />
+          <ShowingLifecycleActions
+            lead={lead}
+            redirectTo="/today#todays-showings"
+            mode="quick"
+            isPreviewReadonly={isPreviewReadonly}
+            rescheduleHref={`/leads/${lead.id}#schedule-showing`}
+          />
+        </div>
       </div>
     </article>
   );
@@ -316,6 +336,7 @@ function UpcomingShowingCard({ lead }: { lead: LeadWithProperties }) {
             <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
               {formatDateTimeLabel(lead.showingDate, lead.showingTime)}
             </div>
+            <ShowingLifecycleBadge lead={lead} />
             <PriorityBadge priority={lead.priority} />
             <LeadStatusBadge status={lead.status} />
           </div>

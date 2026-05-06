@@ -28,6 +28,13 @@ import { getPropertyListingByIdForUser } from "./property-listings";
 import { propertyInterestStatusOptions } from "./property-interest-utils";
 import { isRouteReadyLead, sortRouteStops } from "./route-planner";
 import {
+  getPropertyStatusForShowingOutcome,
+  getShowingOutcomeLabel,
+  normalizeShowingOutcome,
+  normalizeShowingStatus,
+  showingStatusOptions
+} from "./showing-lifecycle";
+import {
   Lead,
   LeadPriority,
   LeadSource,
@@ -39,7 +46,9 @@ import {
   PropertyInterest,
   PropertyListing,
   PropertyListingStatus,
-  PropertyInterestStatus
+  PropertyInterestStatus,
+  ShowingOutcome,
+  ShowingStatus
 } from "./types";
 
 function getString(formData: FormData, key: string) {
@@ -75,6 +84,11 @@ function getSource(formData: FormData) {
 
 function getPropertyListingStatus(formData: FormData): PropertyListingStatus {
   return normalizePropertyListingStatus(getString(formData, "status"));
+}
+
+function getShowingStatus(formData: FormData): ShowingStatus {
+  const value = normalizeShowingStatus(getString(formData, "showingStatus"));
+  return value || "scheduled";
 }
 
 function getClientPreferenceFields(formData: FormData): ClientPreferenceFields {
@@ -281,6 +295,43 @@ async function saveCommunicationActivity(input: CommunicationActivityInput, user
   return activity;
 }
 
+function buildCommunicationActivityWrite(
+  input: CommunicationActivityInput,
+  userId: string,
+  occurredAt: string
+) {
+  const prisma = getPrismaClient();
+
+  return prisma.$executeRaw`
+    INSERT INTO "CommunicationActivity" (
+      "id",
+      "leadId",
+      "userId",
+      "templateId",
+      "channel",
+      "direction",
+      "subject",
+      "body",
+      "outcome",
+      "occurredAt",
+      "createdAt"
+    )
+    VALUES (
+      ${crypto.randomUUID()},
+      ${input.leadId},
+      ${userId},
+      ${input.templateId || ""},
+      ${input.channel},
+      ${input.direction},
+      ${input.subject || ""},
+      ${input.body},
+      ${input.outcome || ""},
+      ${occurredAt},
+      ${occurredAt}
+    )
+  `;
+}
+
 type LeadRouteFields = Pick<
   Lead,
   "propertyAddress" | "showingDate" | "showingTime" | "routeCompleted" | "routeStopOrder"
@@ -320,6 +371,14 @@ function getScheduledLeadRouteData({
     propertyAddress,
     showingDate,
     showingTime,
+    showingStatus:
+      lead.showingDate && lead.showingTime && (lead.showingDate !== showingDate || lead.showingTime !== showingTime)
+        ? "rescheduled"
+        : "scheduled",
+    showingOutcome: "",
+    showingOutcomeNotes: "",
+    showingCompletedAt: "",
+    showingCanceledReason: "",
     status: lead.status === "new" ? "scheduled" : lead.status,
     ...getRouteResetData(lead, { propertyAddress, showingDate, showingTime }),
     updatedAt
@@ -409,6 +468,11 @@ export async function createLead(formData: FormData) {
     nextFollowUpDate,
     showingDate,
     showingTime,
+    showingStatus: showingDate && showingTime ? "scheduled" : "",
+    showingOutcome: "",
+    showingOutcomeNotes: "",
+    showingCompletedAt: "",
+    showingCanceledReason: "",
     routeStopOrder: 0,
     routeCompleted: false,
     routeNote: "",
@@ -503,6 +567,11 @@ export async function createImportedLead(formData: FormData) {
     nextFollowUpDate: "",
     showingDate: "",
     showingTime: "",
+    showingStatus: "",
+    showingOutcome: "",
+    showingOutcomeNotes: "",
+    showingCompletedAt: "",
+    showingCanceledReason: "",
     routeStopOrder: 0,
     routeCompleted: false,
     routeNote: "",
@@ -780,6 +849,14 @@ export async function updateLeadSchedule(formData: FormData) {
   }
 
   try {
+    const showingWasMoved =
+      Boolean(existingLead.showingDate && existingLead.showingTime && showingDate && showingTime) &&
+      (existingLead.showingDate !== showingDate ||
+        existingLead.showingTime !== showingTime ||
+        existingLead.propertyAddress !== showingLocationAddress);
+    const showingWasAdded = Boolean(!existingLead.showingDate && !existingLead.showingTime && showingDate && showingTime);
+    const shouldLogScheduleChange = showingWasAdded || showingWasMoved;
+
     await prisma.$transaction([
       prisma.lead.update({
         where: { id },
@@ -794,6 +871,11 @@ export async function updateLeadSchedule(formData: FormData) {
           nextFollowUpDate,
           showingDate,
           showingTime,
+          showingStatus: showingDate && showingTime ? (showingWasMoved ? "rescheduled" : "scheduled") : "",
+          showingOutcome: "",
+          showingOutcomeNotes: "",
+          showingCompletedAt: "",
+          showingCanceledReason: "",
           ...getRouteResetData(existingLead, {
             propertyAddress: showingLocationAddress,
             showingDate,
@@ -803,7 +885,25 @@ export async function updateLeadSchedule(formData: FormData) {
           updatedAt: now
         }
       }),
-      ...schedulePropertyUpdates
+      ...schedulePropertyUpdates,
+      ...(shouldLogScheduleChange
+        ? [
+            buildCommunicationActivityWrite(
+              {
+                leadId: id,
+                channel: "note",
+                direction: "internal",
+                subject: showingWasMoved ? "Showing rescheduled" : "Showing scheduled",
+                body: showingWasMoved
+                  ? `Showing rescheduled for ${showingDate} at ${showingTime}.`
+                  : `Showing scheduled for ${showingDate} at ${showingTime}.`,
+                outcome: showingLocationAddress
+              },
+              sessionUser.id,
+              now
+            )
+          ]
+        : [])
     ]);
   } catch (error) {
     redirectSaveError(`/leads/${id}`, error);
@@ -814,7 +914,224 @@ export async function updateLeadSchedule(formData: FormData) {
   revalidatePath(`/leads/${id}`);
   revalidatePath("/routes");
   revalidatePath("/properties");
-  redirect(withToast(`/leads/${id}`, showingDate && showingTime ? "showing-scheduled" : "status-updated"));
+  redirect(
+    withToast(
+      `/leads/${id}`,
+      showingDate && showingTime
+        ? existingLead.showingDate && existingLead.showingTime
+          ? "showing-rescheduled"
+          : "showing-scheduled"
+        : "status-updated"
+    )
+  );
+}
+
+function getLifecycleActivityText({
+  status,
+  outcome,
+  outcomeNotes,
+  canceledReason
+}: {
+  status: ShowingStatus;
+  outcome: ShowingOutcome;
+  outcomeNotes: string;
+  canceledReason: string;
+}) {
+  if (status === "confirmed") {
+    return {
+      subject: "Showing confirmed",
+      body: "Showing confirmed with the customer.",
+      outcome: ""
+    };
+  }
+
+  if (status === "completed") {
+    const outcomeLabel = getShowingOutcomeLabel(outcome).toLowerCase();
+    return {
+      subject: "Showing completed",
+      body: `Showing completed - customer ${outcomeLabel}.${outcomeNotes ? ` ${outcomeNotes}` : ""}`,
+      outcome: outcomeLabel
+    };
+  }
+
+  if (status === "no_show") {
+    return {
+      subject: "Showing marked no-show",
+      body: "Showing marked no-show.",
+      outcome: ""
+    };
+  }
+
+  if (status === "canceled") {
+    return {
+      subject: "Showing canceled",
+      body: `Showing canceled${canceledReason ? ` - ${canceledReason}` : "."}`,
+      outcome: canceledReason
+    };
+  }
+
+  if (status === "rescheduled") {
+    return {
+      subject: "Showing rescheduled",
+      body: "Showing moved back into rescheduling.",
+      outcome: ""
+    };
+  }
+
+  return {
+    subject: "Showing scheduled",
+    body: "Showing marked as scheduled.",
+    outcome: ""
+  };
+}
+
+function getMatchingShowingPropertyUpdates({
+  lead,
+  status,
+  outcome,
+  updatedAt
+}: {
+  lead: LeadWithProperties;
+  status: ShowingStatus;
+  outcome: ShowingOutcome;
+  updatedAt: string;
+}) {
+  if (status !== "completed") {
+    return [];
+  }
+
+  const nextPropertyStatus = getPropertyStatusForShowingOutcome(outcome);
+
+  return (lead.propertyInterests || [])
+    .filter((propertyInterest) => {
+      const addressMatches = propertyInterest.address.trim().toLowerCase() === lead.propertyAddress.trim().toLowerCase();
+      const dateMatches = !propertyInterest.showingDate || propertyInterest.showingDate === lead.showingDate;
+      const timeMatches = !propertyInterest.showingTime || propertyInterest.showingTime === lead.showingTime;
+
+      return addressMatches && dateMatches && timeMatches;
+    })
+    .map((propertyInterest) =>
+      getPrismaClient().propertyInterest.update({
+        where: { id: propertyInterest.id },
+        data: {
+          status: nextPropertyStatus,
+          updatedAt
+        }
+      })
+    );
+}
+
+export async function updateShowingLifecycle(formData: FormData) {
+  const leadId = getString(formData, "leadId");
+  const redirectTo = getString(formData, "redirectTo") || `/leads/${leadId}`;
+  const nextShowingStatus = getShowingStatus(formData);
+  const rawOutcome = getString(formData, "showingOutcome");
+  const showingOutcome = nextShowingStatus === "completed" ? normalizeShowingOutcome(rawOutcome) : "";
+  const showingOutcomeNotes = getString(formData, "showingOutcomeNotes");
+  const showingCanceledReason = getString(formData, "showingCanceledReason");
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
+  }
+
+  if (
+    !leadId ||
+    !showingStatusOptions.includes(nextShowingStatus) ||
+    getMaxLengthError(showingOutcomeNotes, fieldMaxLengths.agentNotes) ||
+    getMaxLengthError(showingCanceledReason, fieldMaxLengths.agentNotes)
+  ) {
+    redirectValidation(redirectTo);
+  }
+
+  const prisma = getPrismaClient();
+  let lead;
+
+  try {
+    lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      include: {
+        propertyInterests: true
+      }
+    });
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  if (!lead || lead.userId !== sessionUser.id) {
+    redirect(withToast(redirectTo, "save-error"));
+  }
+
+  if (!lead.showingDate || !lead.showingTime) {
+    redirectValidation(redirectTo);
+  }
+
+  const now = new Date().toISOString();
+  const currentLead = lead as unknown as LeadWithProperties;
+  const activity = getLifecycleActivityText({
+    status: nextShowingStatus,
+    outcome: showingOutcome || "undecided",
+    outcomeNotes: showingOutcomeNotes,
+    canceledReason: showingCanceledReason
+  });
+  const routeCompleted =
+    nextShowingStatus === "completed" ||
+    nextShowingStatus === "no_show" ||
+    nextShowingStatus === "canceled";
+  const nextLeadStatus =
+    lead.status === "new" && (nextShowingStatus === "scheduled" || nextShowingStatus === "confirmed")
+      ? "scheduled"
+      : nextShowingStatus === "canceled" || nextShowingStatus === "no_show"
+        ? "contacted"
+        : lead.status;
+
+  try {
+    await prisma.$transaction([
+      prisma.lead.update({
+        where: { id: leadId },
+        data: {
+          showingStatus: nextShowingStatus,
+          showingOutcome,
+          showingOutcomeNotes: nextShowingStatus === "completed" ? showingOutcomeNotes : "",
+          showingCompletedAt: nextShowingStatus === "completed" ? now : "",
+          showingCanceledReason: nextShowingStatus === "canceled" ? showingCanceledReason : "",
+          routeCompleted,
+          status: nextLeadStatus,
+          updatedAt: now
+        }
+      }),
+      ...getMatchingShowingPropertyUpdates({
+        lead: currentLead,
+        status: nextShowingStatus,
+        outcome: showingOutcome || "undecided",
+        updatedAt: now
+      }),
+      buildCommunicationActivityWrite(
+        {
+          leadId,
+          channel: "note",
+          direction: "internal",
+          subject: activity.subject,
+          body: activity.body,
+          outcome: activity.outcome
+        },
+        sessionUser.id,
+        now
+      )
+    ]);
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath("/routes");
+  revalidatePath(`/leads/${leadId}`);
+  redirect(withToast(redirectTo, `showing-${nextShowingStatus}`));
 }
 
 export async function updateLeadPreferences(formData: FormData) {

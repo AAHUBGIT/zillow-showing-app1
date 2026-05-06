@@ -13,6 +13,7 @@ export function RouteStopControls({
   canMoveDown,
   isPreviewReadonly = false,
   isRouteBusy = false,
+  showCompletionToggle = true,
   onToggleCompleted,
   onMove,
   onSaveNote
@@ -23,6 +24,7 @@ export function RouteStopControls({
   canMoveDown: boolean;
   isPreviewReadonly?: boolean;
   isRouteBusy?: boolean;
+  showCompletionToggle?: boolean;
   onToggleCompleted: (nextCompleted: boolean) => Promise<void>;
   onMove: (direction: "up" | "down") => Promise<void>;
   onSaveNote: (note: string) => Promise<void>;
@@ -59,17 +61,19 @@ export function RouteStopControls({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
-          <RouteActionButton
-            type="button"
-            disabled={controlsDisabled}
-            isPending={pendingAction === "toggle"}
-            pendingLabel="Saving..."
-            onClick={() => runAction("toggle", () => onToggleCompleted(!routeCompleted))}
-          >
-            {routeCompleted ? "Reopen Stop" : "Mark Completed"}
-          </RouteActionButton>
-        </TooltipShell>
+        {showCompletionToggle ? (
+          <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
+            <RouteActionButton
+              type="button"
+              disabled={controlsDisabled}
+              isPending={pendingAction === "toggle"}
+              pendingLabel="Saving..."
+              onClick={() => runAction("toggle", () => onToggleCompleted(!routeCompleted))}
+            >
+              {routeCompleted ? "Reopen Stop" : "Mark Completed"}
+            </RouteActionButton>
+          </TooltipShell>
+        ) : null}
 
         <TooltipShell disabled={isPreviewReadonly} message={tooltipMessage}>
           <RouteActionButton

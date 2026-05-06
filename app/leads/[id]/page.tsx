@@ -12,6 +12,9 @@ import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { buildGoogleCalendarUrl } from "@/lib/calendar";
 import { formatDateTimeLabel } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
+import { ShowingLifecycleActions } from "@/components/showing-lifecycle-actions";
+import { ShowingLifecycleBadge } from "@/components/showing-lifecycle-badge";
+import { getShowingOutcomeLabel } from "@/lib/showing-lifecycle";
 import {
   getPropertyInterestCountLabel,
   getTopRatedProperty,
@@ -70,6 +73,12 @@ export default async function LeadDetailsPage({
 
           <div className="app-panel p-5 sm:p-6">
             <p className="app-eyebrow">Showing Snapshot</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <ShowingLifecycleBadge lead={lead} />
+              {lead.showingOutcome ? (
+                <span className="app-chip">Outcome: {getShowingOutcomeLabel(lead.showingOutcome)}</span>
+              ) : null}
+            </div>
             <div className="mt-4 grid gap-4 md:grid-cols-3">
               <div className="app-grid-card">
                 <p className="app-kicker">Current Showing</p>
@@ -90,6 +99,38 @@ export default async function LeadDetailsPage({
                 </p>
               </div>
             </div>
+            {lead.showingDate && lead.showingTime ? (
+              <div className="mt-5 rounded-3xl border border-line/80 bg-white/85 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="app-kicker">Showing Lifecycle</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Confirm the appointment, record the outcome, or move it into no-show,
+                      canceled, or rescheduled without losing the activity trail.
+                    </p>
+                    {lead.showingOutcomeNotes ? (
+                      <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                        {lead.showingOutcomeNotes}
+                      </p>
+                    ) : null}
+                    {lead.showingCanceledReason ? (
+                      <p className="mt-3 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                        {lead.showingCanceledReason}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="w-full lg:max-w-md">
+                    <ShowingLifecycleActions
+                      lead={lead}
+                      redirectTo={`/leads/${lead.id}`}
+                      mode="full"
+                      isPreviewReadonly={isPreviewReadonly}
+                      rescheduleHref="#schedule-showing"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="app-panel p-5 sm:p-6">

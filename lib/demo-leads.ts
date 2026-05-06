@@ -1,6 +1,7 @@
 import leads from "@/data/leads.json";
 import { withClientPreferenceDefaults } from "./client-preferences";
 import { syncLeadShowingToPropertyInterests } from "./property-interest-utils";
+import { withShowingLifecycleDefaults } from "./showing-lifecycle";
 import { LeadWithProperties } from "./types";
 
 const demoSchedulePresets: Record<
@@ -97,6 +98,11 @@ function withFreshDemoDates(lead: LeadWithProperties, index: number): LeadWithPr
     showingDate,
     showingTime,
     status,
+    showingStatus: showingDate && showingTime ? lead.showingStatus || "scheduled" : "",
+    showingOutcome: lead.showingOutcome || "",
+    showingOutcomeNotes: lead.showingOutcomeNotes || "",
+    showingCompletedAt: lead.showingCompletedAt || "",
+    showingCanceledReason: lead.showingCanceledReason || "",
     routeStopOrder: showingDate && showingTime ? preset?.routeStopOrder || 1 : 0,
     routeCompleted: showingOffset !== undefined && showingOffset < 0 ? lead.routeCompleted : false,
     createdAt: relativeTimestamp(-10 - index, 10),
@@ -114,19 +120,21 @@ export function getDemoLeads() {
     .map((lead, index) => {
       const freshLead = withFreshDemoDates(lead, index);
 
-      return withClientPreferenceDefaults({
-        ...freshLead,
-        userId: lead.userId || "demo-user",
-        routeStopOrder: Number(freshLead.routeStopOrder || 0),
-        routeCompleted: Boolean(freshLead.routeCompleted || false),
-        routeNote: freshLead.routeNote || "",
-        propertyInterests: syncLeadShowingToPropertyInterests(
-          freshLead.propertyInterests || [],
-          freshLead.propertyAddress,
-          freshLead.showingDate,
-          freshLead.showingTime
-        )
-      });
+      return withShowingLifecycleDefaults(
+        withClientPreferenceDefaults({
+          ...freshLead,
+          userId: lead.userId || "demo-user",
+          routeStopOrder: Number(freshLead.routeStopOrder || 0),
+          routeCompleted: Boolean(freshLead.routeCompleted || false),
+          routeNote: freshLead.routeNote || "",
+          propertyInterests: syncLeadShowingToPropertyInterests(
+            freshLead.propertyInterests || [],
+            freshLead.propertyAddress,
+            freshLead.showingDate,
+            freshLead.showingTime
+          )
+        })
+      );
     })
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
