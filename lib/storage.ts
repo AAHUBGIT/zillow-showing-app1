@@ -25,38 +25,6 @@ export type LeadCommunicationWorkspace = {
   activities: CommunicationActivity[];
 };
 
-let showingLifecycleSchemaEnsure: Promise<void> | null = null;
-const showingLifecycleColumns = new Set([
-  "Lead.showingStatus",
-  "Lead.showingOutcome",
-  "Lead.showingOutcomeNotes",
-  "Lead.showingCompletedAt",
-  "Lead.showingCanceledReason"
-]);
-
-function isMissingShowingLifecycleColumnError(error: unknown) {
-  const prismaError = error as {
-    code?: string;
-    meta?: {
-      column?: string;
-    };
-  };
-
-  return prismaError.code === "P2022" && showingLifecycleColumns.has(prismaError.meta?.column || "");
-}
-
-async function ensureShowingLifecycleColumns(prisma: ReturnType<typeof getPrismaClient>) {
-  showingLifecycleSchemaEnsure ??= prisma.$transaction([
-    prisma.$executeRawUnsafe(`ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "showingStatus" TEXT NOT NULL DEFAULT ''`),
-    prisma.$executeRawUnsafe(`ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "showingOutcome" TEXT NOT NULL DEFAULT ''`),
-    prisma.$executeRawUnsafe(`ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "showingOutcomeNotes" TEXT NOT NULL DEFAULT ''`),
-    prisma.$executeRawUnsafe(`ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "showingCompletedAt" TEXT NOT NULL DEFAULT ''`),
-    prisma.$executeRawUnsafe(`ALTER TABLE "Lead" ADD COLUMN IF NOT EXISTS "showingCanceledReason" TEXT NOT NULL DEFAULT ''`)
-  ]).then(() => undefined);
-
-  await showingLifecycleSchemaEnsure;
-}
-
 export async function getLeads(): Promise<LeadWithProperties[]> {
   if (shouldUseDemoData()) {
     return sortLeads(
@@ -78,32 +46,14 @@ export async function getLeads(): Promise<LeadWithProperties[]> {
     return [];
   }
 
-  let leads;
-
-  try {
-    leads = await prisma.lead.findMany({
-      where: {
-        userId: sessionUser.id
-      },
-      include: {
-        propertyInterests: true
-      }
-    });
-  } catch (error) {
-    if (!isMissingShowingLifecycleColumnError(error)) {
-      throw error;
+  const leads = await prisma.lead.findMany({
+    where: {
+      userId: sessionUser.id
+    },
+    include: {
+      propertyInterests: true
     }
-
-    await ensureShowingLifecycleColumns(prisma);
-    leads = await prisma.lead.findMany({
-      where: {
-        userId: sessionUser.id
-      },
-      include: {
-        propertyInterests: true
-      }
-    });
-  }
+  });
   const lastActivitiesByLeadId = new Map<string, CommunicationActivity>();
 
   try {
@@ -168,28 +118,12 @@ export async function getLeadById(id: string): Promise<LeadWithProperties | null
     return null;
   }
 
-  let lead;
-
-  try {
-    lead = await prisma.lead.findUnique({
-      where: { id },
-      include: {
-        propertyInterests: true
-      }
-    });
-  } catch (error) {
-    if (!isMissingShowingLifecycleColumnError(error)) {
-      throw error;
+  const lead = await prisma.lead.findUnique({
+    where: { id },
+    include: {
+      propertyInterests: true
     }
-
-    await ensureShowingLifecycleColumns(prisma);
-    lead = await prisma.lead.findUnique({
-      where: { id },
-      include: {
-        propertyInterests: true
-      }
-    });
-  }
+  });
 
   if (!lead || lead.userId !== sessionUser.id) {
     return null;
