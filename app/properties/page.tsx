@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { createPropertyListing } from "@/lib/actions";
-import { leadSourceOptions, getSourceLabel } from "@/lib/lead-utils";
+import { PropertyListingCreateForm } from "@/components/property-listing-create-form";
+import { isPreviewReadonlyMode } from "@/lib/deployment";
+import { getSourceLabel } from "@/lib/lead-utils";
 import {
   formatPropertyListingPrice,
   getPropertyListingLayout,
@@ -70,6 +71,7 @@ export default async function PropertiesPage({
   const listings = await getPropertyListings();
   const filters = getFilters(searchParams);
   const filteredListings = filterListings(listings, filters);
+  const isPreviewReadonly = isPreviewReadonlyMode();
   const neighborhoods = Array.from(
     new Set(listings.map((listing) => listing.neighborhood).filter(Boolean))
   ).sort((first, second) => first.localeCompare(second));
@@ -151,53 +153,10 @@ export default async function PropertiesPage({
         </form>
       </section>
 
-      <details id="add-property-listing" className="app-panel p-5 sm:p-6">
-        <summary className="cursor-pointer list-none text-lg font-semibold tracking-tight text-ink">
-          Add Property Listing
-        </summary>
-        <form action={createPropertyListing} className="mt-5 grid gap-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <TextField name="title" label="Title" required />
-            <TextField name="address" label="Address" required />
-            <TextField name="price" label="Price" inputMode="numeric" />
-            <TextField name="beds" label="Beds" inputMode="numeric" />
-            <TextField name="baths" label="Baths" inputMode="decimal" />
-            <TextField name="neighborhood" label="Neighborhood" />
-            <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-slate-700">Source</span>
-              <select name="source" defaultValue="Zillow" className="app-input">
-                {leadSourceOptions.map((source) => (
-                  <option key={source} value={source}>
-                    {getSourceLabel(source)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-slate-700">Status</span>
-              <select name="status" defaultValue="available" className="app-input">
-                {propertyListingStatusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {getPropertyListingStatusLabel(status)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <TextField name="listingUrl" label="Listing URL" type="url" />
-          </div>
-
-          <label className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-slate-700">Notes</span>
-            <textarea name="notes" rows={4} className="app-textarea" />
-          </label>
-
-          <div>
-            <button type="submit" className="app-button-primary">
-              Save Listing
-            </button>
-          </div>
-        </form>
-      </details>
+      <PropertyListingCreateForm
+        propertyListings={listings}
+        isPreviewReadonly={isPreviewReadonly}
+      />
 
       <section className="grid gap-4 xl:grid-cols-2">
         {filteredListings.length > 0 ? (
@@ -209,30 +168,6 @@ export default async function PropertiesPage({
         )}
       </section>
     </main>
-  );
-}
-
-function TextField({
-  name,
-  label,
-  type = "text",
-  inputMode,
-  required = false
-}: {
-  name: string;
-  label: string;
-  type?: string;
-  inputMode?: "decimal" | "numeric";
-  required?: boolean;
-}) {
-  return (
-    <label className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-slate-700">
-        {label}
-        {required ? <span className="text-rose-600"> *</span> : null}
-      </span>
-      <input name={name} type={type} inputMode={inputMode} required={required} className="app-input" />
-    </label>
   );
 }
 
