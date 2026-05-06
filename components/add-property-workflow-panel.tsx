@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AddressAutocompleteInput } from "@/components/address-autocomplete-input";
 import { PropertyFitBadges } from "@/components/property-fit-badges";
 import {
   getAddressTitleFallback,
@@ -39,7 +40,6 @@ export function AddPropertyWorkflowPanel({
   const [savedSearch, setSavedSearch] = useState("");
   const [addressInput, setAddressInput] = useState("");
   const [urlInput, setUrlInput] = useState("");
-  const hasGooglePlacesKey = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
   const savedMatches = useMemo(() => {
     const query = savedSearch.trim().toLowerCase();
 
@@ -182,16 +182,21 @@ export function AddPropertyWorkflowPanel({
 
         {activeTab === "address" ? (
           <div className="grid gap-3">
-            <label className="flex min-w-0 flex-col gap-2">
-              <span className="text-sm font-medium text-slate-700">Search address</span>
-              <input
-                type="text"
-                value={addressInput}
-                onChange={(event) => setAddressInput(event.target.value)}
-                placeholder="Start typing an address"
-                className="app-input"
-              />
-            </label>
+            <AddressAutocompleteInput
+              label="Search address"
+              value={addressInput}
+              onChange={setAddressInput}
+              onSelect={(selection) => {
+                setAddressInput(selection.formattedAddress);
+                onApply({
+                  listingTitle: getAddressTitleFallback(selection.formattedAddress),
+                  address: selection.formattedAddress,
+                  neighborhood: selection.neighborhood,
+                  source: "other"
+                });
+              }}
+              helperText="Start typing to see address suggestions, or enter the address manually."
+            />
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <button
                 type="button"
@@ -202,9 +207,7 @@ export function AddPropertyWorkflowPanel({
                 Use this address
               </button>
               <p className="text-xs leading-5 text-slate-500">
-                {hasGooglePlacesKey
-                  ? "Google Maps key detected. Manual address fallback remains available."
-                  : "Address autocomplete can be connected later with a Google Maps key."}
+                Manual fallback stays available even when autocomplete is enabled.
               </p>
             </div>
           </div>
