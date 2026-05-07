@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { PropertyListingCreateForm } from "@/components/property-listing-create-form";
+import { updatePropertyListing } from "@/lib/actions";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
-import { getSourceLabel } from "@/lib/lead-utils";
+import { fieldMaxLengths } from "@/lib/form-validation";
+import { getSourceLabel, leadSourceOptions } from "@/lib/lead-utils";
 import {
   formatPropertyListingPrice,
   getPropertyListingLayout,
@@ -160,7 +162,13 @@ export default async function PropertiesPage({
 
       <section className="grid gap-4 xl:grid-cols-2">
         {filteredListings.length > 0 ? (
-          filteredListings.map((listing) => <PropertyListingCard key={listing.id} listing={listing} />)
+          filteredListings.map((listing) => (
+            <PropertyListingCard
+              key={listing.id}
+              listing={listing}
+              isPreviewReadonly={isPreviewReadonly}
+            />
+          ))
         ) : (
           <div className="app-panel p-8 text-center text-sm text-slate-600 xl:col-span-2">
             No property listings match the current filters.
@@ -171,7 +179,13 @@ export default async function PropertiesPage({
   );
 }
 
-function PropertyListingCard({ listing }: { listing: PropertyListing }) {
+function PropertyListingCard({
+  listing,
+  isPreviewReadonly
+}: {
+  listing: PropertyListing;
+  isPreviewReadonly: boolean;
+}) {
   return (
     <article className="app-panel p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -204,6 +218,137 @@ function PropertyListingCard({ listing }: { listing: PropertyListing }) {
           Open Listing
         </a>
       ) : null}
+
+      <details className="mt-5 rounded-3xl border border-line/80 bg-slate-50/80 p-4">
+        <summary className="cursor-pointer list-none">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-ink">Edit property</p>
+              <p className="mt-1 text-xs text-slate-500">Update price, layout, status, notes, or listing link.</p>
+            </div>
+            <span className="app-chip">Edit</span>
+          </div>
+        </summary>
+        <PropertyListingEditForm listing={listing} isPreviewReadonly={isPreviewReadonly} />
+      </details>
     </article>
+  );
+}
+
+function PropertyListingEditForm({
+  listing,
+  isPreviewReadonly
+}: {
+  listing: PropertyListing;
+  isPreviewReadonly: boolean;
+}) {
+  return (
+    <form action={updatePropertyListing} className="mt-4 grid gap-4">
+      <input type="hidden" name="id" value={listing.id} />
+      <div className="grid gap-4 md:grid-cols-2">
+        <EditField
+          label="Listing title"
+          name="title"
+          defaultValue={listing.title}
+          required
+          maxLength={fieldMaxLengths.listingTitle}
+        />
+        <EditField
+          label="Address"
+          name="address"
+          defaultValue={listing.address}
+          required
+          maxLength={fieldMaxLengths.address}
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <EditField label="Price" name="price" defaultValue={listing.price} inputMode="decimal" maxLength={fieldMaxLengths.rent} />
+        <EditField label="Beds" name="beds" defaultValue={listing.beds} inputMode="numeric" maxLength={fieldMaxLengths.beds} />
+        <EditField label="Baths" name="baths" defaultValue={listing.baths} inputMode="decimal" maxLength={fieldMaxLengths.baths} />
+        <EditField label="Neighborhood" name="neighborhood" defaultValue={listing.neighborhood} maxLength={fieldMaxLengths.neighborhood} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <label className="flex min-w-0 flex-col gap-2">
+          <span className="text-sm font-medium text-slate-700">Source</span>
+          <select name="source" defaultValue={listing.source} className="app-input bg-white text-ink">
+            {leadSourceOptions.map((source) => (
+              <option key={source} value={source}>
+                {getSourceLabel(source)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex min-w-0 flex-col gap-2">
+          <span className="text-sm font-medium text-slate-700">Status</span>
+          <select name="status" defaultValue={listing.status} className="app-input bg-white text-ink">
+            {propertyListingStatusOptions.map((status) => (
+              <option key={status} value={status}>
+                {getPropertyListingStatusLabel(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <EditField label="Listing URL" name="listingUrl" defaultValue={listing.listingUrl} type="url" maxLength={fieldMaxLengths.listingUrl} />
+      </div>
+
+      <label className="flex min-w-0 flex-col gap-2">
+        <span className="text-sm font-medium text-slate-700">Notes</span>
+        <textarea
+          name="notes"
+          defaultValue={listing.notes}
+          maxLength={fieldMaxLengths.notes}
+          rows={3}
+          className="app-textarea resize-y"
+        />
+      </label>
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          disabled={isPreviewReadonly}
+          className="app-button-primary disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          Save Changes
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function EditField({
+  label,
+  name,
+  defaultValue,
+  type = "text",
+  required = false,
+  inputMode,
+  maxLength
+}: {
+  label: string;
+  name: string;
+  defaultValue: string;
+  type?: string;
+  required?: boolean;
+  inputMode?: "text" | "numeric" | "decimal";
+  maxLength?: number;
+}) {
+  return (
+    <label className="flex min-w-0 flex-col gap-2">
+      <span className="text-sm font-medium text-slate-700">
+        {label}
+        {required ? <span className="text-rose-600"> *</span> : null}
+      </span>
+      <input
+        type={type}
+        name={name}
+        defaultValue={defaultValue}
+        required={required}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        className="app-input"
+      />
+    </label>
   );
 }

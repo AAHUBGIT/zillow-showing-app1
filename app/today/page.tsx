@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ContactActionLink } from "@/components/contact-action-link";
 import { LeadStatusBadge } from "@/components/lead-status-badge";
 import { LoadingLink } from "@/components/loading-link";
@@ -26,18 +27,34 @@ const todaySectionIds = {
   highPriority: "high-priority-leads"
 } as const;
 
-export default async function TodayPage() {
+function getParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] || "" : value || "";
+}
+
+function getSelectedIsoDate(searchParams: Record<string, string | string[] | undefined> | undefined, fallback: string) {
+  const date = getParam(searchParams?.date);
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : fallback;
+}
+
+export default async function TodayPage({
+  searchParams
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const leads = await getLeads();
   const today = getTodayIsoDate(appTimeZone);
-  const todayLabel = formatDateLabel(today);
+  const selectedDate = getSelectedIsoDate(searchParams, today);
+  const selectedDateLabel = formatDateLabel(selectedDate);
+  const isViewingToday = selectedDate === today;
   const isPreviewReadonly = isPreviewReadonlyMode();
 
   const todaysShowings = leads
-    .filter((lead) => lead.showingDate === today && isRouteReadyLead(lead))
+    .filter((lead) => lead.showingDate === selectedDate && isRouteReadyLead(lead))
     .sort(sortByShowingTimeThenName);
 
   const upcomingShowings = leads
-    .filter((lead) => lead.showingDate > today && isRouteReadyLead(lead))
+    .filter((lead) => lead.showingDate > selectedDate && isRouteReadyLead(lead))
     .sort(sortByShowingDateThenTimeThenName)
     .slice(0, 5);
 
@@ -46,12 +63,12 @@ export default async function TodayPage() {
       (lead) =>
         lead.status !== "closed" &&
         Boolean(lead.nextFollowUpDate) &&
-        lead.nextFollowUpDate < today
+        lead.nextFollowUpDate < selectedDate
     )
     .sort((first, second) => first.nextFollowUpDate.localeCompare(second.nextFollowUpDate));
 
   const followUpsDueToday = leads
-    .filter((lead) => lead.status !== "closed" && lead.nextFollowUpDate === today)
+    .filter((lead) => lead.status !== "closed" && lead.nextFollowUpDate === selectedDate)
     .sort(sortByPriorityThenName);
 
   const highPriorityOpenLeads = leads
@@ -76,13 +93,13 @@ export default async function TodayPage() {
               highest-priority leads that still need movement.
             </p>
           </div>
-          <div className="app-chip">{todayLabel}</div>
+          <DateNavigator selectedDate={selectedDate} today={today} label={selectedDateLabel} />
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
-          label="Showings Today"
+          label={isViewingToday ? "Showings Today" : "Showings"}
           value={todaysShowings.length}
           detail="Tours on the calendar"
           href={`#${todaySectionIds.showings}`}
@@ -94,7 +111,7 @@ export default async function TodayPage() {
           href={`#${todaySectionIds.overdue}`}
         />
         <SummaryCard
-          label="Due Today"
+          label={isViewingToday ? "Due Today" : "Due This Date"}
           value={followUpsDueToday.length}
           detail="Follow-ups for this workday"
           href={`#${todaySectionIds.dueToday}`}
@@ -111,10 +128,14 @@ export default async function TodayPage() {
         <div className="space-y-6">
           <CommandSection
             id={todaySectionIds.showings}
-            title="Today's Showings"
+            title={isViewingToday ? "Today's Showings" : `${selectedDateLabel} Showings`}
             eyebrow="Showing Schedule"
-            emptyTitle="No showings today"
-            emptyDetail="You're clear for now. New scheduled showings for today will appear here automatically."
+            emptyTitle={isViewingToday ? "No showings today" : "No showings scheduled"}
+            emptyDetail={
+              isViewingToday
+                ? "You're clear for now. New scheduled showings for today will appear here automatically."
+                : "No scheduled showings are saved for this date."
+            }
             isEmpty={todaysShowings.length === 0}
           >
             <div className="grid gap-3">
@@ -144,8 +165,12 @@ export default async function TodayPage() {
         <CommandSection
           title="Route Snapshot"
           eyebrow="Daily Route"
-          emptyTitle="No showings today"
-          emptyDetail="Route stops will appear here as soon as today has scheduled showings."
+          emptyTitle={isViewingToday ? "No showings today" : "No route stops"}
+          emptyDetail={
+            isViewingToday
+              ? "Route stops will appear here as soon as today has scheduled showings."
+              : "Route stops will appear here when this date has scheduled showings."
+          }
           isEmpty={routeStops.length === 0}
           action={<LoadingLink href="/routes" className="app-button-secondary">Open Routes</LoadingLink>}
         >
@@ -189,9 +214,9 @@ export default async function TodayPage() {
 
         <CommandSection
           id={todaySectionIds.dueToday}
-          title="Follow-ups Due Today"
-          eyebrow="Due Today"
-          emptyTitle="No follow-ups due today"
+          title={isViewingToday ? "Follow-ups Due Today" : "Follow-ups Due This Date"}
+          eyebrow={isViewingToday ? "Due Today" : "Due This Date"}
+          emptyTitle={isViewingToday ? "No follow-ups due today" : "No follow-ups due on this date"}
           emptyDetail="You're clear for now."
           isEmpty={followUpsDueToday.length === 0}
         >
@@ -254,6 +279,54 @@ function CommandSection({
         {isEmpty ? <EmptyState title={emptyTitle} detail={emptyDetail} /> : children}
       </div>
     </section>
+  );
+}
+
+function DateNavigator({
+  selectedDate,
+  today,
+  label
+}: {
+  selectedDate: string;
+  today: string;
+  label: string;
+}) {
+  const previousDate = shiftIsoDate(selectedDate, -1);
+  const nextDate = shiftIsoDate(selectedDate, 1);
+
+  return (
+    <div className="flex flex-col gap-2 rounded-3xl border border-line/80 bg-white/90 px-3 py-3 shadow-sm sm:min-w-[320px]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="app-chip">{label}</span>
+        <div className="flex flex-wrap gap-1.5">
+          <Link href={`/today?date=${previousDate}`} className="app-button-secondary min-h-[36px] px-3 py-1.5 text-xs">
+            Prev
+          </Link>
+          <Link href="/today" className="app-button-secondary min-h-[36px] px-3 py-1.5 text-xs">
+            Today
+          </Link>
+          <Link href={`/today?date=${nextDate}`} className="app-button-secondary min-h-[36px] px-3 py-1.5 text-xs">
+            Next
+          </Link>
+        </div>
+      </div>
+      <form className="flex gap-2">
+        <label className="sr-only" htmlFor="today-date">View date</label>
+        <input
+          id="today-date"
+          type="date"
+          name="date"
+          defaultValue={selectedDate}
+          className="app-input min-h-[40px] flex-1 px-3 py-2 text-sm"
+        />
+        <button type="submit" className="app-button-primary min-h-[40px] px-3 py-2 text-sm">
+          View
+        </button>
+      </form>
+      {selectedDate !== today ? (
+        <p className="text-xs font-medium text-slate-500">Default view is today. This page is showing a selected date.</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -589,4 +662,15 @@ function getTodayIsoDate(timeZone: string) {
   const day = parts.find((part) => part.type === "day")?.value;
 
   return `${year}-${month}-${day}`;
+}
+
+function shiftIsoDate(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
 }

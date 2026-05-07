@@ -29,7 +29,11 @@ import {
   leadSourceOptions,
   leadStatusOptions
 } from "@/lib/lead-utils";
-import { Lead } from "@/lib/types";
+import {
+  formatPropertyListingPrice,
+  getPropertyListingLayout
+} from "@/lib/property-listing-utils";
+import { Lead, PropertyListing } from "@/lib/types";
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -102,11 +106,18 @@ function buildErrors(values: LeadFormValues) {
   }, {});
 }
 
-export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?: boolean }) {
+export function NewLeadForm({
+  isPreviewReadonly = false,
+  propertyListings = []
+}: {
+  isPreviewReadonly?: boolean;
+  propertyListings?: PropertyListing[];
+}) {
   const formRef = useRef<HTMLFormElement>(null);
   const scheduleRef = useRef<DateTimePickerHandle>(null);
   const [values, setValues] = useState<LeadFormValues>(initialFormValues);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [selectedShowingPropertyId, setSelectedShowingPropertyId] = useState("");
   const [scheduleState, setScheduleState] = useState({
     date: "",
     time: "",
@@ -129,8 +140,16 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
           showingTime: scheduleState.time
         })
       : null;
+  const selectedShowingProperty = useMemo(
+    () => propertyListings.find((listing) => listing.id === selectedShowingPropertyId) || null,
+    [propertyListings, selectedShowingPropertyId]
+  );
 
   function updateField(name: keyof LeadFormValues, value: string) {
+    if (name === "propertyAddress" && selectedShowingPropertyId) {
+      setSelectedShowingPropertyId("");
+    }
+
     setValues((current) => ({ ...current, [name]: value }));
 
     const nextError = getFieldError(name, value);
@@ -163,6 +182,21 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
     return true;
   }
 
+  function selectShowingProperty(propertyListingId: string) {
+    setSelectedShowingPropertyId(propertyListingId);
+    const listing = propertyListings.find((currentListing) => currentListing.id === propertyListingId);
+
+    if (!listing) {
+      return;
+    }
+
+    setValues((current) => ({ ...current, propertyAddress: listing.address }));
+    setErrors((current) => {
+      const { propertyAddress: _ignored, ...rest } = current;
+      return rest;
+    });
+  }
+
   return (
     <form
       ref={formRef}
@@ -173,7 +207,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
           event.preventDefault();
         }
       }}
-      className="mt-8 grid gap-5 sm:grid-cols-2"
+      className="mt-6 grid gap-4 sm:grid-cols-2"
     >
       <ValidatedField
         label="Full name"
@@ -275,7 +309,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
         onChange={updateField}
       />
 
-      <div className="rounded-3xl border border-line/70 bg-slate-50/80 px-4 py-4">
+      <div className="rounded-3xl border border-line/70 bg-slate-50/80 px-4 py-3">
         <p className="app-kicker">Lead Quality</p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Use priority and follow-up date to keep urgent inquiries and time-sensitive leads near
@@ -296,7 +330,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
         />
       </div>
 
-      <details className="sm:col-span-2 app-subpanel p-5">
+      <details className="sm:col-span-2 app-subpanel p-4">
         <summary className="cursor-pointer list-none">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -382,18 +416,62 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
         </div>
       </details>
 
-      <div className="sm:col-span-2 app-subpanel p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-ink">Optional first showing setup</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Capture the showing now if you already have a scheduled tour.
-            </p>
+      <details className="sm:col-span-2 app-subpanel p-4">
+        <summary className="cursor-pointer list-none">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-ink">Optional first showing setup</p>
+              <p className="mt-1 text-sm text-slate-600">
+                Capture the showing now if you already have a scheduled tour.
+              </p>
+            </div>
+            <span className="app-chip">Optional</span>
           </div>
-          <div className="app-chip">Optional</div>
+        </summary>
+
+        <input type="hidden" name="propertyListingId" value={selectedShowingPropertyId} />
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <label className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-sm font-medium text-slate-700">Showing property</span>
+            <select
+              value={selectedShowingPropertyId}
+              onChange={(event) => selectShowingProperty(event.target.value)}
+              className="app-input bg-white text-ink"
+              aria-label="Showing property"
+            >
+              <option value="">Use entered property address</option>
+              {propertyListings.map((listing) => (
+                <option key={listing.id} value={listing.id}>
+                  {listing.title} - {listing.address}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500">
+              Choose from inventory to fill the showing address automatically.
+            </p>
+          </label>
+
+          <div className="rounded-3xl border border-line/70 bg-white px-4 py-3">
+            <p className="app-kicker">Selected showing location</p>
+            {selectedShowingProperty ? (
+              <>
+                <p className="mt-2 text-sm font-semibold text-ink">{selectedShowingProperty.title}</p>
+                <p className="mt-1 text-sm leading-5 text-slate-600">{selectedShowingProperty.address}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="app-chip">{formatPropertyListingPrice(selectedShowingProperty.price)}</span>
+                  <span className="app-chip">{getPropertyListingLayout(selectedShowingProperty)}</span>
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-sm leading-5 text-slate-600">
+                No inventory property selected. The lead property address will be used.
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="mt-5">
+        <div className="mt-4">
           <DateTimePickerFields
             ref={scheduleRef}
             dateName="showingDate"
@@ -407,7 +485,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
           />
         </div>
 
-        <div className="mt-5">
+        <div className="mt-4">
           <ValidatedTextarea
             label="Agent notes"
             name="agentNotes"
@@ -419,7 +497,7 @@ export function NewLeadForm({ isPreviewReadonly = false }: { isPreviewReadonly?:
             onChange={updateField}
           />
         </div>
-      </div>
+      </details>
 
       <div className="sm:col-span-2 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
@@ -496,7 +574,7 @@ function ValidatedField({
   const errorId = `${name}-error`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <input
         type={type}
@@ -539,7 +617,7 @@ function ValidatedSelect({
   const errorId = `${name}-error`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <select
         name={name}
@@ -588,7 +666,7 @@ function ValidatedTextarea({
   const errorId = `${name}-error`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <AutoResizeTextarea
         name={name}
@@ -625,7 +703,7 @@ function OptionalPreferenceField({
   const helpId = `${name}-help`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <input
         type="text"
@@ -647,7 +725,7 @@ function OptionalPreferenceSelect({ label, name }: { label: string; name: string
   const helpId = `${name}-help`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <select name={name} aria-label={label} aria-describedby={helpId} className="app-input">
         {moveInUrgencyOptions.map((option) => (
@@ -677,7 +755,7 @@ function OptionalPreferenceTextarea({
   const helpId = `${name}-help`;
 
   return (
-    <label className="flex min-w-0 flex-col gap-2">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <AutoResizeTextarea
         name={name}
@@ -710,7 +788,7 @@ function PreferenceCheckbox({ label, name }: { label: string; name: string }) {
 
 function FieldError({ id, message }: { id: string; message?: string }) {
   return (
-    <p id={id} className="min-h-[1.25rem] text-xs font-medium text-rose-600" aria-live="polite">
+    <p id={id} className="min-h-4 text-xs font-medium text-rose-600" aria-live="polite">
       {message || ""}
     </p>
   );

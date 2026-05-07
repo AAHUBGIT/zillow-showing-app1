@@ -421,16 +421,25 @@ export async function createLead(formData: FormData) {
   const showingDate = getString(formData, "showingDate");
   const showingTime = getString(formData, "showingTime");
   const allowPastShowingDate = getBoolean(formData, "showingDateAllowPastOverride");
+  const propertyListingId = getString(formData, "propertyListingId");
   const fullName = getString(formData, "fullName");
   const phone = getString(formData, "phone");
   const email = getString(formData, "email");
-  const propertyAddress = getString(formData, "propertyAddress");
+  const enteredPropertyAddress = getString(formData, "propertyAddress");
   const desiredMoveInDate = getString(formData, "desiredMoveInDate");
   const nextFollowUpDate = getString(formData, "nextFollowUpDate");
   const status = getStatus(formData);
   const priority = getPriority(formData);
   const source = getSource(formData);
   const clientPreferences = getClientPreferenceFields(formData);
+  const selectedPropertyListing = propertyListingId
+    ? await getPropertyListingByIdForUser(sessionUser.id, propertyListingId)
+    : null;
+  const propertyAddress = selectedPropertyListing?.address || enteredPropertyAddress;
+
+  if (propertyListingId && !selectedPropertyListing) {
+    redirectValidation("/leads/new");
+  }
 
   if (
     getRequiredTextError(fullName) ||
@@ -485,16 +494,52 @@ export async function createLead(formData: FormData) {
     lead.status = "scheduled";
   }
 
+  const selectedPropertyInterest = selectedPropertyListing
+    ? {
+        id: crypto.randomUUID(),
+        leadId: lead.id,
+        address: selectedPropertyListing.address,
+        listingTitle: selectedPropertyListing.title,
+        source: normalizeLeadSource(selectedPropertyListing.source),
+        listingUrl: selectedPropertyListing.listingUrl,
+        rent: selectedPropertyListing.price,
+        beds: selectedPropertyListing.beds,
+        baths: selectedPropertyListing.baths,
+        neighborhood: selectedPropertyListing.neighborhood,
+        status: showingDate && showingTime ? "scheduled" : "interested",
+        rating: 3,
+        clientFeedback: "",
+        pros: "",
+        cons: "",
+        agentNotes: selectedPropertyListing.notes || lead.agentNotes,
+        showingDate,
+        showingTime,
+        createdAt: now,
+        updatedAt: now
+      }
+    : null;
+
   try {
-    await prisma.lead.create({
-      data: lead
-    });
+    await prisma.$transaction([
+      prisma.lead.create({
+        data: lead
+      }),
+      ...(selectedPropertyInterest
+        ? [
+            prisma.propertyInterest.create({
+              data: selectedPropertyInterest as PropertyInterest
+            })
+          ]
+        : [])
+    ]);
   } catch (error) {
     redirectSaveError("/leads/new", error);
   }
 
   revalidatePath("/");
+  revalidatePath("/today");
   revalidatePath("/routes");
+  revalidatePath("/properties");
   redirect(withToast("/", "lead-created"));
 }
 
@@ -1407,6 +1452,86 @@ export async function createPropertyListing(formData: FormData) {
 
   revalidatePath("/properties");
   redirect(withToast("/properties", "property-listing-added"));
+}
+
+export async function updatePropertyListing(formData: FormData) {
+  const id = getString(formData, "id");
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(
+      withToast("/properties", isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
+    );
+  }
+
+  const title = getString(formData, "title");
+  const address = getString(formData, "address");
+  const price = getString(formData, "price");
+  const beds = getString(formData, "beds");
+  const baths = getString(formData, "baths");
+  const neighborhood = getString(formData, "neighborhood");
+  const source = getSource(formData);
+  const listingUrl = getString(formData, "listingUrl");
+  const notes = getString(formData, "notes");
+  const status = getPropertyListingStatus(formData);
+
+  if (
+    !id ||
+    getRequiredTextError(title) ||
+    getRequiredTextError(address) ||
+    !propertyListingStatusOptions.includes(status) ||
+    getNumericError(price) ||
+    getNumericError(beds, false) ||
+    getNumericError(baths) ||
+    getMaxLengthError(title, fieldMaxLengths.listingTitle) ||
+    getMaxLengthError(address, fieldMaxLengths.address) ||
+    getMaxLengthError(price, fieldMaxLengths.rent) ||
+    getMaxLengthError(beds, fieldMaxLengths.beds) ||
+    getMaxLengthError(baths, fieldMaxLengths.baths) ||
+    getMaxLengthError(neighborhood, fieldMaxLengths.neighborhood) ||
+    getMaxLengthError(listingUrl, fieldMaxLengths.listingUrl) ||
+    getMaxLengthError(notes, fieldMaxLengths.notes)
+  ) {
+    redirectValidation("/properties");
+  }
+
+  const prisma = getPrismaClient();
+  const now = new Date().toISOString();
+  let updatedCount = 0;
+
+  try {
+    updatedCount = await prisma.$executeRaw`
+      UPDATE "PropertyListing"
+      SET
+        "title" = ${title},
+        "address" = ${address},
+        "neighborhood" = ${neighborhood},
+        "price" = ${price},
+        "beds" = ${beds},
+        "baths" = ${baths},
+        "source" = ${source},
+        "listingUrl" = ${listingUrl},
+        "status" = ${status},
+        "notes" = ${notes},
+        "updatedAt" = ${now}
+      WHERE "id" = ${id} AND "userId" = ${sessionUser.id}
+    `;
+  } catch (error) {
+    redirectSaveError("/properties", error);
+  }
+
+  if (updatedCount === 0) {
+    redirect(withToast("/properties", "save-error"));
+  }
+
+  revalidatePath("/properties");
+  revalidatePath("/today");
+  revalidatePath("/routes");
+  redirect(withToast("/properties", "property-updated"));
 }
 
 export async function createCommunicationActivity(formData: FormData) {
