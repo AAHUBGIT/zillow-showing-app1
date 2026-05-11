@@ -96,10 +96,8 @@ export default async function PropertiesPage({
             Add Property Listing
           </a>
         </div>
-      </section>
 
-      <section className="app-panel p-5 sm:p-6">
-        <form className="grid gap-4 lg:grid-cols-[1.4fr_1fr_0.8fr_0.8fr_0.8fr_auto] lg:items-end">
+        <form className="mt-5 grid gap-4 border-t border-line/70 pt-5 lg:grid-cols-[1.4fr_1fr_0.8fr_0.8fr_0.8fr_auto] lg:items-end">
           <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-slate-700">Search</span>
             <input
@@ -190,7 +188,12 @@ function PropertyListingCard({
     <article id={`property-listing-${listing.id}`} className="app-panel scroll-mt-28 p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h2 className="truncate text-lg font-semibold tracking-tight text-ink">{listing.title}</h2>
+          <Link
+            href={`/properties/${listing.id}`}
+            className="block truncate text-lg font-semibold tracking-tight text-ink hover:text-accent"
+          >
+            {listing.title}
+          </Link>
           <p className="mt-1 text-sm leading-6 text-slate-600">{listing.address}</p>
         </div>
         <span
@@ -213,11 +216,16 @@ function PropertyListingCard({
         <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{listing.notes}</p>
       ) : null}
 
-      {listing.listingUrl ? (
-        <a href={listing.listingUrl} target="_blank" rel="noreferrer" className="app-button-secondary mt-5">
-          Open Listing
-        </a>
-      ) : null}
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Link href={`/properties/${listing.id}`} className="app-button-primary">
+          View Property
+        </Link>
+        {listing.listingUrl ? (
+          <a href={listing.listingUrl} target="_blank" rel="noreferrer" className="app-button-secondary">
+            Open Listing
+          </a>
+        ) : null}
+      </div>
 
       <details className="mt-5 rounded-3xl border border-line/80 bg-slate-50/80 p-4">
         <summary className="cursor-pointer list-none">
