@@ -21,6 +21,12 @@ import {
 import { getEffectiveShowingStatus, isTerminalShowingStatus } from "@/lib/showing-lifecycle";
 import { LeadWithProperties } from "@/lib/types";
 
+type RoutePropertyGroup = {
+  key: string;
+  address: string;
+  stops: LeadWithProperties[];
+};
+
 export function RouteDayPlanner({
   day,
   initialStops,
@@ -38,15 +44,24 @@ export function RouteDayPlanner({
     setStops(sortRouteStops(initialStops));
   }, [initialStops]);
 
-  const directionsLink = useMemo(
-    () => buildGoogleMapsDirectionsLink(stops.map((lead) => lead.propertyAddress)),
+  const propertyGroups = useMemo(() => groupStopsByProperty(stops), [stops]);
+  const routeLocations = useMemo<LeadWithProperties[]>(
+    () => propertyGroups.flatMap((group) => (group.stops[0] ? [group.stops[0]] : [])),
+    [propertyGroups]
+  );
+  const stopIndexById = useMemo(
+    () => new Map(stops.map((stop, index) => [stop.id, index])),
     [stops]
+  );
+  const directionsLink = useMemo(
+    () => buildGoogleMapsDirectionsLink(propertyGroups.map((group) => group.address)),
+    [propertyGroups]
   );
   const routePreviewLink = useMemo(
-    () => buildRoutePreviewEmbedLink(stops.map((lead) => lead.propertyAddress)),
-    [stops]
+    () => buildRoutePreviewEmbedLink(propertyGroups.map((group) => group.address)),
+    [propertyGroups]
   );
-  const routeSummary = useMemo(() => getRouteDaySummary(stops), [stops]);
+  const routeSummary = useMemo(() => getRouteDaySummary(routeLocations), [routeLocations]);
 
   async function runRouteMutation(leadId: string, callback: () => Promise<void>) {
     if (routeBusyRef.current) {
@@ -149,10 +164,16 @@ export function RouteDayPlanner({
         <div>
           <p className="text-lg font-semibold tracking-tight text-ink">{formatDateLabel(day)}</p>
           <p className="mt-1 text-sm text-slate-600">
+            {propertyGroups.length} property {propertyGroups.length === 1 ? "stop" : "stops"} -{" "}
             {stops.length} scheduled {stops.length === 1 ? "showing" : "showings"}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <div className="app-chip">{stops[0]?.showingDate || day}</div>
+            <div className="app-chip">
+              {stops.length - propertyGroups.length > 0
+                ? `${stops.length - propertyGroups.length} grouped customer showings`
+                : "No duplicate property stops"}
+            </div>
             <div className="app-chip">
               {stops.filter((lead) => lead.priority === "urgent" || lead.priority === "high").length} priority stops
             </div>
@@ -187,11 +208,13 @@ export function RouteDayPlanner({
         />
 
         <div className="grid gap-3">
-          {stops.map((lead, index) => (
-            <RouteStopCard
-              key={lead.id}
-              lead={lead}
+          {propertyGroups.map((group, index) => (
+            <RoutePropertyStopCard
+              key={group.key}
+              group={group}
               index={index}
+              groupCount={propertyGroups.length}
+              stopIndexById={stopIndexById}
               stopsLength={stops.length}
               routeSummary={routeSummary}
               isPreviewReadonly={isPreviewReadonly}
@@ -207,9 +230,11 @@ export function RouteDayPlanner({
   );
 }
 
-function RouteStopCard({
-  lead,
+function RoutePropertyStopCard({
+  group,
   index,
+  groupCount,
+  stopIndexById,
   stopsLength,
   routeSummary,
   isPreviewReadonly,
@@ -218,10 +243,136 @@ function RouteStopCard({
   onMove,
   onSaveNote
 }: {
-  lead: LeadWithProperties;
+  group: RoutePropertyGroup;
   index: number;
+  groupCount: number;
+  stopIndexById: Map<string, number>;
   stopsLength: number;
   routeSummary: ReturnType<typeof getRouteDaySummary>;
+  isPreviewReadonly: boolean;
+  busyLeadId: string | null;
+  onToggleCompleted: (leadId: string, nextCompleted: boolean) => Promise<void>;
+  onMove: (leadId: string, direction: "up" | "down") => Promise<void>;
+  onSaveNote: (leadId: string, note: string) => Promise<void>;
+}) {
+  const firstTime = group.stops[0]?.showingTime || "";
+  const lastTime = group.stops[group.stops.length - 1]?.showingTime || firstTime;
+  const timeLabel =
+    firstTime && lastTime && firstTime !== lastTime
+      ? `${firstTime} - ${lastTime}`
+      : firstTime || "Time not set";
+  const priorityCount = group.stops.filter(
+    (lead) => lead.priority === "urgent" || lead.priority === "high"
+  ).length;
+
+  return (
+    <div className="space-y-3">
+      {index > 0 ? (
+        <RouteDriveSegment
+          fromStop={index}
+          toStop={index + 1}
+          segment={routeSummary.segments[index - 1]}
+        />
+      ) : null}
+
+      <section className="rounded-3xl border border-white/90 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+                Property stop {index + 1}
+              </p>
+              <span className="app-chip">
+                {group.stops.length} {group.stops.length === 1 ? "customer" : "customers"}
+              </span>
+              {priorityCount > 0 ? <span className="app-chip">{priorityCount} priority</span> : null}
+            </div>
+            <h3 className="mt-2 text-base font-semibold tracking-tight text-ink">
+              {group.address}
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Showing window: {timeLabel}
+              {groupCount > 1 ? ` - Stop ${index + 1} of ${groupCount}` : ""}
+            </p>
+          </div>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(group.address)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="app-button-secondary"
+          >
+            Open Property Map
+          </a>
+        </div>
+
+        <div className="mt-4 grid gap-3">
+          {group.stops.map((lead) => {
+            const stopIndex = stopIndexById.get(lead.id) ?? 0;
+
+            return (
+              <RouteCustomerShowing
+                key={lead.id}
+                lead={lead}
+                stopIndex={stopIndex}
+                stopsLength={stopsLength}
+                isPreviewReadonly={isPreviewReadonly}
+                busyLeadId={busyLeadId}
+                onToggleCompleted={onToggleCompleted}
+                onMove={onMove}
+                onSaveNote={onSaveNote}
+              />
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RouteDriveSegment({
+  fromStop,
+  toStop,
+  segment
+}: {
+  fromStop: number;
+  toStop: number;
+  segment?: ReturnType<typeof getRouteDaySummary>["segments"][number];
+}) {
+  return (
+    <div
+      className={`rounded-2xl border px-4 py-3 text-sm ${
+        segment?.unrealistic
+          ? "border-amber-200 bg-amber-50 text-amber-900"
+          : "border-line/70 bg-slate-50 text-slate-600"
+      }`}
+    >
+      <p className="font-semibold">
+        Drive from property stop {fromStop} to {toStop}: {segment?.label || "Review travel time"}
+      </p>
+      {segment?.warning ? (
+        <p className="mt-1 text-xs leading-5">{segment.warning}</p>
+      ) : (
+        <p className="mt-1 text-xs leading-5">
+          Keep this timing in mind when confirming access windows and travel buffers.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RouteCustomerShowing({
+  lead,
+  stopsLength,
+  stopIndex,
+  isPreviewReadonly,
+  busyLeadId,
+  onToggleCompleted,
+  onMove,
+  onSaveNote
+}: {
+  lead: LeadWithProperties;
+  stopIndex: number;
+  stopsLength: number;
   isPreviewReadonly: boolean;
   busyLeadId: string | null;
   onToggleCompleted: (leadId: string, nextCompleted: boolean) => Promise<void>;
@@ -238,101 +389,97 @@ function RouteStopCard({
         : "border-emerald-200 bg-emerald-50/70";
 
   return (
-    <div className="space-y-3">
-      {index > 0 ? (
-                <div
-                  className={`rounded-2xl border px-4 py-3 text-sm ${
-                    routeSummary.segments[index - 1]?.unrealistic
-                      ? "border-amber-200 bg-amber-50 text-amber-900"
-                      : "border-line/70 bg-slate-50 text-slate-600"
-                  }`}
-                >
-                  <p className="font-semibold">
-                    Drive from stop {index} to stop {index + 1}: {routeSummary.segments[index - 1]?.label}
-                  </p>
-                  {routeSummary.segments[index - 1]?.warning ? (
-                    <p className="mt-1 text-xs leading-5">
-                      {routeSummary.segments[index - 1]?.warning}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-xs leading-5">
-                      Keep this timing in mind when confirming access windows and travel buffers.
-                    </p>
-                  )}
-                </div>
-              ) : null}
+    <article
+      className={`rounded-3xl border p-4 transition ${
+        lead.routeCompleted || isTerminal ? terminalCardClass : "border-line/80 bg-slate-50/80"
+      }`}
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+              Customer showing
+            </p>
+            {lead.routeCompleted ? (
+              <span className="rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                Completed
+              </span>
+            ) : null}
+            <ShowingLifecycleBadge status={showingStatus} />
+          </div>
+          <p className="mt-1 text-base font-semibold tracking-tight text-ink">
+            {lead.fullName}
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            {formatDateTimeLabel(lead.showingDate!, lead.showingTime!)}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <PriorityBadge priority={lead.priority} />
+            <SourceBadge source={lead.source} />
+          </div>
+          {lead.routeNote ? (
+            <p className="mt-3 rounded-2xl bg-white/80 px-3 py-2 text-sm text-slate-600">
+              {lead.routeNote}
+            </p>
+          ) : null}
+        </div>
 
-              <div
-                className={`rounded-3xl border p-4 shadow-sm transition ${
-                  lead.routeCompleted || isTerminal
-                    ? terminalCardClass
-                    : "border-white/90 bg-white"
-                }`}
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-                        Stop {index + 1}
-                      </p>
-                      {lead.routeCompleted ? (
-                        <span className="rounded-full border border-emerald-200 bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
-                          Completed
-                        </span>
-                      ) : null}
-                      <ShowingLifecycleBadge status={showingStatus} />
-                    </div>
-                    <p className="mt-1 text-base font-semibold tracking-tight text-ink">
-                      {lead.fullName}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">{lead.propertyAddress}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <PriorityBadge priority={lead.priority} />
-                      <SourceBadge source={lead.source} />
-                    </div>
-                    <p className="mt-2 text-sm text-slate-500">
-                      {formatDateTimeLabel(lead.showingDate!, lead.showingTime!)}
-                    </p>
-                    {lead.routeNote ? (
-                      <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                        {lead.routeNote}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="flex w-full max-w-xl flex-col gap-3">
-                    <RouteStopControls
-                      routeCompleted={lead.routeCompleted}
-                      routeNote={lead.routeNote}
-                      canMoveUp={index > 0}
-                      canMoveDown={index < stopsLength - 1}
-                      isPreviewReadonly={isPreviewReadonly}
-                      isRouteBusy={Boolean(busyLeadId)}
-                      showCompletionToggle={false}
-                      onToggleCompleted={(nextCompleted) =>
-                        onToggleCompleted(lead.id, nextCompleted)
-                      }
-                      onMove={(direction) => onMove(lead.id, direction)}
-                      onSaveNote={(note) => onSaveNote(lead.id, note)}
-                    />
-                    <ShowingLifecycleActions
-                      lead={lead}
-                      redirectTo="/routes#upcoming-routes"
-                      mode="route"
-                      isPreviewReadonly={isPreviewReadonly}
-                      rescheduleHref={`/leads/${lead.id}#schedule-showing`}
-                    />
-                    <LoadingLink
-                      href={`/leads/${lead.id}`}
-                      className="app-button-secondary min-h-[52px] w-full text-center"
-                      loadingLabel="Opening lead..."
-                      disabled={Boolean(busyLeadId)}
-                    >
-                      View Lead
-                    </LoadingLink>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <div className="flex w-full max-w-xl flex-col gap-3">
+          <RouteStopControls
+            routeCompleted={lead.routeCompleted}
+            routeNote={lead.routeNote}
+            canMoveUp={stopIndex > 0}
+            canMoveDown={stopIndex < stopsLength - 1}
+            isPreviewReadonly={isPreviewReadonly}
+            isRouteBusy={Boolean(busyLeadId)}
+            showCompletionToggle={false}
+            onToggleCompleted={(nextCompleted) => onToggleCompleted(lead.id, nextCompleted)}
+            onMove={(direction) => onMove(lead.id, direction)}
+            onSaveNote={(note) => onSaveNote(lead.id, note)}
+          />
+          <ShowingLifecycleActions
+            lead={lead}
+            redirectTo="/routes#upcoming-routes"
+            mode="route"
+            isPreviewReadonly={isPreviewReadonly}
+            rescheduleHref={`/leads/${lead.id}#schedule-showing`}
+          />
+          <LoadingLink
+            href={`/leads/${lead.id}`}
+            className="app-button-secondary min-h-[52px] w-full text-center"
+            loadingLabel="Opening lead..."
+            disabled={Boolean(busyLeadId)}
+          >
+            View Lead
+          </LoadingLink>
+        </div>
+      </div>
+    </article>
   );
+}
+
+function groupStopsByProperty(stops: LeadWithProperties[]): RoutePropertyGroup[] {
+  const groups = new Map<string, RoutePropertyGroup>();
+
+  for (const stop of stops) {
+    const address = stop.propertyAddress.trim() || "Address not set";
+    const key = normalizeRouteAddress(address) || address;
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.stops.push(stop);
+    } else {
+      groups.set(key, {
+        key,
+        address,
+        stops: [stop]
+      });
+    }
+  }
+
+  return Array.from(groups.values());
+}
+
+function normalizeRouteAddress(address: string) {
+  return address.trim().toLowerCase().replace(/\s+/g, " ");
 }

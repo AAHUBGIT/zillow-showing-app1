@@ -60,18 +60,26 @@ export default async function LeadDetailsPage({
         <section className="space-y-6">
           <LeadRecordPanel lead={lead} calendarUrl={calendarUrl} />
 
-          <LeadAiInsights lead={lead} />
+          <LeadWorkflowJumpBar />
 
-          <ClientPreferencesForm lead={lead} isPreviewReadonly={isPreviewReadonly} />
+          <div id="communication" className="scroll-mt-28">
+            <CommunicationWorkspace
+              lead={lead}
+              templates={communicationWorkspace.templates}
+              activities={communicationWorkspace.activities}
+              isPreviewReadonly={isPreviewReadonly}
+            />
+          </div>
 
-          <CommunicationWorkspace
-            lead={lead}
-            templates={communicationWorkspace.templates}
-            activities={communicationWorkspace.activities}
-            isPreviewReadonly={isPreviewReadonly}
-          />
+          <div id="preferences" className="scroll-mt-28">
+            <ClientPreferencesForm lead={lead} isPreviewReadonly={isPreviewReadonly} />
+          </div>
 
-          <div className="app-panel p-5 sm:p-6">
+          <div id="smart-assist" className="scroll-mt-28">
+            <LeadAiInsights lead={lead} />
+          </div>
+
+          <div id="showing-snapshot" className="app-panel scroll-mt-28 p-5 sm:p-6">
             <p className="app-eyebrow">Showing Snapshot</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <ShowingLifecycleBadge lead={lead} />
@@ -133,7 +141,7 @@ export default async function LeadDetailsPage({
             ) : null}
           </div>
 
-          <div className="app-panel p-5 sm:p-6">
+          <div id="interested-properties" className="app-panel scroll-mt-28 p-5 sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="app-eyebrow">Interested Properties</p>
@@ -282,5 +290,34 @@ export default async function LeadDetailsPage({
         </aside>
       </div>
     </main>
+  );
+}
+
+function LeadWorkflowJumpBar() {
+  const links = [
+    { href: "#communication", label: "Communication" },
+    { href: "#preferences", label: "Preferences" },
+    { href: "#showing-snapshot", label: "Showing" },
+    { href: "#interested-properties", label: "Properties" },
+    { href: "#schedule-showing", label: "Schedule" },
+    { href: "#smart-assist", label: "Smart Assist" }
+  ];
+
+  return (
+    <nav
+      aria-label="Customer workflow shortcuts"
+      className="rounded-3xl border border-line/80 bg-white/90 px-4 py-3 shadow-soft"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+          Jump to
+        </span>
+        {links.map((link) => (
+          <a key={link.href} href={link.href} className="app-chip hover:border-accent hover:text-accent">
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </nav>
   );
 }

@@ -65,6 +65,16 @@ function withToast(path: string, toastKey: string) {
   return `${path}${separator}toast=${toastKey}`;
 }
 
+function getSafePropertyListingRedirect(formData: FormData, fallback = "/properties") {
+  const redirectTo = getString(formData, "redirectTo");
+
+  if (redirectTo === "/properties" || /^\/properties\/[A-Za-z0-9_-]+$/.test(redirectTo)) {
+    return redirectTo;
+  }
+
+  return fallback;
+}
+
 function getPriority(formData: FormData) {
   const value = getString(formData, "priority") as LeadPriority;
   return leadPriorityOptions.includes(value) ? value : "medium";
@@ -1473,6 +1483,7 @@ export async function createPropertyListing(formData: FormData) {
 
 export async function updatePropertyListing(formData: FormData) {
   const id = getString(formData, "id");
+  const redirectPath = getSafePropertyListingRedirect(formData);
   const sessionUser = await getSessionUser();
 
   if (!sessionUser) {
@@ -1481,7 +1492,7 @@ export async function updatePropertyListing(formData: FormData) {
 
   if (!canUseDatabase()) {
     redirect(
-      withToast("/properties", isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
+      withToast(redirectPath, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
     );
   }
 
@@ -1513,7 +1524,7 @@ export async function updatePropertyListing(formData: FormData) {
     getMaxLengthError(listingUrl, fieldMaxLengths.listingUrl) ||
     getMaxLengthError(notes, fieldMaxLengths.notes)
   ) {
-    redirectValidation("/properties");
+    redirectValidation(redirectPath);
   }
 
   const prisma = getPrismaClient();
@@ -1538,17 +1549,18 @@ export async function updatePropertyListing(formData: FormData) {
       WHERE "id" = ${id} AND "userId" = ${sessionUser.id}
     `;
   } catch (error) {
-    redirectSaveError("/properties", error);
+    redirectSaveError(redirectPath, error);
   }
 
   if (updatedCount === 0) {
-    redirect(withToast("/properties", "save-error"));
+    redirect(withToast(redirectPath, "save-error"));
   }
 
   revalidatePath("/properties");
+  revalidatePath(`/properties/${id}`);
   revalidatePath("/today");
   revalidatePath("/routes");
-  redirect(withToast("/properties", "property-updated"));
+  redirect(withToast(redirectPath, "property-updated"));
 }
 
 export async function createCommunicationActivity(formData: FormData) {

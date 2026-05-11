@@ -55,7 +55,11 @@ export function AppHeader({
             : "border-transparent bg-white/60"
         }`}
       >
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div
+          className={`mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 transition-all sm:px-6 lg:px-8 ${
+            isScrolled ? "py-2" : "py-3"
+          }`}
+        >
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#0f172a)] text-sm font-semibold text-white shadow-soft">
               SC

@@ -121,7 +121,7 @@ export function ClientPreferencesForm({
   const [errors, setErrors] = useState<FieldErrors>({});
   const leadPreview = { ...lead, ...values };
   const hasStoredPreferences = hasClientPreferences(lead);
-  const [isExpanded, setIsExpanded] = useState(() => !hasStoredPreferences);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const isFormValid = useMemo(() => Object.keys(buildErrors(values)).length === 0, [values]);
 

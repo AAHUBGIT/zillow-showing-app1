@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { LoadingLink } from "@/components/loading-link";
+import { PropertyListingEditForm } from "@/components/property-listing-edit-form";
 import { ShowingLifecycleBadge } from "@/components/showing-lifecycle-badge";
 import { getSessionUser } from "@/lib/auth";
 import { formatDateTimeLabel } from "@/lib/date";
+import { isPreviewReadonlyMode } from "@/lib/deployment";
 import { getSourceLabel } from "@/lib/lead-utils";
 import { buildGoogleMapsSearchLink } from "@/lib/property-interest-utils";
 import {
@@ -133,6 +135,7 @@ export default async function PropertyListingDetailPage({
   const relatedInterests = getRelatedInterests(listing, leads);
   const showingRows = getShowingRows(listing, leads, relatedInterests);
   const uniqueLeadCount = getUniqueLeadCount(relatedInterests, showingRows);
+  const isPreviewReadonly = isPreviewReadonlyMode();
   const activeInterestCount = relatedInterests.filter(
     ({ propertyInterest }) => propertyInterest.status !== "rejected"
   ).length;
@@ -166,6 +169,9 @@ export default async function PropertyListingDetailPage({
             <Link href="/properties" className="app-button-secondary">
               Back to Properties
             </Link>
+            <a href="#edit-property" className="app-button-secondary">
+              Edit Property
+            </a>
             <a href={buildGoogleMapsSearchLink(listing.address)} target="_blank" rel="noreferrer" className="app-button-secondary">
               Open Map
             </a>
@@ -198,6 +204,27 @@ export default async function PropertyListingDetailPage({
             <p className="mt-2 text-sm leading-6 text-slate-600">{listing.notes}</p>
           </div>
         ) : null}
+      </section>
+
+      <section id="edit-property" className="app-panel scroll-mt-28 p-5 sm:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="app-eyebrow">Edit Property</p>
+            <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">
+              Update inventory details
+            </h2>
+            <p className="app-copy mt-2 max-w-3xl">
+              Keep the address, price, layout, listing link, status, and internal notes current.
+            </p>
+          </div>
+          <span className="app-chip">Inventory record</span>
+        </div>
+        <PropertyListingEditForm
+          listing={listing}
+          isPreviewReadonly={isPreviewReadonly}
+          redirectTo={`/properties/${listing.id}`}
+          buttonLabel="Save Property"
+        />
       </section>
 
       <section className="app-panel p-5 sm:p-6">
