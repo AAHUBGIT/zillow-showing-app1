@@ -172,17 +172,7 @@ Install dependencies:
 npm install
 ```
 
-Create or update `.env`:
 
-```text
-APP_RUNTIME_MODE="local"
-SQLITE_DATABASE_URL="file:../dev.db"
-POSTGRES_DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
-AUTH_EMAIL="demo@showingscrm.com"
-AUTH_PASSWORD="changeme123"
-AUTH_SECRET="replace-this-with-a-long-random-secret"
-IMPORT_SECRET="replace-this-with-a-provider-shared-secret"
-```
 
 Generate Prisma clients:
 
