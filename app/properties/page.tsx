@@ -187,7 +187,7 @@ function PropertyListingCard({
   isPreviewReadonly: boolean;
 }) {
   return (
-    <article className="app-panel p-5 sm:p-6">
+    <article id={`property-listing-${listing.id}`} className="app-panel scroll-mt-28 p-5 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-semibold tracking-tight text-ink">{listing.title}</h2>

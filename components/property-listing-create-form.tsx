@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState, type FormEvent, type InputHTMLAttributes } from "react";
+import { useEffect, useId, useMemo, useState, type FormEvent, type InputHTMLAttributes } from "react";
 import { useFormStatus } from "react-dom";
 import { AddPropertyWorkflowPanel } from "@/components/add-property-workflow-panel";
 import { InlineSpinner } from "@/components/inline-spinner";
@@ -9,7 +9,11 @@ import { createPropertyListing } from "@/lib/actions";
 import { emitAppToast } from "@/lib/client-toast";
 import { fieldMaxLengths, getMaxLengthError, getNumericError, sanitizeNumericInput } from "@/lib/form-validation";
 import { getSourceLabel, leadSourceOptions } from "@/lib/lead-utils";
-import { getPropertyListingStatusLabel, propertyListingStatusOptions } from "@/lib/property-listing-utils";
+import {
+  findDuplicatePropertyListing,
+  getPropertyListingStatusLabel,
+  propertyListingStatusOptions
+} from "@/lib/property-listing-utils";
 import type { PropertyWorkflowDraft } from "@/lib/property-workflow";
 import type { PropertyListing } from "@/lib/types";
 
@@ -60,7 +64,7 @@ function getInitialValues(): ListingValues {
 function getFieldError(fieldName: ListingField, value: string) {
   switch (fieldName) {
     case "title":
-      return (!value.trim() ? "Title is required." : "") || getMaxLengthError(value, fieldMaxLengths.listingTitle);
+      return (!value.trim() ? "Listing title is required." : "") || getMaxLengthError(value, fieldMaxLengths.listingTitle);
     case "address":
       return (!value.trim() ? "Address is required." : "") || getMaxLengthError(value, fieldMaxLengths.address);
     case "price":
@@ -113,7 +117,29 @@ export function PropertyListingCreateForm({
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [touchedFields, setTouchedFields] = useState<TouchedFields>({});
   const [values, setValues] = useState<ListingValues>(() => getInitialValues());
-  const errors = useMemo(() => buildErrors(values), [values]);
+  const [workflowAddress, setWorkflowAddress] = useState("");
+  const [allowDuplicate, setAllowDuplicate] = useState(false);
+  const effectiveValues = useMemo(
+    () => ({
+      ...values,
+      address: values.address.trim() || workflowAddress.trim()
+    }),
+    [values, workflowAddress]
+  );
+  const errors = useMemo(() => buildErrors(effectiveValues), [effectiveValues]);
+  const duplicateListing = useMemo(
+    () =>
+      findDuplicatePropertyListing(propertyListings, {
+        address: effectiveValues.address,
+        listingUrl: values.listingUrl
+      }),
+    [effectiveValues.address, propertyListings, values.listingUrl]
+  );
+  const usesWorkflowAddress = Boolean(!values.address.trim() && workflowAddress.trim());
+
+  useEffect(() => {
+    setAllowDuplicate(false);
+  }, [duplicateListing?.id, effectiveValues.address, values.listingUrl]);
 
   function updateField(fieldName: ListingField, value: string) {
     const nextValue =
@@ -135,13 +161,23 @@ export function PropertyListingCreateForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     setHasAttemptedSubmit(true);
 
-    if (!canSubmitListing(values, errors)) {
+    if (!canSubmitListing(effectiveValues, errors)) {
       event.preventDefault();
       emitAppToast({ toastKey: "validation-error" });
+      return;
+    }
+
+    if (duplicateListing && !allowDuplicate) {
+      event.preventDefault();
+      emitAppToast({ message: "This property may already exist." });
     }
   }
 
   function applyWorkflowDraft(draft: PropertyWorkflowDraft) {
+    if (draft.address !== undefined) {
+      setWorkflowAddress(draft.address);
+    }
+
     setValues((current) => {
       const next = { ...current };
 
@@ -214,7 +250,14 @@ export function PropertyListingCreateForm({
       </div>
 
       <form action={createPropertyListing} noValidate onSubmit={handleSubmit} className="mt-5 grid gap-5">
-        <AddPropertyWorkflowPanel propertyListings={propertyListings} onApply={applyWorkflowDraft} />
+        <AddPropertyWorkflowPanel
+          propertyListings={propertyListings}
+          manualAddressValue={workflowAddress}
+          onManualAddressChange={setWorkflowAddress}
+          onApply={applyWorkflowDraft}
+        />
+        <input type="hidden" name="workflowAddress" value={workflowAddress} />
+        <input type="hidden" name="allowDuplicate" value={allowDuplicate ? "true" : "false"} />
 
         <div className="rounded-3xl border border-line/80 bg-white/85 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -247,13 +290,50 @@ export function PropertyListingCreateForm({
               value={values.address}
               required
               maxLength={fieldMaxLengths.address}
-              helpText="Required."
+              helpText={
+                usesWorkflowAddress
+                  ? `Save will use search address: ${workflowAddress.trim()}`
+                  : "Required."
+              }
               error={getVisibleError("address")}
               onChange={updateField}
               onBlur={markTouched}
             />
           </div>
         </div>
+
+        {duplicateListing ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="font-semibold">This property may already exist.</p>
+                <p className="mt-2 leading-6">
+                  Existing listing: <span className="font-semibold">{duplicateListing.title}</span>
+                  {" at "}
+                  {duplicateListing.address}
+                  {duplicateListing.source ? ` (${duplicateListing.source})` : ""}.
+                </p>
+              </div>
+              <a href={`#property-listing-${duplicateListing.id}`} className="app-button-secondary bg-white">
+                View existing
+              </a>
+            </div>
+            <label className="mt-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-white/80 px-4 py-3">
+              <input
+                type="checkbox"
+                checked={allowDuplicate}
+                onChange={(event) => setAllowDuplicate(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-amber-300 text-accent focus:ring-accent"
+              />
+              <span>
+                <span className="block font-semibold">Create anyway</span>
+                <span className="mt-1 block text-xs leading-5 text-amber-800">
+                  Use this only when the address or listing URL is intentionally duplicated.
+                </span>
+              </span>
+            </label>
+          </div>
+        ) : null}
 
         <div className="rounded-3xl border border-line/80 bg-slate-50/80 p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -362,7 +442,7 @@ export function PropertyListingCreateForm({
             disabled={isPreviewReadonly}
             message="This preview workspace is read-only. Use a live workspace to save property listings."
           >
-            <SubmitButton disabled={isPreviewReadonly || !canSubmitListing(values, errors)} />
+            <SubmitButton disabled={isPreviewReadonly} />
           </TooltipShell>
         </div>
       </form>

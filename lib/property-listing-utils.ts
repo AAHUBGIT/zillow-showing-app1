@@ -18,6 +18,65 @@ export function normalizePropertyListingStatus(value: string): PropertyListingSt
     : "unknown";
 }
 
+export function normalizePropertyListingAddress(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\b(united states|usa)\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+export function normalizePropertyListingUrl(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  try {
+    const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "");
+    const path = url.pathname.replace(/\/+$/, "");
+
+    return `${host}${path}`.toLowerCase();
+  } catch {
+    return trimmed
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/[?#].*$/, "")
+      .replace(/\/+$/, "");
+  }
+}
+
+export function findDuplicatePropertyListing<T extends Pick<PropertyListing, "id" | "title" | "address" | "source" | "listingUrl">>(
+  listings: T[],
+  input: { address: string; listingUrl?: string; ignoreId?: string }
+) {
+  const normalizedAddress = normalizePropertyListingAddress(input.address);
+  const normalizedUrl = normalizePropertyListingUrl(input.listingUrl || "");
+
+  if (!normalizedAddress && !normalizedUrl) {
+    return undefined;
+  }
+
+  return listings.find((listing) => {
+    if (input.ignoreId && listing.id === input.ignoreId) {
+      return false;
+    }
+
+    const listingAddress = normalizePropertyListingAddress(listing.address);
+    const listingUrl = normalizePropertyListingUrl(listing.listingUrl);
+
+    return (
+      (normalizedAddress && listingAddress && normalizedAddress === listingAddress) ||
+      (normalizedUrl && listingUrl && normalizedUrl === listingUrl)
+    );
+  });
+}
+
 export function getPropertyListingStatusLabel(status: string) {
   const normalized = normalizePropertyListingStatus(status);
 

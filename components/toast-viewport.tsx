@@ -16,6 +16,7 @@ const toastMessages: Record<string, string> = {
   "route-copied": "Route link copied to clipboard.",
   "property-added": "Property added to this customer.",
   "property-listing-added": "Property listing added to inventory.",
+  "property-duplicate": "This property may already exist. Review it before creating another copy.",
   "property-updated": "Property details updated.",
   "property-toured": "Property marked as toured.",
   "property-scheduled": "Property showing scheduled.",

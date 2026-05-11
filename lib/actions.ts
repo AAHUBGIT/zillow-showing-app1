@@ -21,10 +21,11 @@ import { canUseDatabase, isPreviewReadonlyMode } from "./deployment";
 import { leadPriorityOptions, leadSourceOptions, leadStatusOptions } from "./lead-utils";
 import { getPrismaClient } from "./prisma";
 import {
+  findDuplicatePropertyListing,
   normalizePropertyListingStatus,
   propertyListingStatusOptions
 } from "./property-listing-utils";
-import { getPropertyListingByIdForUser } from "./property-listings";
+import { getPropertyListingByIdForUser, getPropertyListingsForUser } from "./property-listings";
 import { propertyInterestStatusOptions } from "./property-interest-utils";
 import { isRouteReadyLead, sortRouteStops } from "./route-planner";
 import {
@@ -1379,7 +1380,7 @@ export async function createPropertyListing(formData: FormData) {
   }
 
   const title = getString(formData, "title");
-  const address = getString(formData, "address");
+  const address = getString(formData, "address") || getString(formData, "workflowAddress");
   const price = getString(formData, "price");
   const beds = getString(formData, "beds");
   const baths = getString(formData, "baths");
@@ -1388,6 +1389,7 @@ export async function createPropertyListing(formData: FormData) {
   const listingUrl = getString(formData, "listingUrl");
   const notes = getString(formData, "notes");
   const status = getPropertyListingStatus(formData);
+  const allowDuplicate = getBoolean(formData, "allowDuplicate");
 
   if (
     getRequiredTextError(title) ||
@@ -1410,6 +1412,21 @@ export async function createPropertyListing(formData: FormData) {
 
   const prisma = getPrismaClient();
   const now = new Date().toISOString();
+
+  if (!allowDuplicate) {
+    let duplicateListing: PropertyListing | undefined;
+
+    try {
+      const existingListings = await getPropertyListingsForUser(sessionUser.id);
+      duplicateListing = findDuplicatePropertyListing(existingListings, { address, listingUrl });
+    } catch (error) {
+      redirectSaveError("/properties", error);
+    }
+
+    if (duplicateListing) {
+      redirect(withToast("/properties", "property-duplicate"));
+    }
+  }
 
   try {
     await prisma.$executeRaw`

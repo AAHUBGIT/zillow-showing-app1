@@ -29,17 +29,22 @@ export function AddPropertyWorkflowPanel({
   lead,
   propertyListings,
   onApply,
+  manualAddressValue,
+  onManualAddressChange,
   compact = false
 }: {
   lead?: LeadWithProperties;
   propertyListings: PropertyListing[];
   onApply: (draft: PropertyWorkflowDraft) => void;
+  manualAddressValue?: string;
+  onManualAddressChange?: (value: string) => void;
   compact?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<WorkflowTab>("saved");
   const [savedSearch, setSavedSearch] = useState("");
   const [addressInput, setAddressInput] = useState("");
   const [urlInput, setUrlInput] = useState("");
+  const currentAddressInput = manualAddressValue ?? addressInput;
   const savedMatches = useMemo(() => {
     const query = savedSearch.trim().toLowerCase();
 
@@ -58,7 +63,7 @@ export function AddPropertyWorkflowPanel({
   }, [compact, propertyListings, savedSearch]);
 
   function applyAddress() {
-    const address = addressInput.trim();
+    const address = currentAddressInput.trim();
 
     if (!address) {
       return;
@@ -69,6 +74,11 @@ export function AddPropertyWorkflowPanel({
       address,
       source: "other"
     });
+  }
+
+  function updateAddressInput(value: string) {
+    setAddressInput(value);
+    onManualAddressChange?.(value);
   }
 
   function applyUrl() {
@@ -184,10 +194,10 @@ export function AddPropertyWorkflowPanel({
           <div className="grid gap-3">
             <AddressAutocompleteInput
               label="Search address"
-              value={addressInput}
-              onChange={setAddressInput}
+              value={currentAddressInput}
+              onChange={updateAddressInput}
               onSelect={(selection) => {
-                setAddressInput(selection.formattedAddress);
+                updateAddressInput(selection.formattedAddress);
                 onApply({
                   listingTitle: getAddressTitleFallback(selection.formattedAddress),
                   address: selection.formattedAddress,
@@ -201,7 +211,7 @@ export function AddPropertyWorkflowPanel({
               <button
                 type="button"
                 onClick={applyAddress}
-                disabled={!addressInput.trim()}
+                disabled={!currentAddressInput.trim()}
                 className="app-button-primary disabled:cursor-not-allowed disabled:opacity-55"
               >
                 Use this address
