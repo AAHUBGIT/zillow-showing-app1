@@ -36,6 +36,14 @@ export function DateInputField({
   const [dateText, setDateText] = useState(formatDateForManualEntry(value));
   const [localError, setLocalError] = useState("");
   const visibleError = localError || error;
+  const describedBy =
+    visibleError && helperText
+      ? `${helpId} ${errorId}`
+      : visibleError
+        ? errorId
+        : helperText
+          ? helpId
+          : undefined;
 
   useEffect(() => {
     if (document.activeElement !== inputRef.current) {
@@ -120,7 +128,7 @@ export function DateInputField({
           data-field={dataField || name}
           aria-label={ariaLabel || label}
           aria-invalid={Boolean(visibleError)}
-          aria-describedby={visibleError ? `${helpId} ${errorId}` : helpId}
+          aria-describedby={describedBy}
           onChange={(event) => handleTextChange(event.target.value)}
           onBlur={() => commitDate()}
           className={`app-input app-date-input pr-14 ${
@@ -152,9 +160,11 @@ export function DateInputField({
         className="sr-only"
         aria-hidden="true"
       />
-      <p id={helpId} className="text-xs text-slate-500">
-        {helperText}
-      </p>
+      {helperText ? (
+        <p id={helpId} className="text-xs text-slate-500">
+          {helperText}
+        </p>
+      ) : null}
       <p id={errorId} className="min-h-[1.25rem] text-xs font-medium text-rose-600" aria-live="polite">
         {visibleError || ""}
       </p>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CopyRouteButton } from "@/components/copy-route-button";
+import { LeadSidePanel } from "@/components/lead-side-panel";
 import { LoadingLink } from "@/components/loading-link";
 import { PriorityBadge } from "@/components/priority-badge";
 import { RouteMapPreview } from "@/components/route-map-preview";
@@ -443,6 +444,13 @@ function RouteCustomerShowing({
             mode="route"
             isPreviewReadonly={isPreviewReadonly}
             rescheduleHref={`/leads/${lead.id}#schedule-showing`}
+          />
+          <LeadSidePanel
+            lead={lead}
+            isPreviewReadonly={isPreviewReadonly}
+            redirectTo="/routes#upcoming-routes"
+            triggerLabel="Quick View"
+            triggerClassName="app-button-secondary min-h-[44px] w-full px-3 py-2 text-sm"
           />
           <LoadingLink
             href={`/leads/${lead.id}`}

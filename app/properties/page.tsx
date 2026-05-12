@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PropertyListingSidePanel } from "@/components/property-listing-side-panel";
 import { PropertyListingEditForm } from "@/components/property-listing-edit-form";
 import { PropertyListingCreateForm } from "@/components/property-listing-create-form";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
@@ -8,10 +9,13 @@ import {
   getPropertyListingLayout,
   getPropertyListingStatusLabel,
   getPropertyListingStatusTone,
+  normalizePropertyListingAddress,
+  normalizePropertyListingUrl,
   propertyListingStatusOptions
 } from "@/lib/property-listing-utils";
 import { getPropertyListings } from "@/lib/property-listings";
-import type { LeadSource, PropertyListing } from "@/lib/types";
+import { getLeads } from "@/lib/storage";
+import type { LeadSource, LeadWithProperties, PropertyInterest, PropertyListing } from "@/lib/types";
 
 type PropertySearchParams = {
   q?: string;
@@ -69,7 +73,7 @@ export default async function PropertiesPage({
 }: {
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
-  const listings = await getPropertyListings();
+  const [listings, leads] = await Promise.all([getPropertyListings(), getLeads()]);
   const filters = getFilters(searchParams);
   const filteredListings = filterListings(listings, filters);
   const isPreviewReadonly = isPreviewReadonlyMode();
@@ -163,6 +167,7 @@ export default async function PropertiesPage({
             <PropertyListingCard
               key={listing.id}
               listing={listing}
+              quickContext={getPropertyListingQuickContext(listing, leads)}
               isPreviewReadonly={isPreviewReadonly}
             />
           ))
@@ -178,9 +183,11 @@ export default async function PropertiesPage({
 
 function PropertyListingCard({
   listing,
+  quickContext,
   isPreviewReadonly
 }: {
   listing: PropertyListing;
+  quickContext: ReturnType<typeof getPropertyListingQuickContext>;
   isPreviewReadonly: boolean;
 }) {
   return (
@@ -216,6 +223,13 @@ function PropertyListingCard({
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2">
+        <PropertyListingSidePanel
+          listing={listing}
+          relatedLeads={quickContext.relatedLeads}
+          scheduledCount={quickContext.scheduledCount}
+          activeInterestCount={quickContext.activeInterestCount}
+          triggerClassName="app-button-secondary"
+        />
         <Link href={`/properties/${listing.id}`} className="app-button-primary">
           View Property
         </Link>
@@ -242,5 +256,89 @@ function PropertyListingCard({
         <PropertyListingEditForm listing={listing} isPreviewReadonly={isPreviewReadonly} />
       </details>
     </article>
+  );
+}
+
+function getPropertyListingQuickContext(listing: PropertyListing, leads: LeadWithProperties[]) {
+  const relatedLeadMap = new Map<
+    string,
+    {
+      id: string;
+      fullName: string;
+      phone: string;
+      email: string;
+      status: string;
+      interestStatus?: string;
+      showingDate?: string;
+      showingTime?: string;
+    }
+  >();
+  const scheduledKeys = new Set<string>();
+  let activeInterestCount = 0;
+  const listingAddress = normalizePropertyListingAddress(listing.address);
+
+  for (const lead of leads) {
+    const leadAddress = normalizePropertyListingAddress(lead.propertyAddress);
+
+    if (lead.showingDate && lead.showingTime && listingAddress && leadAddress === listingAddress) {
+      scheduledKeys.add(`${lead.id}-${lead.showingDate}-${lead.showingTime}`);
+      relatedLeadMap.set(lead.id, {
+        id: lead.id,
+        fullName: lead.fullName,
+        phone: lead.phone,
+        email: lead.email,
+        status: lead.status,
+        showingDate: lead.showingDate,
+        showingTime: lead.showingTime
+      });
+    }
+
+    for (const propertyInterest of lead.propertyInterests) {
+      if (!matchesListing(listing, propertyInterest)) {
+        continue;
+      }
+
+      if (propertyInterest.status !== "rejected") {
+        activeInterestCount += 1;
+      }
+
+      if (propertyInterest.showingDate && propertyInterest.showingTime) {
+        scheduledKeys.add(`${lead.id}-${propertyInterest.showingDate}-${propertyInterest.showingTime}`);
+      }
+
+      relatedLeadMap.set(lead.id, {
+        id: lead.id,
+        fullName: lead.fullName,
+        phone: lead.phone,
+        email: lead.email,
+        status: lead.status,
+        interestStatus: propertyInterest.status,
+        showingDate: propertyInterest.showingDate || lead.showingDate,
+        showingTime: propertyInterest.showingTime || lead.showingTime
+      });
+    }
+  }
+
+  return {
+    relatedLeads: Array.from(relatedLeadMap.values()),
+    scheduledCount: scheduledKeys.size,
+    activeInterestCount
+  };
+}
+
+function matchesListing(
+  listing: Pick<PropertyListing, "address" | "listingUrl" | "title">,
+  input: Pick<PropertyInterest, "address" | "listingUrl" | "listingTitle">
+) {
+  const listingAddress = normalizePropertyListingAddress(listing.address);
+  const inputAddress = normalizePropertyListingAddress(input.address);
+  const listingUrl = normalizePropertyListingUrl(listing.listingUrl);
+  const inputUrl = normalizePropertyListingUrl(input.listingUrl);
+
+  return (
+    (listingAddress && inputAddress && listingAddress === inputAddress) ||
+    (listingUrl && inputUrl && listingUrl === inputUrl) ||
+    (listing.title.trim().toLowerCase() === input.listingTitle.trim().toLowerCase() &&
+      Boolean(input.listingTitle.trim()))
   );
 }

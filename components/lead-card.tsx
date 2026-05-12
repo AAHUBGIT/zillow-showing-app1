@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { useFormStatus } from "react-dom";
 import { ContactActionLink } from "@/components/contact-action-link";
-import { DateInputField } from "@/components/date-input-field";
+import { LeadFollowUpDateEditor } from "@/components/lead-follow-up-date-editor";
+import { LeadSidePanel } from "@/components/lead-side-panel";
 import { LoadingLink } from "@/components/loading-link";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import { getSourceLabel } from "@/lib/lead-utils";
 import { getPropertyInterestCountLabel, getPropertyInterestStatusLabel } from "@/lib/property-interest-utils";
-import { updateLeadFollowUpDate } from "@/lib/actions";
 import { LeadWithProperties } from "@/lib/types";
 import { FollowUpBadge } from "./follow-up-badge";
 import { LeadStatusForm } from "./lead-status-form";
@@ -102,6 +101,12 @@ export function LeadCard({
               disabled={!hasEmail}
               className="app-button-secondary min-h-[38px] px-3 py-2 text-xs"
             />
+            <LeadSidePanel
+              lead={lead}
+              isPreviewReadonly={isPreviewReadonly}
+              triggerLabel="Quick View"
+              triggerClassName="app-button-secondary min-h-[38px] px-3 py-2 text-xs"
+            />
             <LoadingLink
               href={`/leads/${lead.id}`}
               className="app-button-primary min-h-[38px] px-3 py-2 text-xs"
@@ -124,7 +129,7 @@ export function LeadCard({
               <InfoRow label="Move-in" value={formatDateLabel(lead.desiredMoveInDate)} />
               <InfoRow label="Phone" value={lead.phone} />
               <InfoRow label="Email" value={lead.email} />
-              <FollowUpDateEditor
+              <LeadFollowUpDateEditor
                 leadId={lead.id}
                 initialDate={lead.nextFollowUpDate}
                 redirectTo={pathname}
@@ -169,55 +174,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
       <p className="mt-1 text-sm font-medium text-slate-700">{value}</p>
     </div>
-  );
-}
-
-function FollowUpDateEditor({
-  leadId,
-  initialDate,
-  redirectTo,
-  isPreviewReadonly
-}: {
-  leadId: string;
-  initialDate: string;
-  redirectTo: string;
-  isPreviewReadonly: boolean;
-}) {
-  const [date, setDate] = useState(initialDate);
-
-  return (
-    <form action={updateLeadFollowUpDate} className="rounded-2xl border border-line/70 bg-white/80 px-4 py-3">
-      <input type="hidden" name="id" value={leadId} />
-      <input type="hidden" name="redirectTo" value={redirectTo} />
-      <DateInputField
-        label="Next follow-up"
-        name="nextFollowUpDate"
-        value={date}
-        onChange={setDate}
-        helperText="Use calendar or MM/DD/YYYY"
-        labelClassName="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400"
-      />
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <p className="text-xs text-slate-500">
-          {date ? formatDateLabel(date) : "Not set"}
-        </p>
-        <FollowUpSaveButton disabled={isPreviewReadonly || !date || date === initialDate} />
-      </div>
-    </form>
-  );
-}
-
-function FollowUpSaveButton({ disabled }: { disabled: boolean }) {
-  const { pending } = useFormStatus();
-
-  return (
-    <button
-      type="submit"
-      disabled={disabled || pending}
-      className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {pending ? "Saving" : "Save"}
-    </button>
   );
 }
 
