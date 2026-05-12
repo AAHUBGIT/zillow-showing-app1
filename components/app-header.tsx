@@ -11,11 +11,11 @@ import { SessionUser } from "@/lib/auth";
 type WorkflowDensity = "compact" | "comfortable";
 
 const navItems = [
-  { href: "/today", label: "Today" },
-  { href: "/", label: "Dashboard" },
-  { href: "/leads/new", label: "New Lead" },
-  { href: "/properties", label: "Properties" },
-  { href: "/routes", label: "Routes" }
+  { href: "/today", label: "Today", description: "Daily work queue" },
+  { href: "/", label: "Dashboard", description: "Lead pipeline" },
+  { href: "/leads/new", label: "New Lead", description: "Create customer" },
+  { href: "/properties", label: "Properties", description: "Inventory pool" },
+  { href: "/routes", label: "Routes", description: "Showing route days" }
 ];
 
 const workflowDensityStorageKey = "showings-crm:workflow-density";
@@ -66,8 +66,122 @@ export function AppHeader({
 
   return (
     <>
+      {sessionUser ? (
+        <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-line/80 bg-white/95 px-4 py-5 shadow-[18px_0_45px_-34px_rgba(15,23,42,0.45)] backdrop-blur lg:flex">
+          <div className="flex items-center gap-3 rounded-3xl border border-line/80 bg-slate-50/90 p-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb,#0f172a)] text-sm font-semibold text-white shadow-soft">
+              SC
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">
+                Showings CRM
+              </p>
+              <p className="truncate text-xs font-medium text-slate-500">
+                Showing workflow
+              </p>
+            </div>
+          </div>
+
+          {isPreviewReadonly ? (
+            <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+              Preview workspace: changes are limited
+            </div>
+          ) : null}
+
+          <nav className="mt-5 space-y-1.5" aria-label="Primary navigation">
+            <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Workspace
+            </p>
+            {navItems.map((item) => {
+              const active = isActive(item.href);
+
+              return (
+                <LoadingLink
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition ${
+                    active
+                      ? "bg-[linear-gradient(135deg,#0f172a,#2563eb)] text-white shadow-soft"
+                      : "text-slate-700 hover:bg-accentSoft hover:text-accent"
+                  }`}
+                >
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-sm font-semibold">{item.label}</span>
+                    <span
+                      className={`truncate text-xs ${
+                        active ? "text-blue-100" : "text-slate-500"
+                      }`}
+                    >
+                      {item.description}
+                    </span>
+                  </span>
+                </LoadingLink>
+              );
+            })}
+          </nav>
+
+          <div className="mt-6 rounded-3xl border border-line/80 bg-slate-50/90 p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accentSoft text-xs font-semibold text-accent">
+                {sessionUser.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Signed in
+                </p>
+                <p className="truncate text-sm font-semibold text-slate-700">{sessionUser.email}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-3xl border border-line/80 bg-white p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              Density
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2" aria-label="Workflow density">
+              <button
+                type="button"
+                onClick={() => setWorkflowDensity("compact")}
+                aria-pressed={workflowDensity === "compact"}
+                className={`rounded-full px-3 py-2 text-xs font-semibold transition ${
+                  workflowDensity === "compact"
+                    ? "bg-accent text-white"
+                    : "border border-line bg-white text-slate-600 hover:text-accent"
+                }`}
+              >
+                Compact
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkflowDensity("comfortable")}
+                aria-pressed={workflowDensity === "comfortable"}
+                className={`rounded-full px-3 py-2 text-xs font-semibold transition ${
+                  workflowDensity === "comfortable"
+                    ? "bg-accent text-white"
+                    : "border border-line bg-white text-slate-600 hover:text-accent"
+                }`}
+              >
+                Comfort
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-auto space-y-2 border-t border-line/80 pt-4">
+            <LoadingLink href="/leads/new" className="app-button-primary w-full px-4 py-2.5">
+              Add Lead
+            </LoadingLink>
+            <form action={logoutUser}>
+              <LogoutButton className="inline-flex min-h-[42px] w-full items-center justify-center gap-2 rounded-full border border-line bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-accent hover:text-accent" />
+            </form>
+          </div>
+        </aside>
+      ) : null}
+
       <div
         className={`sticky top-0 z-50 -mx-4 border-b backdrop-blur transition sm:-mx-6 lg:-mx-8 ${
+          sessionUser ? "lg:hidden " : ""
+        }${
           isScrolled
             ? "border-slate-200/80 bg-white/92 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.34)]"
             : "border-transparent bg-white/60"
@@ -264,14 +378,14 @@ export function AppHeader({
   );
 }
 
-function LogoutButton() {
+function LogoutButton({ className = "app-button-secondary" }: { className?: string }) {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
       disabled={pending}
-      className="app-button-secondary disabled:cursor-not-allowed disabled:opacity-60"
+      className={`${className} disabled:cursor-not-allowed disabled:opacity-60`}
     >
       {pending ? (
         <>

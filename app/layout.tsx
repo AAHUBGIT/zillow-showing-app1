@@ -31,7 +31,7 @@ export default async function RootLayout({
     <html lang="en">
       <body className={manrope.className}>
         <KeyboardShortcutsGuard />
-        <div className="app-shell">
+        <div className={sessionUser ? "app-shell app-shell-with-sidebar" : "app-shell"}>
           <a
             href="#main-content"
             className="sr-only absolute left-4 top-4 z-[70] rounded-full bg-ink px-4 py-3 text-sm font-semibold text-white focus:not-sr-only"
