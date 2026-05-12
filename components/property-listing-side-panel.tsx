@@ -27,16 +27,16 @@ type PropertyPanelLead = {
 
 export function PropertyListingSidePanel({
   listing,
-  relatedLeads,
-  scheduledCount,
-  activeInterestCount,
+  relatedLeads = [],
+  scheduledCount = 0,
+  activeInterestCount = 0,
   triggerLabel = "Quick View",
   triggerClassName = "app-button-secondary"
 }: {
   listing: PropertyListing;
-  relatedLeads: PropertyPanelLead[];
-  scheduledCount: number;
-  activeInterestCount: number;
+  relatedLeads?: PropertyPanelLead[];
+  scheduledCount?: number;
+  activeInterestCount?: number;
   triggerLabel?: string;
   triggerClassName?: string;
 }) {

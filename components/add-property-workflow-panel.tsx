@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { AddressAutocompleteInput } from "@/components/address-autocomplete-input";
 import { PropertyFitBadges } from "@/components/property-fit-badges";
+import { PropertyListingSidePanel } from "@/components/property-listing-side-panel";
 import {
   getAddressTitleFallback,
   parseListingUrlDraft,
@@ -171,13 +172,20 @@ export function AddPropertyWorkflowPanel({
                           </div>
                         ) : null}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => onApply(propertyListingToWorkflowDraft(listing))}
-                        className="app-button-secondary shrink-0"
-                      >
-                        Use property
-                      </button>
+                      <div className="flex shrink-0 flex-wrap gap-2 md:justify-end">
+                        <PropertyListingSidePanel
+                          listing={listing}
+                          triggerLabel="Preview"
+                          triggerClassName="app-button-secondary min-h-[44px] px-4 py-2 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onApply(propertyListingToWorkflowDraft(listing))}
+                          className="app-button-primary min-h-[44px] px-4 py-2 text-sm"
+                        >
+                          Use property
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
