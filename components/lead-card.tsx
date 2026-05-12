@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { ContactActionLink } from "@/components/contact-action-link";
 import { LoadingLink } from "@/components/loading-link";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
@@ -24,6 +27,7 @@ export function LeadCard({
   const email = lead.email.trim();
   const hasPhone = phone.length > 0;
   const hasEmail = email.length > 0;
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <article className="group rounded-4xl border border-line/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-panel">
@@ -60,39 +64,57 @@ export function LeadCard({
         {lead.applicationReady ? <PreferenceChip label="Application ready" /> : null}
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2">
-        <ContactActionLink
-          action="call"
-          href={buildCallHref(phone)}
-          disabled={!hasPhone}
-          className="app-button-secondary px-3 py-2 text-xs"
-        />
-        <ContactActionLink
-          action="text"
-          href={buildLeadTextHref(lead)}
-          disabled={!hasPhone}
-          className="app-button-secondary px-3 py-2 text-xs"
-        />
-        <ContactActionLink
-          action="email"
-          href={buildLeadEmailHref(lead)}
-          disabled={!hasEmail}
-          className="app-button-secondary px-3 py-2 text-xs"
-        />
-      </div>
+      <div className="mt-4 rounded-2xl border border-line/80 bg-white p-2 shadow-sm">
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+          <button
+            type="button"
+            onClick={() => setIsExpanded((current) => !current)}
+            aria-expanded={isExpanded}
+            className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-accent focus-visible:ring-4 focus-visible:ring-accent/20"
+          >
+            <span>Lead details</span>
+            <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs text-slate-600">
+              {isExpanded ? "Collapse" : "Expand"}
+            </span>
+          </button>
 
-      <details className="group mt-5">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl border border-line/80 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-accent hover:text-accent [&::-webkit-details-marker]:hidden">
-          <span>Lead details</span>
-          <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs text-slate-600 group-open:hidden">
-            Expand
-          </span>
-          <span className="hidden rounded-full border border-accent/30 bg-accentSoft px-3 py-1 text-xs text-accent group-open:inline-flex">
-            Collapse
-          </span>
-        </summary>
+          <div className="flex flex-wrap gap-2 xl:justify-end">
+            <ContactActionLink
+              action="call"
+              href={buildCallHref(phone)}
+              disabled={!hasPhone}
+              className="app-button-secondary min-h-[38px] px-3 py-2 text-xs"
+            />
+            <ContactActionLink
+              action="text"
+              href={buildLeadTextHref(lead)}
+              disabled={!hasPhone}
+              className="app-button-secondary min-h-[38px] px-3 py-2 text-xs"
+            />
+            <ContactActionLink
+              action="email"
+              href={buildLeadEmailHref(lead)}
+              disabled={!hasEmail}
+              className="app-button-secondary min-h-[38px] px-3 py-2 text-xs"
+            />
+            <LoadingLink
+              href={`/leads/${lead.id}`}
+              className="app-button-primary min-h-[38px] px-3 py-2 text-xs"
+            >
+              Open Details
+            </LoadingLink>
+            <LoadingLink
+              href={`/leads/${lead.id}#schedule-showing`}
+              className="app-button-secondary min-h-[38px] px-3 py-2 text-xs"
+              loadingLabel="Opening Schedule..."
+            >
+              Schedule
+            </LoadingLink>
+          </div>
+        </div>
 
-        <div className="mt-4 space-y-5">
+        {isExpanded ? (
+        <div className="mt-3 space-y-4 border-t border-line/70 pt-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <InfoRow label="Move-in" value={formatDateLabel(lead.desiredMoveInDate)} />
             <InfoRow label="Phone" value={lead.phone} />
@@ -128,19 +150,7 @@ export function LeadCard({
             isPreviewReadonly={isPreviewReadonly}
           />
         </div>
-      </details>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <LoadingLink href={`/leads/${lead.id}`} className="app-button-primary">
-          Open Details
-        </LoadingLink>
-        <LoadingLink
-          href={`/leads/${lead.id}#schedule-showing`}
-          className="app-button-secondary"
-          loadingLabel="Opening Schedule..."
-        >
-          Schedule Showing
-        </LoadingLink>
+        ) : null}
       </div>
     </article>
   );
