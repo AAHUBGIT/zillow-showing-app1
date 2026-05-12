@@ -23,6 +23,7 @@ const toastMessages: Record<string, string> = {
   "property-rejected": "Property marked as rejected.",
   "property-applying": "Property moved to applying.",
   "preferences-updated": "Client preferences saved.",
+  "follow-up-updated": "Follow-up date updated.",
   "follow-up-completed": "Follow-up marked completed.",
   "route-stop-completed": "Route stop marked as completed.",
   "route-stop-reopened": "Route stop moved back into the active route.",

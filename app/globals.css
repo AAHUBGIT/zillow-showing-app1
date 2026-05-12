@@ -159,3 +159,46 @@ html[data-workflow-density="compact"] .app-button-secondary {
 html[data-workflow-density="compact"] .app-chip {
   padding: 0.25rem 0.625rem;
 }
+
+html[data-workflow-density="comfortable"] .dashboard-lead-card {
+  padding: 1.5rem;
+}
+
+html[data-workflow-density="comfortable"] .dashboard-lead-card .lead-card-avatar {
+  height: 3rem;
+  width: 3rem;
+}
+
+html[data-workflow-density="compact"] .dashboard-lead-card {
+  border-radius: 1.5rem;
+  padding: 0.875rem;
+}
+
+html[data-workflow-density="compact"] .dashboard-lead-card:hover {
+  transform: translateY(-0.125rem);
+}
+
+html[data-workflow-density="compact"] .dashboard-lead-card .lead-card-avatar {
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 0.875rem;
+}
+
+html[data-workflow-density="compact"] .dashboard-lead-card .app-chip,
+html[data-workflow-density="compact"] .dashboard-lead-card .rounded-full {
+  font-size: 0.75rem;
+}
+
+html[data-workflow-density="compact"] .dashboard-filter-panel {
+  border-radius: 1.25rem;
+  padding: 0.875rem;
+}
+
+html[data-workflow-density="compact"] .dashboard-filter-fields {
+  margin-top: 0.75rem;
+  gap: 0.75rem;
+}
+
+html[data-workflow-density="compact"] main.space-y-6 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1rem;
+}

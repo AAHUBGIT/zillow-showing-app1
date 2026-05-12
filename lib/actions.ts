@@ -1279,6 +1279,49 @@ export async function updateLeadStatus(formData: FormData) {
   redirect(withToast(redirectTo, "status-updated"));
 }
 
+export async function updateLeadFollowUpDate(formData: FormData) {
+  const id = getString(formData, "id");
+  const nextFollowUpDate = getString(formData, "nextFollowUpDate");
+  const redirectTo = getString(formData, "redirectTo") || "/";
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
+  }
+
+  if (!id || !isIsoDate(nextFollowUpDate)) {
+    redirectValidation(redirectTo);
+  }
+
+  const prisma = getPrismaClient();
+  let result;
+
+  try {
+    result = await prisma.lead.updateMany({
+      where: { id, userId: sessionUser.id },
+      data: {
+        nextFollowUpDate,
+        updatedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  if (result.count === 0) {
+    redirect(withToast(redirectTo, "save-error"));
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath(`/leads/${id}`);
+  redirect(withToast(redirectTo, "follow-up-updated"));
+}
+
 export async function markFollowUpCompleted(formData: FormData) {
   const leadId = getString(formData, "leadId");
   const redirectTo = getString(formData, "redirectTo") || "/today";

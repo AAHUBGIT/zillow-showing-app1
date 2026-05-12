@@ -40,6 +40,7 @@ export function DashboardClient({
   const [moveInDate, setMoveInDate] = useState("");
   const [showingDate, setShowingDate] = useState("");
   const [statQuickFilter, setStatQuickFilter] = useState<StatQuickFilter>("all");
+  const [showFilters, setShowFilters] = useState(false);
   const leadListRef = useRef<HTMLDivElement>(null);
 
   const filteredLeads = useMemo(() => {
@@ -104,6 +105,7 @@ export function DashboardClient({
       showingDate ||
       statQuickFilter !== "all"
   );
+  const filtersAreVisible = showFilters || hasActiveFilters;
 
   function clearFilters() {
     setSearch("");
@@ -114,6 +116,7 @@ export function DashboardClient({
     setMoveInDate("");
     setShowingDate("");
     setStatQuickFilter("all");
+    setShowFilters(false);
   }
 
   function scrollToLeadList() {
@@ -131,6 +134,7 @@ export function DashboardClient({
     setMoveInDate("");
     setShowingDate("");
     setStatQuickFilter(nextFilter);
+    setShowFilters(false);
     scrollToLeadList();
   }
 
@@ -248,8 +252,8 @@ export function DashboardClient({
           </div>
         ) : (
           <>
-            <div className="mt-5 rounded-3xl border border-line/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.92),rgba(255,255,255,0.96))] p-4 shadow-soft">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="dashboard-filter-panel mt-4 rounded-3xl border border-line/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.92),rgba(255,255,255,0.96))] p-3 shadow-soft sm:p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="app-kicker">CRM Filters</p>
                   <p className="mt-1 text-sm text-slate-500">
@@ -257,133 +261,145 @@ export function DashboardClient({
                     timing.
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <div className="app-chip">{hasActiveFilters ? "Filtered view" : "All leads"}</div>
                   <div className="app-chip">{filteredLeads.length} records</div>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 xl:grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr]">
-                <label className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Search
-                  </span>
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search name, phone, email, or property address"
-                    aria-label="Search leads"
-                    className="app-input"
-                  />
-                </label>
-
-                <label className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Status
-                  </span>
-                  <select
-                    value={status}
-                    onChange={(event) => setStatus(event.target.value as StatusFilter)}
-                    aria-label="Filter by status"
-                    className="app-input"
-                  >
-                    <option value="all">All</option>
-                    {leadStatusOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {getStatusLabel(option)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Priority
-                  </span>
-                  <select
-                    value={priority}
-                    onChange={(event) => setPriority(event.target.value as PriorityFilter)}
-                    aria-label="Filter by priority"
-                    className="app-input"
-                  >
-                    <option value="all">All</option>
-                    {leadPriorityOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {getPriorityLabel(option)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Source
-                  </span>
-                  <select
-                    value={source}
-                    onChange={(event) => setSource(event.target.value as SourceFilter)}
-                    aria-label="Filter by lead source"
-                    className="app-input"
-                  >
-                    <option value="all">All</option>
-                    {leadSourceOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {getSourceLabel(option)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_0.7fr_0.7fr_0.7fr_auto]">
-                <label className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                    Follow-Up
-                  </span>
-                  <select
-                    value={followUpState}
-                    onChange={(event) => setFollowUpState(event.target.value as FollowUpFilter)}
-                    aria-label="Filter by follow-up state"
-                    className="app-input"
-                  >
-                    {followUpFilterOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option === "all" ? "All" : getFollowUpStateLabel(option)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <DateInputField
-                  label="Move-In Date"
-                  value={moveInDate}
-                  onChange={setMoveInDate}
-                  ariaLabel="Filter by desired move-in date"
-                  helperText="Use MM/DD/YYYY"
-                  labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
-                />
-
-                <DateInputField
-                  label="Showing Date"
-                  value={showingDate}
-                  onChange={setShowingDate}
-                  ariaLabel="Filter by showing date"
-                  helperText="Use MM/DD/YYYY"
-                  labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
-                />
-
-                <div className="flex items-end">
                   <button
                     type="button"
-                    onClick={clearFilters}
-                    className="app-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-50 xl:w-auto"
-                    disabled={!hasActiveFilters}
+                    onClick={() => setShowFilters((current) => !current)}
+                    className="app-button-secondary min-h-[38px] px-3 py-2 text-xs"
+                    aria-expanded={filtersAreVisible}
                   >
-                    Clear Filters
+                    {filtersAreVisible ? "Hide filters" : "Show filters"}
                   </button>
                 </div>
               </div>
+
+              {filtersAreVisible ? (
+                <div className="dashboard-filter-fields mt-4 grid gap-3">
+                  <div className="grid gap-3 xl:grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr]">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Search
+                      </span>
+                      <input
+                        type="text"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search name, phone, email, or property address"
+                        aria-label="Search leads"
+                        className="app-input"
+                      />
+                    </label>
+
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Status
+                      </span>
+                      <select
+                        value={status}
+                        onChange={(event) => setStatus(event.target.value as StatusFilter)}
+                        aria-label="Filter by status"
+                        className="app-input"
+                      >
+                        <option value="all">All</option>
+                        {leadStatusOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {getStatusLabel(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Priority
+                      </span>
+                      <select
+                        value={priority}
+                        onChange={(event) => setPriority(event.target.value as PriorityFilter)}
+                        aria-label="Filter by priority"
+                        className="app-input"
+                      >
+                        <option value="all">All</option>
+                        {leadPriorityOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {getPriorityLabel(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Source
+                      </span>
+                      <select
+                        value={source}
+                        onChange={(event) => setSource(event.target.value as SourceFilter)}
+                        aria-label="Filter by lead source"
+                        className="app-input"
+                      >
+                        <option value="all">All</option>
+                        {leadSourceOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {getSourceLabel(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="grid gap-3 xl:grid-cols-[0.9fr_0.7fr_0.7fr_auto]">
+                    <label className="flex flex-col gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                        Follow-Up
+                      </span>
+                      <select
+                        value={followUpState}
+                        onChange={(event) => setFollowUpState(event.target.value as FollowUpFilter)}
+                        aria-label="Filter by follow-up state"
+                        className="app-input"
+                      >
+                        {followUpFilterOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option === "all" ? "All" : getFollowUpStateLabel(option)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <DateInputField
+                      label="Move-In Date"
+                      value={moveInDate}
+                      onChange={setMoveInDate}
+                      ariaLabel="Filter by desired move-in date"
+                      helperText="Use MM/DD/YYYY"
+                      labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+                    />
+
+                    <DateInputField
+                      label="Showing Date"
+                      value={showingDate}
+                      onChange={setShowingDate}
+                      ariaLabel="Filter by showing date"
+                      helperText="Use MM/DD/YYYY"
+                      labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+                    />
+
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={clearFilters}
+                        className="app-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-50 xl:w-auto"
+                        disabled={!hasActiveFilters}
+                      >
+                        Clear Filters
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <div ref={leadListRef} id="dashboard-lead-list" className="mt-5 scroll-mt-36">

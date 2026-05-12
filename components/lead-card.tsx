@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useFormStatus } from "react-dom";
 import { ContactActionLink } from "@/components/contact-action-link";
+import { DateInputField } from "@/components/date-input-field";
 import { LoadingLink } from "@/components/loading-link";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import { getSourceLabel } from "@/lib/lead-utils";
-import { getPropertyInterestCountLabel } from "@/lib/property-interest-utils";
+import { getPropertyInterestCountLabel, getPropertyInterestStatusLabel } from "@/lib/property-interest-utils";
+import { updateLeadFollowUpDate } from "@/lib/actions";
 import { LeadWithProperties } from "@/lib/types";
 import { FollowUpBadge } from "./follow-up-badge";
 import { LeadStatusForm } from "./lead-status-form";
@@ -28,13 +32,14 @@ export function LeadCard({
   const hasPhone = phone.length > 0;
   const hasEmail = email.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
+  const pathname = usePathname();
 
   return (
-    <article className="group rounded-4xl border border-line/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-panel">
+    <article className="dashboard-lead-card group rounded-4xl border border-line/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-panel">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(15,23,42,0.08))] text-base font-semibold text-accent">
+            <div className="lead-card-avatar flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(15,23,42,0.08))] text-base font-semibold text-accent">
               {lead.fullName
                 .split(" ")
                 .map((part) => part[0])
@@ -54,7 +59,7 @@ export function LeadCard({
         <PriorityBadge priority={lead.priority} />
         <SourceBadge source={lead.source} />
         <FollowUpBadge nextFollowUpDate={lead.nextFollowUpDate} />
-        <div className="app-chip">{getPropertyInterestCountLabel(propertyCount)}</div>
+        <PropertySummaryChip lead={lead} />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -114,42 +119,44 @@ export function LeadCard({
         </div>
 
         {isExpanded ? (
-        <div className="mt-3 space-y-4 border-t border-line/70 pt-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <InfoRow label="Move-in" value={formatDateLabel(lead.desiredMoveInDate)} />
-            <InfoRow label="Phone" value={lead.phone} />
-            <InfoRow label="Email" value={lead.email} />
-            <InfoRow
-              label="Next Follow-Up"
-              value={lead.nextFollowUpDate ? formatDateLabel(lead.nextFollowUpDate) : "Not set"}
-            />
-            <InfoRow label="Tracked Properties" value={String(propertyCount)} />
-            <InfoRow
-              label="Showing"
-              value={
-                lead.showingDate && lead.showingTime
-                  ? formatDateTimeLabel(lead.showingDate, lead.showingTime)
-                  : "Not scheduled"
-              }
-            />
-            <InfoRow label="Source" value={getSourceLabel(lead.source)} />
-          </div>
+          <div className="mt-3 space-y-4 border-t border-line/70 pt-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InfoRow label="Move-in" value={formatDateLabel(lead.desiredMoveInDate)} />
+              <InfoRow label="Phone" value={lead.phone} />
+              <InfoRow label="Email" value={lead.email} />
+              <FollowUpDateEditor
+                leadId={lead.id}
+                initialDate={lead.nextFollowUpDate}
+                redirectTo={pathname}
+                isPreviewReadonly={isPreviewReadonly}
+              />
+              <PropertySummaryCard lead={lead} />
+              <InfoRow
+                label="Showing"
+                value={
+                  lead.showingDate && lead.showingTime
+                    ? formatDateTimeLabel(lead.showingDate, lead.showingTime)
+                    : "Not scheduled"
+                }
+              />
+              <InfoRow label="Source" value={getSourceLabel(lead.source)} />
+            </div>
 
-          <div className="rounded-3xl border border-line/70 bg-slate-50/90 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-              Lead Notes
-            </p>
-            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
-              {lead.notes || "No notes yet."}
-            </p>
-          </div>
+            <div className="rounded-3xl border border-line/70 bg-slate-50/90 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Lead Notes
+              </p>
+              <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+                {lead.notes || "No notes yet."}
+              </p>
+            </div>
 
-          <LeadStatusForm
-            leadId={lead.id}
-            currentStatus={lead.status}
-            isPreviewReadonly={isPreviewReadonly}
-          />
-        </div>
+            <LeadStatusForm
+              leadId={lead.id}
+              currentStatus={lead.status}
+              isPreviewReadonly={isPreviewReadonly}
+            />
+          </div>
         ) : null}
       </div>
     </article>
@@ -162,6 +169,127 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</p>
       <p className="mt-1 text-sm font-medium text-slate-700">{value}</p>
     </div>
+  );
+}
+
+function FollowUpDateEditor({
+  leadId,
+  initialDate,
+  redirectTo,
+  isPreviewReadonly
+}: {
+  leadId: string;
+  initialDate: string;
+  redirectTo: string;
+  isPreviewReadonly: boolean;
+}) {
+  const [date, setDate] = useState(initialDate);
+
+  return (
+    <form action={updateLeadFollowUpDate} className="rounded-2xl border border-line/70 bg-white/80 px-4 py-3">
+      <input type="hidden" name="id" value={leadId} />
+      <input type="hidden" name="redirectTo" value={redirectTo} />
+      <DateInputField
+        label="Next follow-up"
+        name="nextFollowUpDate"
+        value={date}
+        onChange={setDate}
+        helperText="Use calendar or MM/DD/YYYY"
+        labelClassName="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400"
+      />
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <p className="text-xs text-slate-500">
+          {date ? formatDateLabel(date) : "Not set"}
+        </p>
+        <FollowUpSaveButton disabled={isPreviewReadonly || !date || date === initialDate} />
+      </div>
+    </form>
+  );
+}
+
+function FollowUpSaveButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      className="rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {pending ? "Saving" : "Save"}
+    </button>
+  );
+}
+
+function PropertySummaryChip({ lead }: { lead: LeadWithProperties }) {
+  const countLabel = getPropertyInterestCountLabel(lead.propertyInterests.length);
+
+  return (
+    <span className="group/property relative inline-flex" tabIndex={0}>
+      <span className="app-chip cursor-help">{countLabel}</span>
+      <PropertySummaryTooltip lead={lead} />
+    </span>
+  );
+}
+
+function PropertySummaryCard({ lead }: { lead: LeadWithProperties }) {
+  return (
+    <div className="rounded-2xl border border-line/70 bg-white/80 px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+            Tracked Properties
+          </p>
+          <p className="mt-1 text-sm font-medium text-slate-700">
+            {getPropertyInterestCountLabel(lead.propertyInterests.length)}
+          </p>
+        </div>
+        <span className="group/property relative inline-flex" tabIndex={0}>
+          <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+            Summary
+          </span>
+          <PropertySummaryTooltip lead={lead} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function PropertySummaryTooltip({ lead }: { lead: LeadWithProperties }) {
+  const properties = lead.propertyInterests.slice(0, 4);
+  const remaining = lead.propertyInterests.length - properties.length;
+
+  return (
+    <span className="pointer-events-none absolute left-0 top-full z-40 mt-2 hidden w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-line bg-white p-3 text-left shadow-panel group-hover/property:block group-focus-within/property:block">
+      {properties.length === 0 ? (
+        <span className="block text-xs font-medium leading-5 text-slate-500">
+          No properties tracked yet.
+        </span>
+      ) : (
+        <span className="grid gap-2">
+          {properties.map((property) => (
+            <span key={property.id} className="block rounded-xl bg-slate-50 px-3 py-2">
+              <span className="block truncate text-xs font-semibold text-ink">
+                {property.listingTitle || property.address}
+              </span>
+              <span className="mt-1 block truncate text-[11px] leading-4 text-slate-500">
+                {[property.rent, property.beds ? `${property.beds} bd` : "", property.neighborhood]
+                  .filter(Boolean)
+                  .join(" - ") || property.address}
+              </span>
+              <span className="mt-1 block text-[11px] font-semibold text-slate-500">
+                {getPropertyInterestStatusLabel(property.status)}
+              </span>
+            </span>
+          ))}
+          {remaining > 0 ? (
+            <span className="block px-1 text-[11px] font-semibold text-slate-500">
+              +{remaining} more
+            </span>
+          ) : null}
+        </span>
+      )}
+    </span>
   );
 }
 
