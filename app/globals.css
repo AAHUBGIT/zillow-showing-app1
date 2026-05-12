@@ -119,3 +119,43 @@ button {
     @apply rounded-3xl border border-line/80 bg-white p-4 shadow-soft;
   }
 }
+
+html[data-workflow-density="compact"] .app-shell {
+  padding-top: 0.75rem;
+  padding-bottom: 1.25rem;
+}
+
+html[data-workflow-density="compact"] .app-panel {
+  border-radius: 1.5rem;
+}
+
+html[data-workflow-density="compact"] .app-subpanel,
+html[data-workflow-density="compact"] .app-grid-card {
+  border-radius: 1.25rem;
+}
+
+html[data-workflow-density="compact"] .app-input,
+html[data-workflow-density="compact"] .app-button-primary,
+html[data-workflow-density="compact"] .app-button-secondary {
+  min-height: 42px;
+}
+
+html[data-workflow-density="compact"] .app-input {
+  border-radius: 1rem;
+  padding: 0.625rem 0.875rem;
+}
+
+html[data-workflow-density="compact"] .app-textarea {
+  min-height: 96px;
+  border-radius: 1.25rem;
+  padding: 0.625rem 0.875rem;
+}
+
+html[data-workflow-density="compact"] .app-button-primary,
+html[data-workflow-density="compact"] .app-button-secondary {
+  padding: 0.5rem 1rem;
+}
+
+html[data-workflow-density="compact"] .app-chip {
+  padding: 0.25rem 0.625rem;
+}

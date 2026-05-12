@@ -219,6 +219,9 @@ function PropertyListingCard({
         <Link href={`/properties/${listing.id}`} className="app-button-primary">
           View Property
         </Link>
+        <Link href={`/properties/${listing.id}#edit-property`} className="app-button-secondary">
+          Edit Property
+        </Link>
         {listing.listingUrl ? (
           <a href={listing.listingUrl} target="_blank" rel="noreferrer" className="app-button-secondary">
             Open Listing

@@ -21,7 +21,7 @@ type RecordView = {
 };
 
 const defaultRecordView: RecordView = {
-  density: "comfortable",
+  density: "compact",
   layout: "overview"
 };
 

@@ -119,6 +119,7 @@ export function PropertyListingCreateForm({
   const [values, setValues] = useState<ListingValues>(() => getInitialValues());
   const [workflowAddress, setWorkflowAddress] = useState("");
   const [allowDuplicate, setAllowDuplicate] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const effectiveValues = useMemo(
     () => ({
       ...values,
@@ -140,6 +141,18 @@ export function PropertyListingCreateForm({
   useEffect(() => {
     setAllowDuplicate(false);
   }, [duplicateListing?.id, effectiveValues.address, values.listingUrl]);
+
+  useEffect(() => {
+    function openFromHash() {
+      if (window.location.hash === "#add-property-listing") {
+        setIsExpanded(true);
+      }
+    }
+
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, []);
 
   function updateField(fieldName: ListingField, value: string) {
     const nextValue =
@@ -246,10 +259,25 @@ export function PropertyListingCreateForm({
             Search saved inventory, start with an address, or paste a portal link. Manual fields stay editable before saving.
           </p>
         </div>
-        <div className="app-chip">Visible workflow</div>
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          className="app-button-primary self-start"
+          aria-expanded={isExpanded}
+          aria-controls="property-listing-create-form"
+        >
+          {isExpanded ? "Collapse form" : "Add Property Listing"}
+        </button>
       </div>
 
-      <form action={createPropertyListing} noValidate onSubmit={handleSubmit} className="mt-5 grid gap-5">
+      {isExpanded ? (
+      <form
+        id="property-listing-create-form"
+        action={createPropertyListing}
+        noValidate
+        onSubmit={handleSubmit}
+        className="mt-5 grid gap-5"
+      >
         <AddPropertyWorkflowPanel
           propertyListings={propertyListings}
           manualAddressValue={workflowAddress}
@@ -446,6 +474,11 @@ export function PropertyListingCreateForm({
           </TooltipShell>
         </div>
       </form>
+      ) : (
+        <div className="mt-4 rounded-3xl border border-dashed border-line bg-white/70 px-4 py-4 text-sm leading-6 text-slate-600">
+          Inventory search stays first. Open this form when you need to add a new address or listing link.
+        </div>
+      )}
     </section>
   );
 }

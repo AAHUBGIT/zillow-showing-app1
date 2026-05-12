@@ -51,6 +51,7 @@ export function CommunicationWorkspace({
   const [quickNote, setQuickNote] = useState("");
   const [quickNoteError, setQuickNoteError] = useState("");
   const [isMessageCopied, setIsMessageCopied] = useState(false);
+  const [showAllActivities, setShowAllActivities] = useState(false);
   const communicationPanelRef = useRef<HTMLDivElement | null>(null);
   const saveInFlightRef = useRef(false);
   const copyResetTimeoutRef = useRef<number | null>(null);
@@ -69,6 +70,8 @@ export function CommunicationWorkspace({
   const emailHref = hasEmail ? buildEmailHref(email, subject, body) : "";
   const canLogActivity = body.trim().length > 0;
   const canSaveTemplate = templateName.trim().length > 0 && body.trim().length > 0;
+  const visibleActivities = showAllActivities ? recentActivities : recentActivities.slice(0, 5);
+  const hiddenActivityCount = Math.max(recentActivities.length - visibleActivities.length, 0);
 
   useEffect(() => {
     return () => {
@@ -295,8 +298,8 @@ export function CommunicationWorkspace({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="app-subpanel p-5">
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <section className="app-subpanel p-4 sm:p-5">
           <form
             noValidate
             onSubmit={(event) => {
@@ -384,7 +387,7 @@ export function CommunicationWorkspace({
               <span className="text-sm font-medium text-slate-700">Message or call notes</span>
               <AutoResizeTextarea
                 name="body"
-                rows={7}
+                rows={5}
                 value={body}
                 maxLength={fieldMaxLengths.communicationBody}
                 required
@@ -401,7 +404,7 @@ export function CommunicationWorkspace({
               <span className="text-sm font-medium text-slate-700">Outcome</span>
               <AutoResizeTextarea
                 name="outcome"
-                rows={3}
+                rows={2}
                 value={outcome}
                 maxLength={fieldMaxLengths.communicationOutcome}
                 onChange={(event) => setOutcome(event.target.value)}
@@ -465,7 +468,7 @@ export function CommunicationWorkspace({
                 <label className="flex min-w-0 flex-col gap-2">
                   <span className="text-sm font-medium text-slate-700">Quick note</span>
                   <AutoResizeTextarea
-                    rows={3}
+                    rows={2}
                     value={quickNote}
                     maxLength={fieldMaxLengths.communicationBody}
                     onChange={(event) => {
@@ -477,7 +480,7 @@ export function CommunicationWorkspace({
                     aria-label="Quick internal note"
                     aria-invalid={Boolean(quickNoteError)}
                     aria-describedby="quick-note-helper"
-                    className={`app-textarea min-h-[96px] ${
+                    className={`app-textarea min-h-[72px] ${
                       quickNoteError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100" : ""
                     }`}
                     placeholder="Type an internal note before using Add Note."
@@ -526,24 +529,27 @@ export function CommunicationWorkspace({
             </div>
           </form>
 
-          <form
-            action={createCommunicationTemplate}
-            noValidate
-            onSubmit={(event) => {
-              if (!validateTemplateForm()) {
-                event.preventDefault();
-              }
-            }}
-            className="mt-5 rounded-3xl border border-line/80 bg-white/80 p-4"
-          >
-            <input type="hidden" name="leadId" value={lead.id} />
-            <input type="hidden" name="channel" value={channel} />
-            <input type="hidden" name="subject" value={subject} />
-            <input type="hidden" name="body" value={body} />
+          <details className="mt-4 rounded-3xl border border-line/80 bg-white/80 p-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-ink">
+              Save current draft as a reusable template
+            </summary>
+            <form
+              action={createCommunicationTemplate}
+              noValidate
+              onSubmit={(event) => {
+                if (!validateTemplateForm()) {
+                  event.preventDefault();
+                }
+              }}
+              className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-end"
+            >
+              <input type="hidden" name="leadId" value={lead.id} />
+              <input type="hidden" name="channel" value={channel} />
+              <input type="hidden" name="subject" value={subject} />
+              <input type="hidden" name="body" value={body} />
 
-            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
               <label className="flex min-w-0 flex-col gap-2">
-                <span className="text-sm font-medium text-slate-700">Save current draft as template</span>
+                <span className="text-sm font-medium text-slate-700">Template name</span>
                 <input
                   type="text"
                   name="templateName"
@@ -562,11 +568,11 @@ export function CommunicationWorkspace({
               >
                 <SaveTemplateButton disabled={isPreviewReadonly || !canSaveTemplate} />
               </TooltipShell>
-            </div>
-          </form>
+            </form>
+          </details>
         </section>
 
-        <section className="app-subpanel p-5">
+        <section id="recent-activity" className="app-subpanel scroll-mt-28 p-4 sm:p-5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="app-kicker">Recent Activity</p>
@@ -583,10 +589,19 @@ export function CommunicationWorkspace({
               </p>
             </div>
           ) : (
-            <div className="mt-5 space-y-3">
-              {recentActivities.map((activity) => (
+            <div className="mt-4 space-y-3">
+              {visibleActivities.map((activity) => (
                 <ActivityItem key={activity.id} activity={activity} />
               ))}
+              {recentActivities.length > 5 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllActivities((current) => !current)}
+                  className="app-button-secondary w-full"
+                >
+                  {showAllActivities ? "Show latest 5" : `Show ${hiddenActivityCount} more`}
+                </button>
+              ) : null}
             </div>
           )}
         </section>

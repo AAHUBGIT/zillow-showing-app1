@@ -207,24 +207,28 @@ export default async function PropertyListingDetailPage({
       </section>
 
       <section id="edit-property" className="app-panel scroll-mt-28 p-5 sm:p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="app-eyebrow">Edit Property</p>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">
-              Update inventory details
-            </h2>
-            <p className="app-copy mt-2 max-w-3xl">
-              Keep the address, price, layout, listing link, status, and internal notes current.
-            </p>
-          </div>
-          <span className="app-chip">Inventory record</span>
-        </div>
-        <PropertyListingEditForm
-          listing={listing}
-          isPreviewReadonly={isPreviewReadonly}
-          redirectTo={`/properties/${listing.id}`}
-          buttonLabel="Save Property"
-        />
+        <details>
+          <summary className="cursor-pointer list-none">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="app-eyebrow">Edit Property</p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight text-ink">
+                  Update inventory details
+                </h2>
+                <p className="app-copy mt-2 max-w-3xl">
+                  Open only when price, layout, listing link, status, or notes need changes.
+                </p>
+              </div>
+              <span className="app-chip">Expand editor</span>
+            </div>
+          </summary>
+          <PropertyListingEditForm
+            listing={listing}
+            isPreviewReadonly={isPreviewReadonly}
+            redirectTo={`/properties/${listing.id}`}
+            buttonLabel="Save Property"
+          />
+        </details>
       </section>
 
       <section className="app-panel p-5 sm:p-6">

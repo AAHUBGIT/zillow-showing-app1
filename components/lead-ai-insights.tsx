@@ -28,22 +28,26 @@ export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
   const alternateDisabled = alternateAction === "text" ? !hasPhone : !hasEmail;
 
   return (
-    <section className="app-panel p-5 sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="app-eyebrow">Smart Assist</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-            Productivity suggestions for this customer
-          </h3>
-          <p className="app-copy mt-2 max-w-3xl">
-            Lightweight workflow guidance helps summarize preferences, recommend the next outreach
-            move, and surface the strongest property fit without interrupting the normal workflow.
-          </p>
+    <details className="app-panel p-5 sm:p-6">
+      <summary className="cursor-pointer list-none">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="app-eyebrow">Smart Assist</p>
+            <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+              Productivity suggestions
+            </h3>
+            <p className="app-copy mt-2 max-w-3xl">
+              {insights.nextAction.reason}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <div className="app-chip">Rule-based</div>
+            <div className="app-chip">Expand</div>
+          </div>
         </div>
-        <div className="app-chip">Rule-based suggestions</div>
-      </div>
+      </summary>
 
-      <div className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="app-subpanel p-5">
           <p className="app-kicker">Client Preferences Summary</p>
           <p className="mt-3 text-sm leading-6 text-slate-600">{insights.preferenceSummary}</p>
@@ -172,6 +176,6 @@ export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
           </div>
         )}
       </div>
-    </section>
+    </details>
   );
 }

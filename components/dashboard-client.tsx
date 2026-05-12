@@ -138,7 +138,7 @@ export function DashboardClient({
     <main className="space-y-6">
       {isPreviewReadonly ? <PreviewModeBanner /> : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <StatCard
           label="Total Leads"
           value={stats.total}
@@ -189,40 +189,39 @@ export function DashboardClient({
         />
       </section>
 
-      <section className="app-panel p-5 sm:p-6">
-        <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr] xl:items-end">
+      <section className="app-panel p-4 sm:p-5">
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr] xl:items-center">
           <div>
             <p className="app-eyebrow">Lead Dashboard</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-              Your command center for leasing operations
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+              Leasing work queue
             </h2>
-            <p className="app-copy mt-3 max-w-2xl">
-              Prioritize urgent follow-ups, keep tours moving, and surface the leads most likely to
-              close next.
+            <p className="app-copy mt-2 max-w-2xl">
+              Prioritize urgent follow-ups, scheduled tours, and the next records that need movement.
             </p>
-            <p className="mt-4 text-sm font-medium text-slate-500">
+            <p className="mt-2 text-sm font-medium text-slate-500">
               Sorted by priority, follow-up urgency, upcoming showing, and recent activity.
             </p>
           </div>
-          <div className="rounded-4xl border border-line/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,0.98))] p-4 shadow-soft">
+          <div className="rounded-3xl border border-line/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.95),rgba(255,255,255,0.98))] p-3 shadow-soft">
             <div className="grid gap-3 sm:grid-cols-3">
-              <div className="rounded-3xl border border-white/80 bg-white px-4 py-4">
+              <div className="rounded-2xl border border-white/80 bg-white px-3 py-3">
                 <p className="app-kicker">Visible now</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-ink">
+                <p className="mt-1 text-xl font-semibold tracking-tight text-ink">
                   {filteredLeads.length}
                 </p>
               </div>
-              <div className="rounded-3xl border border-white/80 bg-white px-4 py-4">
+              <div className="rounded-2xl border border-white/80 bg-white px-3 py-3">
                 <p className="app-kicker">Today</p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight text-ink">{stats.showingsToday}</p>
+                <p className="mt-1 text-xl font-semibold tracking-tight text-ink">{stats.showingsToday}</p>
               </div>
-              <div className="rounded-3xl border border-white/80 bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(37,99,235,0.9))] px-4 py-4 text-white">
+              <div className="rounded-2xl border border-white/80 bg-[linear-gradient(135deg,rgba(15,23,42,0.96),rgba(37,99,235,0.9))] px-3 py-3 text-white">
                 <p className="app-kicker text-white/70">Focus</p>
-                <p className="mt-2 text-base font-semibold">Keep urgent and overdue leads moving.</p>
+                <p className="mt-1 text-sm font-semibold">Move urgent and overdue leads.</p>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <LoadingLink href="/today" className="app-button-primary flex-1">
                 Open Today
               </LoadingLink>
@@ -249,7 +248,7 @@ export function DashboardClient({
           </div>
         ) : (
           <>
-            <div className="mt-6 rounded-4xl border border-line/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.92),rgba(255,255,255,0.96))] p-4 shadow-soft sm:p-5">
+            <div className="mt-5 rounded-3xl border border-line/80 bg-[linear-gradient(180deg,rgba(248,250,252,0.92),rgba(255,255,255,0.96))] p-4 shadow-soft">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="app-kicker">CRM Filters</p>
@@ -387,7 +386,7 @@ export function DashboardClient({
               </div>
             </div>
 
-            <div ref={leadListRef} id="dashboard-lead-list" className="mt-6 scroll-mt-36">
+            <div ref={leadListRef} id="dashboard-lead-list" className="mt-5 scroll-mt-36">
               {filteredLeads.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-4xl border border-dashed border-line bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))] px-6 py-16 text-center">
                   <p className="text-lg font-semibold tracking-tight text-ink">No matching leads</p>
@@ -448,7 +447,7 @@ function StatCard({
       aria-label={`Show ${label.toLowerCase()} leads`}
       aria-pressed={isActive}
       aria-controls="dashboard-lead-list"
-      className={`group w-full rounded-4xl border bg-gradient-to-br ${tone} p-5 text-left shadow-panel transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-[0_24px_55px_-34px_rgba(15,23,42,0.65)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 ${
+      className={`group w-full rounded-3xl border bg-gradient-to-br ${tone} p-4 text-left shadow-panel transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-[0_24px_55px_-34px_rgba(15,23,42,0.65)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 ${
         isActive ? "border-accent/50 ring-4 ring-accent/10" : "border-white/80"
       }`}
     >
@@ -458,10 +457,10 @@ function StatCard({
           Live
         </div>
       </div>
-      <p className="mt-6 text-4xl font-semibold tracking-tight text-ink transition group-hover:text-accent group-focus-visible:text-accent">
+      <p className="mt-3 text-3xl font-semibold tracking-tight text-ink transition group-hover:text-accent group-focus-visible:text-accent">
         {value}
       </p>
-      <p className="mt-3 max-w-[22ch] text-sm leading-6 text-slate-500">{detail}</p>
+      <p className="mt-2 max-w-[22ch] text-sm leading-5 text-slate-500">{detail}</p>
     </button>
   );
 }

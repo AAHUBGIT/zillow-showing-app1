@@ -8,6 +8,8 @@ import { LoadingLink } from "@/components/loading-link";
 import { logoutUser } from "@/lib/actions";
 import { SessionUser } from "@/lib/auth";
 
+type WorkflowDensity = "compact" | "comfortable";
+
 const navItems = [
   { href: "/today", label: "Today" },
   { href: "/", label: "Dashboard" },
@@ -15,6 +17,8 @@ const navItems = [
   { href: "/properties", label: "Properties" },
   { href: "/routes", label: "Routes" }
 ];
+
+const workflowDensityStorageKey = "showings-crm:workflow-density";
 
 export function AppHeader({
   isPreviewReadonly = false,
@@ -25,8 +29,9 @@ export function AppHeader({
 }) {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [workflowDensity, setWorkflowDensity] = useState<WorkflowDensity>("compact");
   const isLoginPage = pathname === "/login";
-  const showWorkspaceHero = pathname === "/";
+  const showWorkspaceHero = false;
 
   function isActive(href: string) {
     if (href === "/") {
@@ -45,6 +50,19 @@ export function AppHeader({
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const storedDensity = window.localStorage.getItem(workflowDensityStorageKey);
+
+    if (storedDensity === "comfortable" || storedDensity === "compact") {
+      setWorkflowDensity(storedDensity);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.workflowDensity = workflowDensity;
+    window.localStorage.setItem(workflowDensityStorageKey, workflowDensity);
+  }, [workflowDensity]);
 
   return (
     <>
@@ -89,6 +107,38 @@ export function AppHeader({
                 </LoadingLink>
               ))}
             </nav>
+
+            {sessionUser ? (
+              <div
+                className="inline-flex rounded-full border border-slate-200 bg-white p-1 shadow-sm"
+                aria-label="Workflow density"
+              >
+                <button
+                  type="button"
+                  onClick={() => setWorkflowDensity("compact")}
+                  aria-pressed={workflowDensity === "compact"}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    workflowDensity === "compact"
+                      ? "bg-accent text-white"
+                      : "text-slate-500 hover:text-accent"
+                  }`}
+                >
+                  Compact
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWorkflowDensity("comfortable")}
+                  aria-pressed={workflowDensity === "comfortable"}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                    workflowDensity === "comfortable"
+                      ? "bg-accent text-white"
+                      : "text-slate-500 hover:text-accent"
+                  }`}
+                >
+                  Comfort
+                </button>
+              </div>
+            ) : null}
 
             {sessionUser ? (
               <>

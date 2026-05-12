@@ -58,26 +58,11 @@ export default async function LeadDetailsPage({
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <section className="space-y-6">
-          <LeadRecordPanel lead={lead} calendarUrl={calendarUrl} />
+          <div id="customer-overview" className="scroll-mt-28">
+            <LeadRecordPanel lead={lead} calendarUrl={calendarUrl} />
+          </div>
 
           <LeadWorkflowJumpBar />
-
-          <div id="communication" className="scroll-mt-28">
-            <CommunicationWorkspace
-              lead={lead}
-              templates={communicationWorkspace.templates}
-              activities={communicationWorkspace.activities}
-              isPreviewReadonly={isPreviewReadonly}
-            />
-          </div>
-
-          <div id="preferences" className="scroll-mt-28">
-            <ClientPreferencesForm lead={lead} isPreviewReadonly={isPreviewReadonly} />
-          </div>
-
-          <div id="smart-assist" className="scroll-mt-28">
-            <LeadAiInsights lead={lead} />
-          </div>
 
           <div id="showing-snapshot" className="app-panel scroll-mt-28 p-5 sm:p-6">
             <p className="app-eyebrow">Showing Snapshot</p>
@@ -261,17 +246,41 @@ export default async function LeadDetailsPage({
               </div>
             )}
           </div>
+
+          <div id="preferences" className="scroll-mt-28">
+            <ClientPreferencesForm lead={lead} isPreviewReadonly={isPreviewReadonly} />
+          </div>
+
+          <div id="smart-assist" className="scroll-mt-28">
+            <LeadAiInsights lead={lead} />
+          </div>
+
+          <div id="communication" className="scroll-mt-28">
+            <CommunicationWorkspace
+              lead={lead}
+              templates={communicationWorkspace.templates}
+              activities={communicationWorkspace.activities}
+              isPreviewReadonly={isPreviewReadonly}
+            />
+          </div>
         </section>
 
         <aside id="schedule-showing" className="scroll-mt-28 app-panel p-5 sm:p-6">
-          <p className="app-eyebrow">Scheduling</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink">
-            Assign or update showing
-          </h3>
-          <p className="app-copy mt-2">
-            Update the showing date, time, notes, status, and location using the lead address,
-            saved properties, inventory, or a typed address. Calendar links update from the selected location.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="app-eyebrow">Scheduling</p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink">
+                Showing editor
+              </h3>
+              <p className="app-copy mt-2">
+                Update date, time, status, and location from the lead address, saved properties,
+                inventory, or a typed address.
+              </p>
+            </div>
+            <a href="#showing-snapshot" className="app-chip hover:border-accent hover:text-accent">
+              View status
+            </a>
+          </div>
 
           <div className="mt-5 app-subpanel p-4">
             <p className="app-kicker">Current Appointment</p>
@@ -282,11 +291,16 @@ export default async function LeadDetailsPage({
             </p>
           </div>
 
-          <LeadScheduleForm
-            lead={lead}
-            propertyListings={propertyListings}
-            isPreviewReadonly={isPreviewReadonly}
-          />
+          <details className="mt-4" open={!lead.showingDate || !lead.showingTime}>
+            <summary className="cursor-pointer list-none rounded-3xl border border-line/80 bg-white px-4 py-3 text-sm font-semibold text-ink shadow-sm transition hover:border-accent hover:text-accent">
+              {lead.showingDate && lead.showingTime ? "Edit schedule and location" : "Open schedule setup"}
+            </summary>
+            <LeadScheduleForm
+              lead={lead}
+              propertyListings={propertyListings}
+              isPreviewReadonly={isPreviewReadonly}
+            />
+          </details>
         </aside>
       </div>
     </main>
@@ -295,10 +309,12 @@ export default async function LeadDetailsPage({
 
 function LeadWorkflowJumpBar() {
   const links = [
-    { href: "#communication", label: "Communication" },
-    { href: "#preferences", label: "Preferences" },
+    { href: "#customer-overview", label: "Overview" },
     { href: "#showing-snapshot", label: "Showing" },
     { href: "#interested-properties", label: "Properties" },
+    { href: "#preferences", label: "Preferences" },
+    { href: "#communication", label: "Communication" },
+    { href: "#recent-activity", label: "Activity" },
     { href: "#schedule-showing", label: "Schedule" },
     { href: "#smart-assist", label: "Smart Assist" }
   ];
