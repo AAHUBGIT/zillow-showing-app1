@@ -96,27 +96,45 @@ export function AppHeader({
               const active = isActive(item.href);
 
               return (
-                <LoadingLink
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition ${
-                    active
-                      ? "bg-[linear-gradient(135deg,#0f172a,#2563eb)] text-white shadow-soft"
-                      : "text-slate-700 hover:bg-accentSoft hover:text-accent"
-                  }`}
-                >
-                  <span className="flex min-w-0 flex-col">
-                    <span className="text-sm font-semibold">{item.label}</span>
-                    <span
-                      className={`truncate text-xs ${
-                        active ? "text-blue-100" : "text-slate-500"
-                      }`}
-                    >
-                      {item.description}
+                <div key={item.href}>
+                  <LoadingLink
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left transition ${
+                      active
+                        ? "bg-[linear-gradient(135deg,#0f172a,#2563eb)] text-white shadow-soft"
+                        : "text-slate-700 hover:bg-accentSoft hover:text-accent"
+                    }`}
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-sm font-semibold">{item.label}</span>
+                      <span
+                        className={`truncate text-xs ${
+                          active ? "text-blue-100" : "text-slate-500"
+                        }`}
+                      >
+                        {item.description}
+                      </span>
                     </span>
-                  </span>
-                </LoadingLink>
+                  </LoadingLink>
+
+                  {item.href === "/properties" ? (
+                    <div className="ml-3 mt-1 grid gap-1 border-l border-line/80 pl-3">
+                      <LoadingLink
+                        href="/properties"
+                        className="flex w-full min-h-[34px] items-center rounded-xl px-3 py-1.5 text-left text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-accent"
+                      >
+                        Properties
+                      </LoadingLink>
+                      <LoadingLink
+                        href="/properties#add-property-listing"
+                        className="flex w-full min-h-[34px] items-center rounded-xl px-3 py-1.5 text-left text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-accent"
+                      >
+                        Add a property
+                      </LoadingLink>
+                    </div>
+                  ) : null}
+                </div>
               );
             })}
           </nav>

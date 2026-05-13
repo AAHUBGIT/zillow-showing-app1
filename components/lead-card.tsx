@@ -37,8 +37,8 @@ export function LeadCard({
     <article className="dashboard-lead-card group rounded-4xl border border-line/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-panel">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="lead-card-avatar flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(15,23,42,0.08))] text-base font-semibold text-accent">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="lead-card-avatar flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(37,99,235,0.14),rgba(15,23,42,0.08))] text-base font-semibold text-accent">
               {lead.fullName
                 .split(" ")
                 .map((part) => part[0])
@@ -77,9 +77,6 @@ export function LeadCard({
             className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-accent focus-visible:ring-4 focus-visible:ring-accent/20"
           >
             <span>Lead details</span>
-            <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs text-slate-600">
-              {isExpanded ? "Collapse" : "Expand"}
-            </span>
           </button>
 
           <div className="flex flex-wrap gap-2 xl:justify-end">

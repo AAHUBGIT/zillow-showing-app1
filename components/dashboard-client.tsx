@@ -82,7 +82,7 @@ export function DashboardClient({
         matchesShowingDate &&
         matchesStatQuickFilter
       );
-    });
+    }).sort(compareDashboardLeads);
   }, [followUpState, leads, moveInDate, priority, search, showingDate, source, statQuickFilter, status]);
 
   const stats = {
@@ -514,4 +514,41 @@ function isShowingWithinDays(lead: LeadWithProperties, withinDays: number) {
 
 function getTodayString() {
   return new Date().toISOString().slice(0, 10);
+}
+
+const dashboardPriorityRank: Record<LeadPriority, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3
+};
+
+function compareDashboardLeads(first: LeadWithProperties, second: LeadWithProperties) {
+  const firstClosed = first.status === "closed";
+  const secondClosed = second.status === "closed";
+
+  if (firstClosed !== secondClosed) {
+    return firstClosed ? 1 : -1;
+  }
+
+  const firstOverdue = getFollowUpState(first.nextFollowUpDate) === "overdue";
+  const secondOverdue = getFollowUpState(second.nextFollowUpDate) === "overdue";
+
+  if (firstOverdue !== secondOverdue) {
+    return firstOverdue ? -1 : 1;
+  }
+
+  const priorityDifference =
+    dashboardPriorityRank[first.priority] - dashboardPriorityRank[second.priority];
+
+  if (priorityDifference !== 0) {
+    return priorityDifference;
+  }
+
+  return getShowingSortValue(first).localeCompare(getShowingSortValue(second)) ||
+    first.fullName.localeCompare(second.fullName);
+}
+
+function getShowingSortValue(lead: LeadWithProperties) {
+  return lead.showingDate && lead.showingTime ? `${lead.showingDate} ${lead.showingTime}` : "9999-12-31 23:59";
 }

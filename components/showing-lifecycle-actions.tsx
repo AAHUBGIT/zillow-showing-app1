@@ -41,71 +41,86 @@ export function ShowingLifecycleActions({
     return null;
   }
 
-  return (
-    <div className={mode === "full" ? "grid gap-3" : "flex flex-wrap items-center gap-2"}>
-      <div className="flex flex-wrap items-center gap-2">
-        {showingStatus !== "confirmed" && !isTerminal ? (
-          <LifecycleForm
-            leadId={lead.id}
-            redirectTo={redirectTo}
-            showingStatus="confirmed"
-            buttonLabel="Confirm showing"
-            pendingLabel="Confirming..."
-            disabled={isPreviewReadonly}
-            className={compactButtonClass}
-            tooltipMessage={tooltipMessage}
-          />
-        ) : null}
+  const actionButtons = (
+    <div className="flex flex-wrap items-center gap-2">
+      {showingStatus !== "confirmed" && !isTerminal ? (
+        <LifecycleForm
+          leadId={lead.id}
+          redirectTo={redirectTo}
+          showingStatus="confirmed"
+          buttonLabel="Confirm showing"
+          pendingLabel="Confirming..."
+          disabled={isPreviewReadonly}
+          className={compactButtonClass}
+          tooltipMessage={tooltipMessage}
+        />
+      ) : null}
 
-        {!isTerminal ? (
-          <>
-            {mode === "full" ? null : (
-              <LifecycleForm
-                leadId={lead.id}
-                redirectTo={redirectTo}
-                showingStatus="completed"
-                showingOutcome="undecided"
-                buttonLabel={mode === "route" ? "Mark completed" : "Complete"}
-                pendingLabel="Saving..."
-                disabled={isPreviewReadonly}
-                className={compactButtonClass}
-                tooltipMessage={tooltipMessage}
-              />
-            )}
+      {!isTerminal ? (
+        <>
+          {mode === "full" ? null : (
             <LifecycleForm
               leadId={lead.id}
               redirectTo={redirectTo}
-              showingStatus="no_show"
-              buttonLabel="No-show"
+              showingStatus="completed"
+              showingOutcome="undecided"
+              buttonLabel={mode === "route" ? "Mark completed" : "Complete"}
               pendingLabel="Saving..."
               disabled={isPreviewReadonly}
               className={compactButtonClass}
               tooltipMessage={tooltipMessage}
             />
-            {mode === "full" ? null : (
-              <LifecycleForm
-                leadId={lead.id}
-                redirectTo={redirectTo}
-                showingStatus="canceled"
-                buttonLabel="Cancel"
-                pendingLabel="Canceling..."
-                disabled={isPreviewReadonly}
-                className={compactButtonClass}
-                tooltipMessage={tooltipMessage}
-              />
-            )}
-          </>
-        ) : null}
-
-        {rescheduleHref ? (
-          <Link
-            href={rescheduleHref}
+          )}
+          <LifecycleForm
+            leadId={lead.id}
+            redirectTo={redirectTo}
+            showingStatus="no_show"
+            buttonLabel="No-show"
+            pendingLabel="Saving..."
+            disabled={isPreviewReadonly}
             className={compactButtonClass}
-          >
-            Reschedule
-          </Link>
-        ) : null}
-      </div>
+            tooltipMessage={tooltipMessage}
+          />
+          {mode === "full" ? null : (
+            <LifecycleForm
+              leadId={lead.id}
+              redirectTo={redirectTo}
+              showingStatus="canceled"
+              buttonLabel="Cancel"
+              pendingLabel="Canceling..."
+              disabled={isPreviewReadonly}
+              className={compactButtonClass}
+              tooltipMessage={tooltipMessage}
+            />
+          )}
+        </>
+      ) : null}
+
+      {rescheduleHref ? (
+        <Link
+          href={rescheduleHref}
+          className={compactButtonClass}
+        >
+          Reschedule
+        </Link>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div className={mode === "full" ? "grid gap-3" : "flex flex-wrap items-center gap-2"}>
+      {mode === "full" ? (
+        actionButtons
+      ) : (
+        <details className="group w-full sm:w-auto">
+          <summary className="app-button-secondary min-h-[36px] cursor-pointer list-none px-3 py-1.5 text-xs marker:hidden">
+            Quick actions
+          </summary>
+          <div className="mt-2 rounded-3xl border border-line/80 bg-white p-3 shadow-panel">
+            {actionButtons}
+          </div>
+        </details>
+      )}
 
       {mode === "full" && !isTerminal ? (
         <div className="grid gap-3">
