@@ -280,11 +280,11 @@ export function CommunicationWorkspace({
   }
 
   return (
-    <div ref={communicationPanelRef} className="app-panel scroll-mt-28 p-5 sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div ref={communicationPanelRef} className="app-panel scroll-mt-28 p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="app-eyebrow">Communication Center</p>
-          <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+          <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink">
             Templates and activity log
           </h3>
           <p className="app-copy mt-2 max-w-2xl">
@@ -298,8 +298,8 @@ export function CommunicationWorkspace({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-        <section className="app-subpanel p-4 sm:p-5">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <section className="app-subpanel p-4">
           <form
             noValidate
             onSubmit={(event) => {
@@ -309,12 +309,12 @@ export function CommunicationWorkspace({
               }
               void logActivity();
             }}
-            className="grid gap-4"
+            className="grid gap-3"
           >
             <input type="hidden" name="leadId" value={lead.id} />
             <input type="hidden" name="templateId" value={selectedTemplateId} />
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex min-w-0 flex-col gap-2">
                 <span className="text-sm font-medium text-slate-700">Template</span>
                 <select
@@ -350,7 +350,7 @@ export function CommunicationWorkspace({
               </label>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex min-w-0 flex-col gap-2">
                 <span className="text-sm font-medium text-slate-700">Direction</span>
                 <select
@@ -387,7 +387,7 @@ export function CommunicationWorkspace({
               <span className="text-sm font-medium text-slate-700">Message or call notes</span>
               <AutoResizeTextarea
                 name="body"
-                rows={5}
+                rows={4}
                 value={body}
                 maxLength={fieldMaxLengths.communicationBody}
                 required
@@ -400,19 +400,24 @@ export function CommunicationWorkspace({
               </p>
             </label>
 
-            <label className="flex min-w-0 flex-col gap-2">
-              <span className="text-sm font-medium text-slate-700">Outcome</span>
-              <AutoResizeTextarea
-                name="outcome"
-                rows={2}
-                value={outcome}
-                maxLength={fieldMaxLengths.communicationOutcome}
-                onChange={(event) => setOutcome(event.target.value)}
-                aria-label="Communication outcome"
-                className="app-textarea min-h-[92px]"
-                placeholder="Sent text, left voicemail, customer replied, next step..."
-              />
-            </label>
+            <details className="rounded-2xl border border-line/80 bg-white/80 px-3 py-2">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-slate-700">
+                Outcome notes
+              </summary>
+              <label className="mt-3 flex min-w-0 flex-col gap-2">
+                <span className="text-sm font-medium text-slate-700">Outcome</span>
+                <AutoResizeTextarea
+                  name="outcome"
+                  rows={2}
+                  value={outcome}
+                  maxLength={fieldMaxLengths.communicationOutcome}
+                  onChange={(event) => setOutcome(event.target.value)}
+                  aria-label="Communication outcome"
+                  className="app-textarea min-h-[78px]"
+                  placeholder="Sent text, left voicemail, customer replied, next step..."
+                />
+              </label>
+            </details>
 
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap gap-2">
@@ -420,28 +425,25 @@ export function CommunicationWorkspace({
                   action="call"
                   href={phoneHref}
                   disabled={!hasPhone}
-                  helperText={hasPhone ? `tel:${phone}` : undefined}
-                  className="app-button-secondary min-h-[52px] flex-col items-start justify-center gap-1 px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
+                  className="app-button-secondary min-h-[44px] px-4 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
                 />
                 <ContactActionLink
                   action="text"
                   href={smsHref}
                   disabled={!hasPhone}
-                  helperText={hasPhone ? `sms:${phone}` : undefined}
-                  className="app-button-secondary min-h-[52px] flex-col items-start justify-center gap-1 px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
+                  className="app-button-secondary min-h-[44px] px-4 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
                 />
                 <ContactActionLink
                   action="email"
                   href={emailHref}
                   disabled={!hasEmail}
-                  helperText={hasEmail ? `mailto:${email}` : undefined}
-                  className="app-button-secondary min-h-[52px] flex-col items-start justify-center gap-1 px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
+                  className="app-button-secondary min-h-[44px] px-4 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20"
                 />
                 <button
                   type="button"
                   onClick={copyMessage}
                   disabled={!body.trim()}
-                  className="app-button-secondary min-h-[52px] px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
+                  className="app-button-secondary min-h-[44px] px-4 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {isMessageCopied ? "Copied" : "Copy message"}
                 </button>
@@ -455,7 +457,7 @@ export function CommunicationWorkspace({
               </TooltipShell>
             </div>
 
-            <div className="rounded-3xl border border-line/80 bg-white/80 p-4">
+            <div className="rounded-2xl border border-line/80 bg-white/80 p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="app-kicker">Quick Logs</p>
@@ -464,7 +466,7 @@ export function CommunicationWorkspace({
                   </p>
                 </div>
               </div>
-              <div className="mt-4 grid gap-3">
+              <div className="mt-3 grid gap-3">
                 <label className="flex min-w-0 flex-col gap-2">
                   <span className="text-sm font-medium text-slate-700">Quick note</span>
                   <AutoResizeTextarea
@@ -480,7 +482,7 @@ export function CommunicationWorkspace({
                     aria-label="Quick internal note"
                     aria-invalid={Boolean(quickNoteError)}
                     aria-describedby="quick-note-helper"
-                    className={`app-textarea min-h-[72px] ${
+                    className={`app-textarea min-h-[68px] ${
                       quickNoteError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100" : ""
                     }`}
                     placeholder="Type an internal note before using Add Note."
@@ -572,7 +574,7 @@ export function CommunicationWorkspace({
           </details>
         </section>
 
-        <section id="recent-activity" className="app-subpanel scroll-mt-28 p-4 sm:p-5">
+        <section id="recent-activity" className="app-subpanel scroll-mt-28 p-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="app-kicker">Recent Activity</p>
@@ -621,7 +623,7 @@ function LogActivityButton({
     <button
       type="submit"
       disabled={disabled || pending}
-      className="app-button-primary min-h-[52px] px-5 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
+      className="app-button-primary min-h-[44px] px-4 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
     >
       {pending ? (
         <>
@@ -651,7 +653,7 @@ function QuickLogButton({
       type="button"
       onClick={onClick}
       disabled={disabled || isPending}
-      className="app-button-secondary min-h-[52px] px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
+      className="app-button-secondary min-h-[44px] px-4 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
     >
       {isPending ? (
         <>
@@ -672,7 +674,7 @@ function SaveTemplateButton({ disabled = false }: { disabled?: boolean }) {
     <button
       type="submit"
       disabled={disabled || pending}
-      className="app-button-secondary min-h-[52px] px-4 py-3 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
+      className="app-button-secondary min-h-[44px] px-4 py-2 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-accent/20 disabled:cursor-not-allowed disabled:opacity-55"
     >
       {pending ? (
         <>

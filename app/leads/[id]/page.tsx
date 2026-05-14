@@ -53,18 +53,18 @@ export default async function LeadDetailsPage({
       : lead.propertyInterests;
 
   return (
-    <main className="space-y-6">
+    <main className="lead-detail-workflow space-y-5">
       {isPreviewReadonly ? <PreviewModeBanner /> : null}
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <section className="space-y-6">
+      <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="space-y-5">
           <div id="customer-overview" className="scroll-mt-28">
             <LeadRecordPanel lead={lead} calendarUrl={calendarUrl} />
           </div>
 
           <LeadWorkflowJumpBar />
 
-          <div id="showing-snapshot" className="app-panel scroll-mt-28 p-5 sm:p-6">
+          <div id="showing-snapshot" className="app-panel scroll-mt-28 p-4 sm:p-5">
             <p className="app-eyebrow">Showing Snapshot</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <ShowingLifecycleBadge lead={lead} />
@@ -72,7 +72,7 @@ export default async function LeadDetailsPage({
                 <span className="app-chip">Outcome: {getShowingOutcomeLabel(lead.showingOutcome)}</span>
               ) : null}
             </div>
-            <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
               <div className="app-grid-card">
                 <p className="app-kicker">Current Showing</p>
                 <p className="mt-2 text-base font-semibold text-ink">
@@ -93,7 +93,7 @@ export default async function LeadDetailsPage({
               </div>
             </div>
             {lead.showingDate && lead.showingTime ? (
-              <div className="mt-5 rounded-3xl border border-line/80 bg-white/85 p-4">
+              <div className="mt-4 rounded-3xl border border-line/80 bg-white/85 p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <p className="app-kicker">Showing Lifecycle</p>
@@ -126,7 +126,7 @@ export default async function LeadDetailsPage({
             ) : null}
           </div>
 
-          <div id="interested-properties" className="app-panel scroll-mt-28 p-5 sm:p-6">
+          <div id="interested-properties" className="app-panel scroll-mt-28 p-4 sm:p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="app-eyebrow">Interested Properties</p>
@@ -151,7 +151,7 @@ export default async function LeadDetailsPage({
             </div>
 
             {lead.propertyInterests.length === 0 ? (
-              <div className="mt-6 rounded-4xl border border-dashed border-line bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))] px-6 py-14 text-center">
+              <div className="mt-5 rounded-4xl border border-dashed border-line bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,250,252,0.9))] px-6 py-10 text-center">
                 <p className="text-lg font-semibold tracking-tight text-ink">No properties tracked yet</p>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
                   Add the listings this customer is considering so you can compare options, capture
@@ -162,7 +162,7 @@ export default async function LeadDetailsPage({
                 </Link>
               </div>
             ) : (
-              <div className="mt-6 space-y-6">
+              <div className="mt-5 space-y-5">
                 {topRatedProperty ? (
                   <div className="rounded-4xl border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(255,255,255,0.96))] p-5 shadow-soft">
                     <p className="app-kicker text-amber-700">Top Rated Property</p>

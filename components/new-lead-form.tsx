@@ -207,7 +207,7 @@ export function NewLeadForm({
           event.preventDefault();
         }
       }}
-      className="mt-6 grid gap-4 sm:grid-cols-2"
+      className="new-lead-form mt-5 grid gap-3 sm:grid-cols-2"
     >
       <ValidatedField
         label="Full name"
@@ -309,7 +309,7 @@ export function NewLeadForm({
         onChange={updateField}
       />
 
-      <div className="rounded-3xl border border-line/70 bg-slate-50/80 px-4 py-3">
+      <div className="rounded-2xl border border-line/70 bg-slate-50/80 px-4 py-3">
         <p className="app-kicker">Lead Quality</p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           Use priority and follow-up date to keep urgent inquiries and time-sensitive leads near
@@ -321,7 +321,7 @@ export function NewLeadForm({
         <ValidatedTextarea
           label="Notes"
           name="notes"
-          rows={4}
+          rows={3}
           placeholder="Example: Prefers first-floor units, works downtown, wants parking."
           value={values.notes}
           error={errors.notes}
@@ -330,7 +330,7 @@ export function NewLeadForm({
         />
       </div>
 
-      <details className="sm:col-span-2 app-subpanel p-4">
+      <details className="sm:col-span-2 app-subpanel p-3 sm:p-4">
         <summary className="cursor-pointer list-none">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -341,7 +341,7 @@ export function NewLeadForm({
           </div>
         </summary>
 
-        <div className="mt-5 grid gap-4 md:grid-cols-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
           <OptionalPreferenceField
             label="Budget min"
             name="budgetMin"
@@ -368,7 +368,7 @@ export function NewLeadForm({
           />
         </div>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
+        <div className="mt-3 grid gap-3 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
           <OptionalPreferenceField
             label="Preferred neighborhoods"
             name="preferredNeighborhoods"
@@ -382,7 +382,7 @@ export function NewLeadForm({
           />
         </div>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
           <OptionalPreferenceTextarea
             label="Must-haves"
             name="mustHaves"
@@ -397,7 +397,7 @@ export function NewLeadForm({
           />
         </div>
 
-        <div className="mt-4 rounded-3xl border border-line/70 bg-white px-4 py-4">
+        <div className="mt-3 rounded-2xl border border-line/70 bg-white px-4 py-3">
           <p className="app-kicker">Pre-screening</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <PreferenceCheckbox label="Income qualified" name="incomeQualified" />
@@ -416,7 +416,7 @@ export function NewLeadForm({
         </div>
       </details>
 
-      <details className="sm:col-span-2 app-subpanel p-4">
+      <details className="sm:col-span-2 app-subpanel p-3 sm:p-4">
         <summary className="cursor-pointer list-none">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -431,7 +431,7 @@ export function NewLeadForm({
 
         <input type="hidden" name="propertyListingId" value={selectedShowingPropertyId} />
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr]">
           <label className="flex min-w-0 flex-col gap-1.5">
             <span className="text-sm font-medium text-slate-700">Showing property</span>
             <select
@@ -452,7 +452,7 @@ export function NewLeadForm({
             </p>
           </label>
 
-          <div className="rounded-3xl border border-line/70 bg-white px-4 py-3">
+          <div className="rounded-2xl border border-line/70 bg-white px-4 py-3">
             <p className="app-kicker">Selected showing location</p>
             {selectedShowingProperty ? (
               <>
@@ -499,7 +499,7 @@ export function NewLeadForm({
         </div>
       </details>
 
-      <div className="sm:col-span-2 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="sm:col-span-2 flex flex-col gap-3 border-t border-line pt-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-600">Create a record with real context</p>
           <p className="mt-1 text-sm text-slate-500">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { TooltipShell } from "@/components/tooltip-shell";
@@ -29,6 +30,7 @@ export function ShowingLifecycleActions({
   rescheduleHref?: string;
 }) {
   const showingStatus = getEffectiveShowingStatus(lead);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const hasShowing = Boolean(lead.showingDate && lead.showingTime);
   const isTerminal = isTerminalShowingStatus(showingStatus);
   const tooltipMessage = "This preview workspace is read-only. Use a live workspace to update showings.";
@@ -112,14 +114,48 @@ export function ShowingLifecycleActions({
       {mode === "full" ? (
         actionButtons
       ) : (
-        <details className="group w-full sm:w-auto">
-          <summary className="app-button-secondary min-h-[36px] cursor-pointer list-none px-3 py-1.5 text-xs marker:hidden">
+        <>
+          <button
+            type="button"
+            onClick={() => setQuickActionsOpen(true)}
+            className="app-button-secondary min-h-[36px] px-3 py-1.5 text-xs"
+            aria-haspopup="dialog"
+            aria-expanded={quickActionsOpen}
+          >
             Quick actions
-          </summary>
-          <div className="mt-2 rounded-3xl border border-line/80 bg-white p-3 shadow-panel">
-            {actionButtons}
-          </div>
-        </details>
+          </button>
+          {quickActionsOpen ? (
+            <div className="fixed inset-0 z-[90] bg-slate-950/20 px-4 py-4 backdrop-blur-[2px]" role="presentation">
+              <button
+                type="button"
+                className="absolute inset-0 h-full w-full cursor-default"
+                aria-label="Close showing quick actions"
+                onClick={() => setQuickActionsOpen(false)}
+              />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Showing quick actions"
+                className="absolute bottom-4 left-4 right-4 rounded-3xl border border-line/80 bg-white p-4 shadow-panel sm:left-auto sm:w-80"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="app-kicker">Showing Actions</p>
+                    <p className="mt-1 text-sm font-semibold text-ink">{lead.fullName}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setQuickActionsOpen(false)}
+                    className="rounded-full border border-line bg-white px-3 py-1 text-xs font-semibold text-slate-600 hover:border-accent hover:text-accent"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="mt-4">{actionButtons}</div>
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
 
       {mode === "full" && !isTerminal ? (

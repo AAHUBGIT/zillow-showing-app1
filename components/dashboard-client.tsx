@@ -105,6 +105,7 @@ export function DashboardClient({
       showingDate ||
       statQuickFilter !== "all"
   );
+  const hasAdvancedFilters = Boolean(status !== "all" || source !== "all" || moveInDate || showingDate);
   const filtersAreVisible = showFilters || hasActiveFilters;
 
   function clearFilters() {
@@ -276,8 +277,8 @@ export function DashboardClient({
               </div>
 
               {filtersAreVisible ? (
-                <div className="dashboard-filter-fields mt-4 grid gap-3">
-                  <div className="grid gap-3 xl:grid-cols-[1.4fr_0.7fr_0.7fr_0.7fr]">
+                <div className="dashboard-filter-fields mt-3 grid gap-3">
+                  <div className="grid gap-3 xl:grid-cols-[1.35fr_0.75fr_0.75fr_auto] xl:items-end">
                     <label className="flex flex-col gap-2">
                       <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                         Search
@@ -294,18 +295,17 @@ export function DashboardClient({
 
                     <label className="flex flex-col gap-2">
                       <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Status
+                        Follow-Up
                       </span>
                       <select
-                        value={status}
-                        onChange={(event) => setStatus(event.target.value as StatusFilter)}
-                        aria-label="Filter by status"
+                        value={followUpState}
+                        onChange={(event) => setFollowUpState(event.target.value as FollowUpFilter)}
+                        aria-label="Filter by follow-up state"
                         className="app-input"
                       >
-                        <option value="all">All</option>
-                        {leadStatusOptions.map((option) => (
+                        {followUpFilterOptions.map((option) => (
                           <option key={option} value={option}>
-                            {getStatusLabel(option)}
+                            {option === "all" ? "All" : getFollowUpStateLabel(option)}
                           </option>
                         ))}
                       </select>
@@ -330,63 +330,6 @@ export function DashboardClient({
                       </select>
                     </label>
 
-                    <label className="flex flex-col gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Source
-                      </span>
-                      <select
-                        value={source}
-                        onChange={(event) => setSource(event.target.value as SourceFilter)}
-                        aria-label="Filter by lead source"
-                        className="app-input"
-                      >
-                        <option value="all">All</option>
-                        {leadSourceOptions.map((option) => (
-                          <option key={option} value={option}>
-                            {getSourceLabel(option)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-
-                  <div className="grid gap-3 xl:grid-cols-[0.9fr_0.7fr_0.7fr_auto]">
-                    <label className="flex flex-col gap-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                        Follow-Up
-                      </span>
-                      <select
-                        value={followUpState}
-                        onChange={(event) => setFollowUpState(event.target.value as FollowUpFilter)}
-                        aria-label="Filter by follow-up state"
-                        className="app-input"
-                      >
-                        {followUpFilterOptions.map((option) => (
-                          <option key={option} value={option}>
-                            {option === "all" ? "All" : getFollowUpStateLabel(option)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <DateInputField
-                      label="Move-In Date"
-                      value={moveInDate}
-                      onChange={setMoveInDate}
-                      ariaLabel="Filter by desired move-in date"
-                      helperText="Use MM/DD/YYYY"
-                      labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
-                    />
-
-                    <DateInputField
-                      label="Showing Date"
-                      value={showingDate}
-                      onChange={setShowingDate}
-                      ariaLabel="Filter by showing date"
-                      helperText="Use MM/DD/YYYY"
-                      labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
-                    />
-
                     <div className="flex items-end">
                       <button
                         type="button"
@@ -398,6 +341,72 @@ export function DashboardClient({
                       </button>
                     </div>
                   </div>
+
+                  <details
+                    className="rounded-2xl border border-line/80 bg-white/80 px-3 py-2"
+                    open={hasAdvancedFilters}
+                  >
+                    <summary className="cursor-pointer list-none text-sm font-semibold text-slate-700">
+                      More filters {hasAdvancedFilters ? "(active)" : ""}
+                    </summary>
+                    <div className="mt-3 grid gap-3 xl:grid-cols-4">
+                      <label className="flex flex-col gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          Status
+                        </span>
+                        <select
+                          value={status}
+                          onChange={(event) => setStatus(event.target.value as StatusFilter)}
+                          aria-label="Filter by status"
+                          className="app-input"
+                        >
+                          <option value="all">All</option>
+                          {leadStatusOptions.map((option) => (
+                            <option key={option} value={option}>
+                              {getStatusLabel(option)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="flex flex-col gap-2">
+                        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          Source
+                        </span>
+                        <select
+                          value={source}
+                          onChange={(event) => setSource(event.target.value as SourceFilter)}
+                          aria-label="Filter by lead source"
+                          className="app-input"
+                        >
+                          <option value="all">All</option>
+                          {leadSourceOptions.map((option) => (
+                            <option key={option} value={option}>
+                              {getSourceLabel(option)}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <DateInputField
+                        label="Move-In Date"
+                        value={moveInDate}
+                        onChange={setMoveInDate}
+                        ariaLabel="Filter by desired move-in date"
+                        helperText="Use MM/DD/YYYY"
+                        labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+                      />
+
+                      <DateInputField
+                        label="Showing Date"
+                        value={showingDate}
+                        onChange={setShowingDate}
+                        ariaLabel="Filter by showing date"
+                        helperText="Use MM/DD/YYYY"
+                        labelClassName="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
+                      />
+                    </div>
+                  </details>
                 </div>
               ) : null}
             </div>
