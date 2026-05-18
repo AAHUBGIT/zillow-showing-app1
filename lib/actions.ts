@@ -1013,8 +1013,8 @@ function getLifecycleActivityText({
   if (status === "no_show") {
     return {
       subject: "Showing marked no-show",
-      body: "Showing marked no-show.",
-      outcome: ""
+      body: `Showing marked no-show${outcomeNotes ? ` - ${outcomeNotes}` : "."}`,
+      outcome: outcomeNotes
     };
   }
 
@@ -1085,6 +1085,7 @@ export async function updateShowingLifecycle(formData: FormData) {
   const showingOutcome = nextShowingStatus === "completed" ? normalizeShowingOutcome(rawOutcome) : "";
   const showingOutcomeNotes = getString(formData, "showingOutcomeNotes");
   const showingCanceledReason = getString(formData, "showingCanceledReason");
+  const requireLifecycleReason = getString(formData, "requireLifecycleReason") === "true";
   const sessionUser = await getSessionUser();
 
   if (!sessionUser) {
@@ -1098,6 +1099,9 @@ export async function updateShowingLifecycle(formData: FormData) {
   if (
     !leadId ||
     !showingStatusOptions.includes(nextShowingStatus) ||
+    (requireLifecycleReason && nextShowingStatus === "completed" && !rawOutcome) ||
+    (requireLifecycleReason && nextShowingStatus === "no_show" && !showingOutcomeNotes) ||
+    (requireLifecycleReason && nextShowingStatus === "canceled" && !showingCanceledReason) ||
     getMaxLengthError(showingOutcomeNotes, fieldMaxLengths.agentNotes) ||
     getMaxLengthError(showingCanceledReason, fieldMaxLengths.agentNotes)
   ) {

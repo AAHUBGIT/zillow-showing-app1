@@ -1,4 +1,5 @@
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
+import { RouteDayRunMode } from "@/components/route-day-run-mode";
 import { RouteDayPlanner } from "@/components/route-day-planner";
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
@@ -8,11 +9,16 @@ import { LeadWithProperties } from "@/lib/types";
 
 const appTimeZone = process.env.APP_TIME_ZONE || "America/New_York";
 
-export default async function RoutesPage() {
+export default async function RoutesPage({
+  searchParams
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const leads = await getLeads();
   const isPreviewReadonly = isPreviewReadonlyMode();
   const scheduled = leads.filter(isRouteReadyLead);
   const today = getTodayIsoDate(appTimeZone);
+  const routeView = getParam(searchParams?.view) === "run" ? "run" : "plan";
 
   const routesByDay = scheduled.reduce<Record<string, typeof scheduled>>((acc, lead) => {
     const key = lead.showingDate!;
@@ -25,6 +31,13 @@ export default async function RoutesPage() {
   const activeDays = days.filter((day) => day >= today);
   const pastDays = days.filter((day) => day < today).reverse();
   const activeStops = activeDays.flatMap((day) => routesByDay[day]);
+  const requestedDay = getParam(searchParams?.day);
+  const selectedRunDay =
+    requestedDay && activeDays.includes(requestedDay)
+      ? requestedDay
+      : activeDays.includes(today)
+        ? today
+        : activeDays[0] || "";
   const urgentStopCount = activeStops.filter((lead) => lead.priority === "urgent").length;
   const priorityStopCount = activeStops.filter(
     (lead) => lead.priority === "high" || lead.priority === "urgent"
@@ -72,11 +85,60 @@ export default async function RoutesPage() {
           </div>
         </div>
 
+        <div className="mt-5 flex flex-col gap-3 border-t border-line/70 pt-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="inline-flex w-fit rounded-full border border-line bg-white p-1 shadow-sm">
+            <a
+              href="/routes?view=plan#upcoming-routes"
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                routeView === "plan"
+                  ? "bg-accent text-white shadow-soft"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-ink"
+              }`}
+            >
+              Plan View
+            </a>
+            <a
+              href={`/routes?view=run${selectedRunDay ? `&day=${selectedRunDay}` : ""}#route-day-run-mode`}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                routeView === "run"
+                  ? "bg-accent text-white shadow-soft"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-ink"
+              }`}
+            >
+              Run Mode
+            </a>
+          </div>
+
+          {routeView === "run" && activeDays.length > 1 ? (
+            <div className="flex flex-wrap gap-2">
+              {activeDays.map((day) => (
+                <a
+                  key={day}
+                  href={`/routes?view=run&day=${day}#route-day-run-mode`}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    day === selectedRunDay
+                      ? "border-accent bg-accent text-white"
+                      : "border-line bg-white text-slate-600 hover:border-accent hover:text-accent"
+                  }`}
+                >
+                  {formatDateLabel(day)}
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
         <div id="upcoming-routes" className="mt-6 scroll-mt-32 space-y-5">
           {activeDays.length === 0 ? (
             <div className="app-subpanel p-8 text-sm text-slate-600">
               No upcoming route stops.
             </div>
+          ) : routeView === "run" ? (
+            <RouteDayRunMode
+              day={selectedRunDay}
+              initialStops={routesByDay[selectedRunDay] || []}
+              isPreviewReadonly={isPreviewReadonly}
+            />
           ) : (
             activeDays.map((day) => {
               return (
@@ -109,6 +171,10 @@ export default async function RoutesPage() {
       </section>
     </main>
   );
+}
+
+function getParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] || "" : value || "";
 }
 
 function RouteMetricLink({
