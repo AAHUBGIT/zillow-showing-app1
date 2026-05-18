@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ClientPreferencesForm } from "@/components/client-preferences-form";
 import { CommunicationWorkspace } from "@/components/communication-workspace";
+import { FollowUpQueueActions } from "@/components/follow-up-queue-actions";
 import { LeadRecordPanel } from "@/components/lead-record-panel";
 import { LeadAiInsights } from "@/components/lead-ai-insights";
 import { LeadScheduleForm } from "@/components/lead-schedule-form";
@@ -10,8 +11,9 @@ import { PropertyComparisonTable } from "@/components/property-comparison-table"
 import { PropertyInterestCard } from "@/components/property-interest-card";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { buildGoogleCalendarUrl } from "@/lib/calendar";
-import { formatDateTimeLabel } from "@/lib/date";
+import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
+import { getFollowUpActionLabels, getPrimaryFollowUpLabel } from "@/lib/follow-up-workflow";
 import { ShowingLifecycleActions } from "@/components/showing-lifecycle-actions";
 import { ShowingLifecycleBadge } from "@/components/showing-lifecycle-badge";
 import { getShowingOutcomeLabel } from "@/lib/showing-lifecycle";
@@ -63,6 +65,51 @@ export default async function LeadDetailsPage({
           </div>
 
           <LeadWorkflowJumpBar />
+
+          <div id="follow-up" className="app-panel scroll-mt-28 p-4 sm:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="app-eyebrow">Follow-Up</p>
+                  <span className="app-chip">{getPrimaryFollowUpLabel(lead)}</span>
+                </div>
+                <h3 className="mt-2 text-xl font-semibold tracking-tight text-ink">
+                  Follow-up control
+                </h3>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-line/70 bg-slate-50 px-3 py-3">
+                    <p className="app-kicker">Next follow-up</p>
+                    <p className="mt-1 text-sm font-semibold text-ink">
+                      {lead.nextFollowUpDate ? formatDateLabel(lead.nextFollowUpDate) : "Not set"}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-line/70 bg-slate-50 px-3 py-3">
+                    <p className="app-kicker">Last activity</p>
+                    <p className="mt-1 line-clamp-1 text-sm font-semibold text-ink">
+                      {communicationWorkspace.activities[0]
+                        ? communicationWorkspace.activities[0].outcome ||
+                          communicationWorkspace.activities[0].subject ||
+                          "Activity logged"
+                        : "None logged"}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {getFollowUpActionLabels(lead).map((label) => (
+                    <span key={label} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <FollowUpQueueActions
+                lead={lead}
+                redirectTo={`/leads/${lead.id}#follow-up`}
+                isPreviewReadonly={isPreviewReadonly}
+                variant="panel"
+              />
+            </div>
+          </div>
 
           <div id="showing-snapshot" className="app-panel scroll-mt-28 p-4 sm:p-5">
             <p className="app-eyebrow">Showing Snapshot</p>
@@ -310,6 +357,7 @@ export default async function LeadDetailsPage({
 function LeadWorkflowJumpBar() {
   const links = [
     { href: "#customer-overview", label: "Overview" },
+    { href: "#follow-up", label: "Follow-Up" },
     { href: "#showing-snapshot", label: "Showing" },
     { href: "#interested-properties", label: "Properties" },
     { href: "#preferences", label: "Preferences" },

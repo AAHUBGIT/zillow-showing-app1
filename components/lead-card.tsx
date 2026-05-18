@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { ContactActionLink } from "@/components/contact-action-link";
+import { FollowUpQueueActions } from "@/components/follow-up-queue-actions";
 import { LeadFollowUpDateEditor } from "@/components/lead-follow-up-date-editor";
 import { LeadSidePanel } from "@/components/lead-side-panel";
 import { LoadingLink } from "@/components/loading-link";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
+import { getFollowUpActionLabels } from "@/lib/follow-up-workflow";
 import { getSourceLabel } from "@/lib/lead-utils";
 import { getPropertyInterestCountLabel, getPropertyInterestStatusLabel } from "@/lib/property-interest-utils";
 import { LeadWithProperties } from "@/lib/types";
@@ -32,6 +34,8 @@ export function LeadCard({
   const hasEmail = email.length > 0;
   const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
+  const followUpLabels = getFollowUpActionLabels(lead);
+  const canActOnFollowUp = lead.status !== "closed" && (lead.nextFollowUpDate || followUpLabels.length > 0);
 
   return (
     <article className="dashboard-lead-card group rounded-4xl border border-line/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.92))] p-5 shadow-soft transition hover:-translate-y-1 hover:shadow-panel">
@@ -66,6 +70,9 @@ export function LeadCard({
         <PreferenceChip label={getBedroomBathroomLabel(lead)} />
         <PreferenceChip label={getPreScreenStatus(lead)} />
         {lead.applicationReady ? <PreferenceChip label="Application ready" /> : null}
+        {followUpLabels.slice(0, 1).map((label) => (
+          <PreferenceChip key={label} label={label} />
+        ))}
       </div>
 
       <div className="mt-4 rounded-2xl border border-line/80 bg-white p-2 shadow-sm">
@@ -104,6 +111,14 @@ export function LeadCard({
               triggerLabel="Quick View"
               triggerClassName="app-button-secondary min-h-[38px] px-3 py-2 text-xs"
             />
+            {canActOnFollowUp ? (
+              <FollowUpQueueActions
+                lead={lead}
+                redirectTo={pathname}
+                isPreviewReadonly={isPreviewReadonly}
+                variant="card"
+              />
+            ) : null}
             <LoadingLink
               href={`/leads/${lead.id}`}
               className="app-button-primary min-h-[38px] px-3 py-2 text-xs"

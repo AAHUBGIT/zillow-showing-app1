@@ -1423,6 +1423,233 @@ export async function markFollowUpCompleted(formData: FormData) {
   redirect(withToast(redirectTo, "follow-up-completed"));
 }
 
+type FollowUpQueueAction =
+  | "followed_up"
+  | "snooze"
+  | "no_answer"
+  | "add_note"
+  | "clear"
+  | "set_date";
+
+const followUpResultLabels: Record<string, string> = {
+  called: "Called",
+  texted: "Texted",
+  emailed: "Emailed",
+  no_answer: "No answer",
+  left_voicemail: "Left voicemail",
+  spoke: "Spoke with renter",
+  internal_note: "Internal note"
+};
+
+export async function updateFollowUpQueue(formData: FormData) {
+  const leadId = getString(formData, "leadId");
+  const redirectTo = getString(formData, "redirectTo") || "/today";
+  const actionType = getString(formData, "actionType") as FollowUpQueueAction;
+  const note = getString(formData, "note");
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
+  }
+
+  if (!leadId || getMaxLengthError(note, fieldMaxLengths.agentNotes)) {
+    redirectValidation(redirectTo);
+  }
+
+  const prisma = getPrismaClient();
+  const now = new Date().toISOString();
+  let lead;
+
+  try {
+    lead = await prisma.lead.findUnique({
+      where: { id: leadId }
+    });
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  if (!lead || lead.userId !== sessionUser.id) {
+    redirect(withToast(redirectTo, "save-error"));
+  }
+
+  let nextFollowUpDate = lead.nextFollowUpDate || "";
+  let activityInput: CommunicationActivityInput | null = null;
+  let toastKey = "follow-up-logged";
+  const nextStatus =
+    lead.status === "new" && (actionType === "followed_up" || actionType === "no_answer")
+      ? "contacted"
+      : lead.status;
+
+  if (actionType === "followed_up") {
+    const result = getString(formData, "result");
+    const resultLabel = followUpResultLabels[result];
+    nextFollowUpDate = getNextFollowUpDateFromChoice(formData);
+
+    if (!resultLabel || (getString(formData, "nextFollowUp") === "custom" && !nextFollowUpDate)) {
+      redirectValidation(redirectTo);
+    }
+
+    activityInput = {
+      leadId,
+      channel: getFollowUpResultChannel(result),
+      direction: result === "internal_note" ? "internal" : "outbound",
+      subject: "Follow-up logged",
+      body: `${resultLabel} from follow-up queue.${note ? ` ${note}` : ""}`,
+      outcome: resultLabel
+    };
+    toastKey = "follow-up-logged";
+  } else if (actionType === "snooze") {
+    nextFollowUpDate = getNextFollowUpDateFromChoice(formData);
+
+    if (!nextFollowUpDate) {
+      redirectValidation(redirectTo);
+    }
+
+    activityInput = {
+      leadId,
+      channel: "note",
+      direction: "internal",
+      subject: "Follow-up snoozed",
+      body: `Follow-up snoozed to ${nextFollowUpDate}.${note ? ` ${note}` : ""}`,
+      outcome: `Snoozed to ${nextFollowUpDate}`
+    };
+    toastKey = "follow-up-snoozed";
+  } else if (actionType === "no_answer") {
+    nextFollowUpDate = getNextFollowUpDateFromChoice(formData);
+
+    if (!nextFollowUpDate) {
+      redirectValidation(redirectTo);
+    }
+
+    activityInput = {
+      leadId,
+      channel: "call",
+      direction: "outbound",
+      subject: "No answer",
+      body: `No answer logged from follow-up queue.${note ? ` ${note}` : ""}`,
+      outcome: "No answer"
+    };
+    toastKey = "follow-up-no-answer";
+  } else if (actionType === "add_note") {
+    if (!note) {
+      redirectValidation(redirectTo);
+    }
+
+    activityInput = {
+      leadId,
+      channel: "note",
+      direction: "internal",
+      subject: "Follow-up note",
+      body: note,
+      outcome: "Internal note"
+    };
+    toastKey = "follow-up-note-added";
+  } else if (actionType === "clear") {
+    nextFollowUpDate = "";
+    activityInput = {
+      leadId,
+      channel: "note",
+      direction: "internal",
+      subject: "Follow-up cleared",
+      body: "Next follow-up date cleared.",
+      outcome: "Follow-up cleared"
+    };
+    toastKey = "follow-up-cleared";
+  } else if (actionType === "set_date") {
+    nextFollowUpDate = getString(formData, "customDate");
+
+    if (!nextFollowUpDate || !isIsoDate(nextFollowUpDate)) {
+      redirectValidation(redirectTo);
+    }
+
+    activityInput = {
+      leadId,
+      channel: "note",
+      direction: "internal",
+      subject: "Next follow-up set",
+      body: `Next follow-up set to ${nextFollowUpDate}.`,
+      outcome: `Next follow-up: ${nextFollowUpDate}`
+    };
+    toastKey = "follow-up-set";
+  } else {
+    redirectValidation(redirectTo);
+  }
+
+  if (!activityInput) {
+    redirectValidation(redirectTo);
+  }
+
+  try {
+    await prisma.$transaction([
+      buildCommunicationActivityWrite(activityInput, sessionUser.id, now),
+      prisma.lead.update({
+        where: { id: leadId },
+        data: {
+          nextFollowUpDate,
+          status: nextStatus,
+          updatedAt: now
+        }
+      })
+    ]);
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath(`/leads/${leadId}`);
+  redirect(withToast(redirectTo, toastKey));
+}
+
+function getNextFollowUpDateFromChoice(formData: FormData) {
+  const choice = getString(formData, "nextFollowUp");
+  const customDate = getString(formData, "customDate");
+
+  if (choice === "none") {
+    return "";
+  }
+
+  if (choice === "custom") {
+    return customDate && isIsoDate(customDate) ? customDate : "";
+  }
+
+  if (choice === "two_days") {
+    return addDaysIso(2);
+  }
+
+  if (choice === "next_week") {
+    return addDaysIso(7);
+  }
+
+  return addDaysIso(1);
+}
+
+function getFollowUpResultChannel(result: string): CommunicationChannel {
+  if (result === "texted") {
+    return "text";
+  }
+
+  if (result === "emailed") {
+    return "email";
+  }
+
+  if (result === "internal_note") {
+    return "note";
+  }
+
+  return "call";
+}
+
+function addDaysIso(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export async function createPropertyListing(formData: FormData) {
   const sessionUser = await getSessionUser();
 

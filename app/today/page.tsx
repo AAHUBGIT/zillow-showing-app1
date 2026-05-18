@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { ContactActionLink } from "@/components/contact-action-link";
+import { FollowUpQueueActions } from "@/components/follow-up-queue-actions";
 import { LeadStatusBadge } from "@/components/lead-status-badge";
 import { LoadingLink } from "@/components/loading-link";
-import { MarkFollowUpCompleteButton } from "@/components/mark-follow-up-complete-button";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { PriorityBadge } from "@/components/priority-badge";
 import { ShowingLifecycleActions } from "@/components/showing-lifecycle-actions";
 import { ShowingLifecycleBadge } from "@/components/showing-lifecycle-badge";
-import { markFollowUpCompleted } from "@/lib/actions";
 import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/lib/client-preferences";
 import { getCommunicationChannelLabel } from "@/lib/communication";
 import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
 import { formatDateLabel, formatDateTimeLabel, formatTimeForManualEntry } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
+import { getFollowUpActionLabels, getPrimaryFollowUpLabel } from "@/lib/follow-up-workflow";
 import { buildGoogleMapsSearchLink } from "@/lib/property-interest-utils";
 import { isRouteReadyLead, sortRouteStops } from "@/lib/route-planner";
 import { getEffectiveShowingStatus, isTerminalShowingStatus } from "@/lib/showing-lifecycle";
@@ -206,6 +206,7 @@ export default async function TodayPage({
         >
           <LeadList
             leads={overdueFollowUps}
+            selectedDate={selectedDate}
             showFollowUpDate
             allowMarkFollowedUp
             isPreviewReadonly={isPreviewReadonly}
@@ -222,7 +223,7 @@ export default async function TodayPage({
         >
           <LeadList
             leads={followUpsDueToday}
-            showBadges
+            selectedDate={selectedDate}
             allowMarkFollowedUp
             isPreviewReadonly={isPreviewReadonly}
           />
@@ -424,56 +425,65 @@ function UpcomingShowingCard({ lead }: { lead: LeadWithProperties }) {
 
 function LeadList({
   leads,
-  showBadges = false,
+  selectedDate,
   showFollowUpDate = false,
   allowMarkFollowedUp = false,
   isPreviewReadonly = false
 }: {
   leads: LeadWithProperties[];
-  showBadges?: boolean;
+  selectedDate: string;
   showFollowUpDate?: boolean;
   allowMarkFollowedUp?: boolean;
   isPreviewReadonly?: boolean;
 }) {
   return (
     <div className="grid gap-2.5">
-      {leads.map((lead) => (
-        <article key={lead.id} className="rounded-[1.35rem] border border-line/80 bg-white px-4 py-3 shadow-sm">
-          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <p className="text-base font-semibold tracking-tight text-ink">{lead.fullName}</p>
-                <p className="text-sm text-slate-600">{lead.phone}</p>
-              </div>
-              <PreferenceIndicators lead={lead} />
-              <LastActivity activity={lead.lastActivity} />
-              {showFollowUpDate || allowMarkFollowedUp ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-medium text-rose-700">
-                    {showFollowUpDate
-                      ? `Follow-up was due ${formatDateLabel(lead.nextFollowUpDate)}`
-                      : "Follow-up due today"}
-                  </p>
-                  {allowMarkFollowedUp ? (
-                    <form action={markFollowUpCompleted}>
-                      <input type="hidden" name="leadId" value={lead.id} />
-                      <input type="hidden" name="redirectTo" value="/today" />
-                      <MarkFollowUpCompleteButton disabled={isPreviewReadonly} />
-                    </form>
-                  ) : null}
+      {leads.map((lead) => {
+        const followUpLabels = getFollowUpActionLabels(lead, selectedDate);
+        const redirectTo = `/today?date=${selectedDate}`;
+
+        return (
+          <article key={lead.id} className="rounded-[1.35rem] border border-line/80 bg-white px-4 py-3 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="text-base font-semibold tracking-tight text-ink">{lead.fullName}</p>
+                  <p className="text-sm text-slate-600">{lead.phone}</p>
                 </div>
-              ) : null}
-              {showBadges ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   <PriorityBadge priority={lead.priority} />
                   <LeadStatusBadge status={lead.status} />
+                  {followUpLabels.map((label) => (
+                    <span key={label} className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700">
+                      {label}
+                    </span>
+                  ))}
                 </div>
-              ) : null}
+                <PreferenceIndicators lead={lead} />
+                <LastActivity activity={lead.lastActivity} />
+                {showFollowUpDate || allowMarkFollowedUp ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-rose-700">
+                      {showFollowUpDate
+                        ? `Follow-up was due ${formatDateLabel(lead.nextFollowUpDate)}`
+                        : "Follow-up due today"}
+                    </p>
+                    {allowMarkFollowedUp ? (
+                      <FollowUpQueueActions
+                        lead={lead}
+                        redirectTo={redirectTo}
+                        isPreviewReadonly={isPreviewReadonly}
+                        variant="queue"
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              <QuickActions lead={lead} />
             </div>
-            <QuickActions lead={lead} />
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -483,6 +493,7 @@ function HighPriorityCard({ lead }: { lead: LeadWithProperties }) {
     lead.showingDate && lead.showingTime
       ? formatDateTimeLabel(lead.showingDate, lead.showingTime)
       : "No showing scheduled";
+  const actionLabel = getPrimaryFollowUpLabel(lead);
 
   return (
     <article className="rounded-3xl border border-line/80 bg-white px-4 py-4 shadow-sm">
@@ -491,6 +502,9 @@ function HighPriorityCard({ lead }: { lead: LeadWithProperties }) {
           <div className="flex flex-wrap gap-2">
             <PriorityBadge priority={lead.priority} />
             <LeadStatusBadge status={lead.status} />
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+              {actionLabel}
+            </span>
           </div>
           <p className="mt-3 text-lg font-semibold tracking-tight text-ink">{lead.fullName}</p>
           <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">

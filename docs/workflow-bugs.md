@@ -23,6 +23,27 @@ Still needs QA:
 
 ## Open Bugs / UX Issues
 
+## Follow-Up Queue Foundation - 2026-05-18
+
+Added:
+
+- Today follow-up cards now behave more like a queue, with action labels, priority/status context, last activity, and shared Followed up / Snooze / Log no answer / Add note actions.
+- Followed up flow captures result, optional note, and next follow-up timing using existing `Lead.nextFollowUpDate` and `CommunicationActivity`.
+- Snooze flow updates `Lead.nextFollowUpDate` and logs an internal activity note.
+- No answer logging creates an outbound call activity and moves the next follow-up to tomorrow.
+- Lead Detail now has a compact Follow-Up panel near the top with current follow-up state, last activity, and queue actions.
+- Dashboard lead cards now expose lightweight follow-up labels and compact Followed up / Snooze actions without adding a new table.
+
+Still needs QA:
+
+- Production click-through for Followed up, Snooze, No answer, Add note, Clear follow-up, and Set follow-up date.
+- Confirm activity entries appear newest-first in the Communication Center after each queue action.
+- Confirm Compact and Comfort density both keep dashboard cards from getting bulky.
+
+Future work:
+
+- A dedicated follow-up task table may become useful later if agents need multiple open follow-ups per lead, ownership, reminders, or reporting. It is intentionally not added in this pass.
+
 ### 1. Production database migration path is still fragile
 
 - Severity: Critical
@@ -128,6 +149,7 @@ Still needs QA:
 - Current behavior: Routes has property-first planning, quick actions, notes, reorder, and Maps links, but no dedicated run mode.
 - Expected behavior: A future Run Mode should show the next active stop, hide finished stops by default, require outcome/reason on completion/no-show/cancel, and allow reopening finished stops.
 - Recommended fix: Build this next after stabilization, without changing to a first-class Showing model yet unless explicitly scheduled.
+- 2026-05-18 update: Fixed. Light Route Day Run Mode was added using existing lead-based showing fields, with active-only stops, finished toggle, required completion outcome, required no-show/cancel reasons, reopen, activity logging, and persistence.
 
 ## Recently Fixed Items To Regression-Test
 
