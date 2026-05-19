@@ -28,10 +28,14 @@ export type ShowingOutcome =
   | "undecided";
 export type PropertyInterestStatus =
   | "interested"
+  | "liked"
+  | "maybe"
   | "scheduled"
   | "toured"
   | "rejected"
   | "applying"
+  | "backup"
+  | "needs_second_look"
   | "approved"
   | "closed";
 export type PropertyListingStatus = "available" | "unavailable" | "unknown";

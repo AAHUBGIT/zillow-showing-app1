@@ -1,59 +1,31 @@
 import { LeadSource, PropertyInterest, PropertyInterestStatus } from "./types";
+import {
+  getAllDecisionStatusOptions,
+  getDecisionStatusLabel,
+  getDecisionStatusOrder,
+  getDecisionStatusTone,
+  isDecisionStatusTerminal,
+  normalizeDecisionStatus
+} from "./property-decision-statuses";
 
-export const propertyInterestStatusOptions: PropertyInterestStatus[] = [
-  "interested",
-  "scheduled",
-  "toured",
-  "rejected",
-  "applying",
-  "approved"
-];
-
-const propertyStatusRank: Record<PropertyInterestStatus, number> = {
-  applying: 0,
-  scheduled: 1,
-  approved: 2,
-  toured: 3,
-  interested: 4,
-  rejected: 5,
-  closed: 6
-};
-
-const propertyStatusTone: Record<PropertyInterestStatus, string> = {
-  interested: "border-blue-200 bg-blue-50 text-blue-700",
-  scheduled: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  toured: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  rejected: "border-rose-200 bg-rose-50 text-rose-700",
-  applying: "border-amber-200 bg-amber-50 text-amber-700",
-  approved: "border-emerald-300 bg-emerald-100 text-emerald-800",
-  closed: "border-slate-200 bg-slate-100 text-slate-700"
-};
+export const propertyInterestStatusOptions: PropertyInterestStatus[] = getAllDecisionStatusOptions().map(
+  (status) => status.value
+);
 
 export function getPropertyInterestStatusLabel(status: PropertyInterestStatus) {
-  return normalizePropertyInterestStatus(status) === "approved"
-    ? "Approved"
-    : normalizePropertyInterestStatus(status).charAt(0).toUpperCase() +
-        normalizePropertyInterestStatus(status).slice(1);
+  return getDecisionStatusLabel(status);
 }
 
 export function getPropertyInterestStatusTone(status: PropertyInterestStatus) {
-  return propertyStatusTone[normalizePropertyInterestStatus(status)];
+  return getDecisionStatusTone(status);
 }
 
 export function normalizePropertyInterestStatus(status: string): PropertyInterestStatus {
-  if (status === "closed") {
-    return "approved";
-  }
-
-  if (propertyInterestStatusOptions.includes(status as PropertyInterestStatus)) {
-    return status as PropertyInterestStatus;
-  }
-
-  return "interested";
+  return normalizeDecisionStatus(status);
 }
 
 export function isRejectedPropertyInterest(propertyInterest: PropertyInterest) {
-  return normalizePropertyInterestStatus(propertyInterest.status) === "rejected";
+  return isDecisionStatusTerminal(propertyInterest.status);
 }
 
 export function isActivePropertyInterest(propertyInterest: PropertyInterest) {
@@ -71,8 +43,8 @@ export function sortPropertyInterests(propertyInterests: PropertyInterest[]) {
     }))
     .sort((first, second) => {
       const byStatus =
-        propertyStatusRank[normalizePropertyInterestStatus(first.status)] -
-        propertyStatusRank[normalizePropertyInterestStatus(second.status)];
+        getDecisionStatusOrder(first.status) -
+        getDecisionStatusOrder(second.status);
     if (byStatus !== 0) {
       return byStatus;
     }

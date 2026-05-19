@@ -26,6 +26,12 @@ import {
   propertyListingStatusOptions
 } from "./property-listing-utils";
 import { getPropertyListingByIdForUser, getPropertyListingsForUser } from "./property-listings";
+import {
+  getDecisionStatusLabel,
+  getDecisionStatusOptions,
+  isDefaultDecisionStatus,
+  normalizeDecisionStatus
+} from "./property-decision-statuses";
 import { propertyInterestStatusOptions } from "./property-interest-utils";
 import { isRouteReadyLead, sortRouteStops } from "./route-planner";
 import {
@@ -61,8 +67,9 @@ function getBoolean(formData: FormData, key: string) {
 }
 
 function withToast(path: string, toastKey: string) {
-  const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}toast=${toastKey}`;
+  const [basePath, hash = ""] = path.split("#");
+  const separator = basePath.includes("?") ? "&" : "?";
+  return `${basePath}${separator}toast=${toastKey}${hash ? `#${hash}` : ""}`;
 }
 
 function getSafePropertyListingRedirect(formData: FormData, fallback = "/properties") {
@@ -147,6 +154,12 @@ function getPropertyInterestStatus(formData: FormData) {
   return propertyInterestStatusOptions.includes(value) ? value : "interested";
 }
 
+function getPropertyDecisionStatus(formData: FormData) {
+  const rawValue = getString(formData, "decisionStatus");
+  const value = normalizeDecisionStatus(rawValue);
+  return rawValue && isDefaultDecisionStatus(value) ? value : "";
+}
+
 function normalizeCommunicationChannel(value: string) {
   const nextValue = value as CommunicationChannel;
   return communicationChannelOptions.includes(nextValue) ? nextValue : "text";
@@ -223,6 +236,29 @@ function getNormalizedPropertyStatus(status: PropertyInterestStatus, showingDate
   }
 
   return status;
+}
+
+function buildPropertyDecisionNote({
+  statusLabel,
+  reason,
+  note,
+  propertyTitle
+}: {
+  statusLabel: string;
+  reason: string;
+  note: string;
+  propertyTitle: string;
+}) {
+  const detail = [reason, note].filter(Boolean).join(" - ");
+  const line = detail
+    ? `Decision: ${statusLabel} for ${propertyTitle} - ${detail}`
+    : `Decision: ${statusLabel} for ${propertyTitle}`;
+
+  return line.slice(0, fieldMaxLengths.agentNotes);
+}
+
+function prependPropertyDecisionNote(existingNotes: string, nextNote: string) {
+  return [nextNote, existingNotes.trim()].filter(Boolean).join("\n").slice(0, fieldMaxLengths.agentNotes);
 }
 
 function redirectValidation(path: string): never {
@@ -2283,6 +2319,8 @@ export async function quickUpdatePropertyInterest(formData: FormData) {
             : "property-updated";
 
   const updatedAt = new Date().toISOString();
+  const statusLabel = getDecisionStatusLabel(nextStatus);
+  const propertyTitle = propertyInterest.listingTitle || propertyInterest.address;
 
   try {
     await prisma.$transaction([
@@ -2308,17 +2346,132 @@ export async function quickUpdatePropertyInterest(formData: FormData) {
               })
             })
           ]
-        : [])
+        : []),
+      buildCommunicationActivityWrite(
+        {
+          leadId,
+          channel: "note",
+          direction: "internal",
+          subject: "Property workflow updated",
+          body: `Property marked ${statusLabel}: ${propertyTitle}`,
+          outcome: statusLabel
+        },
+        sessionUser.id,
+        updatedAt
+      )
     ]);
   } catch (error) {
     redirectSaveError(redirectTo, error);
   }
 
   revalidatePath("/");
+  revalidatePath("/today");
   revalidatePath("/routes");
   revalidatePath(`/leads/${leadId}`);
   revalidatePath(`/leads/${leadId}/properties/${propertyInterestId}`);
   redirect(withToast(redirectTo, nextToastKey));
+}
+
+export async function updatePropertyDecision(formData: FormData) {
+  const sessionUser = await getSessionUser();
+  const leadId = getString(formData, "leadId");
+  const propertyInterestId = getString(formData, "propertyInterestId");
+  const decisionStatus = getPropertyDecisionStatus(formData);
+  const reason = getString(formData, "decisionReason");
+  const note = getString(formData, "decisionNote");
+  const fallbackRedirect = `/leads/${leadId}`;
+  const redirectTo = getString(formData, "redirectTo") || `${fallbackRedirect}#decision-tracker`;
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
+  }
+
+  if (
+    !decisionStatus ||
+    !getDecisionStatusOptions().some((status) => status.value === decisionStatus) ||
+    getMaxLengthError(reason, fieldMaxLengths.communicationOutcome) ||
+    getMaxLengthError(note, fieldMaxLengths.agentNotes)
+  ) {
+    redirectValidation(redirectTo);
+  }
+
+  const prisma = getPrismaClient();
+  let propertyInterest;
+
+  try {
+    propertyInterest = await prisma.propertyInterest.findUnique({
+      where: { id: propertyInterestId },
+      include: {
+        lead: true
+      }
+    });
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  if (!propertyInterest || propertyInterest.leadId !== leadId || propertyInterest.lead.userId !== sessionUser.id) {
+    redirect(withToast(redirectTo, "save-error"));
+  }
+
+  const updatedAt = new Date().toISOString();
+  const statusLabel = getDecisionStatusLabel(decisionStatus);
+  const propertyTitle = propertyInterest.listingTitle || propertyInterest.address;
+  const decisionNote = buildPropertyDecisionNote({
+    statusLabel,
+    reason,
+    note,
+    propertyTitle
+  });
+  const activityBody = decisionNote.replace(/^Decision: /, "Property ");
+  const hasFeedback = Boolean(reason || note);
+
+  try {
+    await prisma.$transaction([
+      prisma.propertyInterest.update({
+        where: { id: propertyInterestId },
+        data: {
+          status: decisionStatus,
+          agentNotes: hasFeedback
+            ? prependPropertyDecisionNote(propertyInterest.agentNotes || "", decisionNote)
+            : propertyInterest.agentNotes,
+          updatedAt
+        }
+      }),
+      prisma.lead.update({
+        where: { id: leadId },
+        data: {
+          updatedAt
+        }
+      }),
+      buildCommunicationActivityWrite(
+        {
+          leadId,
+          channel: "note",
+          direction: "internal",
+          subject: "Property decision updated",
+          body: activityBody,
+          outcome: hasFeedback ? `${statusLabel}: ${[reason, note].filter(Boolean).join(" - ")}` : statusLabel
+        },
+        sessionUser.id,
+        updatedAt
+      )
+    ]);
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath("/routes");
+  revalidatePath("/properties");
+  revalidatePath(`/properties/${propertyInterestId}`);
+  revalidatePath(`/leads/${leadId}`);
+  revalidatePath(`/leads/${leadId}/properties/${propertyInterestId}`);
+  redirect(withToast(redirectTo, hasFeedback ? "property-feedback-saved" : "property-decision-updated"));
 }
 
 export async function markPropertyInterestToured(formData: FormData) {

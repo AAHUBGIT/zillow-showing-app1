@@ -8,6 +8,7 @@ import { LeadAiInsights } from "@/components/lead-ai-insights";
 import { LeadScheduleForm } from "@/components/lead-schedule-form";
 import { LoadingLink } from "@/components/loading-link";
 import { PropertyComparisonTable } from "@/components/property-comparison-table";
+import { PropertyDecisionTracker } from "@/components/property-decision-tracker";
 import { PropertyInterestCard } from "@/components/property-interest-card";
 import { PreviewModeBanner } from "@/components/preview-mode-banner";
 import { buildGoogleCalendarUrl } from "@/lib/calendar";
@@ -210,6 +211,8 @@ export default async function LeadDetailsPage({
               </div>
             ) : (
               <div className="mt-5 space-y-5">
+                <PropertyDecisionTracker lead={lead} propertyInterests={lead.propertyInterests} />
+
                 {topRatedProperty ? (
                   <div className="rounded-4xl border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(255,255,255,0.96))] p-5 shadow-soft">
                     <p className="app-kicker text-amber-700">Top Rated Property</p>
@@ -264,6 +267,7 @@ export default async function LeadDetailsPage({
                           leadId={lead.id}
                           propertyInterest={propertyInterest}
                           isTopRated={topRatedProperty?.id === propertyInterest.id}
+                          isPreviewReadonly={isPreviewReadonly}
                         />
                       ))}
                     </div>
@@ -285,6 +289,7 @@ export default async function LeadDetailsPage({
                           lead={lead}
                           leadId={lead.id}
                           propertyInterest={propertyInterest}
+                          isPreviewReadonly={isPreviewReadonly}
                         />
                       ))}
                     </div>

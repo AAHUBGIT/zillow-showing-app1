@@ -1,7 +1,7 @@
 import { LoadingLink } from "@/components/loading-link";
+import { PropertyDecisionForm } from "@/components/property-decision-form";
 import { PropertyFitBadges } from "@/components/property-fit-badges";
 import { PropertyRatingStars } from "@/components/property-rating-stars";
-import { PropertyInterestStatusBadge } from "@/components/property-interest-status-badge";
 import { formatDateTimeLabel } from "@/lib/date";
 import { getPropertyInterestSourceLabel } from "@/lib/property-interest-utils";
 import { LeadWithProperties, PropertyInterest } from "@/lib/types";
@@ -10,12 +10,14 @@ export function PropertyInterestCard({
   lead,
   leadId,
   propertyInterest,
-  isTopRated = false
+  isTopRated = false,
+  isPreviewReadonly = false
 }: {
   lead: LeadWithProperties;
   leadId: string;
   propertyInterest: PropertyInterest;
   isTopRated?: boolean;
+  isPreviewReadonly?: boolean;
 }) {
   return (
     <article
@@ -37,7 +39,12 @@ export function PropertyInterestCard({
           </div>
           <p className="mt-1 text-sm text-slate-500">{propertyInterest.address}</p>
         </div>
-        <PropertyInterestStatusBadge status={propertyInterest.status} />
+        <PropertyDecisionForm
+          leadId={leadId}
+          propertyInterest={propertyInterest}
+          redirectTo={`/leads/${leadId}#decision-tracker`}
+          isPreviewReadonly={isPreviewReadonly}
+        />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">

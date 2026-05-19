@@ -1,6 +1,7 @@
 import { getFollowUpState } from "@/lib/lead-utils";
+import { normalizeDecisionStatus } from "@/lib/property-decision-statuses";
 import { getEffectiveShowingStatus } from "@/lib/showing-lifecycle";
-import type { Lead } from "@/lib/types";
+import type { Lead, PropertyInterest } from "@/lib/types";
 
 export function getFollowUpActionLabels(
   lead: Pick<
@@ -13,7 +14,9 @@ export function getFollowUpActionLabels(
     | "applicationReady"
     | "status"
     | "routeCompleted"
-  >,
+  > & {
+    propertyInterests?: Array<Pick<PropertyInterest, "status">>;
+  },
   referenceDate?: string
 ) {
   const labels: string[] = [];
@@ -40,6 +43,22 @@ export function getFollowUpActionLabels(
 
   if (lead.applicationReady) {
     labels.push("Application ready");
+  }
+
+  const propertyStatuses = (lead.propertyInterests || []).map((propertyInterest) =>
+    normalizeDecisionStatus(propertyInterest.status)
+  );
+  const hasApplyingProperty = propertyStatuses.some((status) => status === "applying");
+  const hasDecisionProperty = propertyStatuses.some((status) =>
+    ["liked", "maybe", "interested", "needs_second_look"].includes(status)
+  );
+
+  if (hasApplyingProperty) {
+    labels.push("Applying");
+  } else if (showingStatus === "completed" && hasDecisionProperty) {
+    labels.push("Ask for property decision");
+  } else if (lead.status !== "closed" && lead.propertyInterests && lead.propertyInterests.length > 0 && !hasDecisionProperty) {
+    labels.push("No property decision");
   }
 
   if (lead.status !== "closed" && !lead.nextFollowUpDate) {

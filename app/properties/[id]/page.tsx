@@ -2,11 +2,17 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { LoadingLink } from "@/components/loading-link";
 import { PropertyListingEditForm } from "@/components/property-listing-edit-form";
+import { PropertyInterestStatusBadge } from "@/components/property-interest-status-badge";
 import { ShowingLifecycleBadge } from "@/components/showing-lifecycle-badge";
 import { getSessionUser } from "@/lib/auth";
 import { formatDateTimeLabel } from "@/lib/date";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
 import { getSourceLabel } from "@/lib/lead-utils";
+import {
+  getAllDecisionStatusOptions,
+  isDecisionStatusTerminal,
+  normalizeDecisionStatus
+} from "@/lib/property-decision-statuses";
 import { buildGoogleMapsSearchLink } from "@/lib/property-interest-utils";
 import {
   formatPropertyListingPrice,
@@ -111,6 +117,18 @@ function getUniqueLeadCount(relatedInterests: RelatedInterest[], showingRows: Sh
   ]).size;
 }
 
+function groupRelatedInterestsByDecisionStatus(relatedInterests: RelatedInterest[]) {
+  return getAllDecisionStatusOptions()
+    .sort((first, second) => first.order - second.order)
+    .map((config) => ({
+      config,
+      relatedInterests: relatedInterests.filter(
+        ({ propertyInterest }) => normalizeDecisionStatus(propertyInterest.status) === config.value
+      )
+    }))
+    .filter((group) => group.relatedInterests.length > 0);
+}
+
 export default async function PropertyListingDetailPage({
   params
 }: {
@@ -137,8 +155,9 @@ export default async function PropertyListingDetailPage({
   const uniqueLeadCount = getUniqueLeadCount(relatedInterests, showingRows);
   const isPreviewReadonly = isPreviewReadonlyMode();
   const activeInterestCount = relatedInterests.filter(
-    ({ propertyInterest }) => propertyInterest.status !== "rejected"
+    ({ propertyInterest }) => !isDecisionStatusTerminal(propertyInterest.status)
   ).length;
+  const relatedInterestGroups = groupRelatedInterestsByDecisionStatus(relatedInterests);
 
   return (
     <main className="space-y-6">
@@ -283,47 +302,64 @@ export default async function PropertyListingDetailPage({
         </div>
 
         {relatedInterests.length > 0 ? (
-          <div className="mt-5 grid gap-4 xl:grid-cols-2">
-            {relatedInterests.map(({ lead, propertyInterest }) => (
-              <article
-                key={`${lead.id}-${propertyInterest.id}`}
-                className="rounded-3xl border border-line/80 bg-white/85 p-4"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-ink">{lead.fullName}</p>
-                    <p className="mt-1 text-sm text-slate-600">{lead.phone || lead.email}</p>
-                  </div>
-                  <span className="app-chip">{propertyInterest.status}</span>
+          <div className="mt-5 space-y-4">
+            {relatedInterestGroups.map((group) => (
+              <div key={group.config.value} className="rounded-3xl border border-line/80 bg-slate-50/80 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <PropertyInterestStatusBadge status={group.config.value} />
+                  <span className="app-chip">
+                    {group.relatedInterests.length} {group.relatedInterests.length === 1 ? "renter" : "renters"}
+                  </span>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="app-chip">Rating {propertyInterest.rating}/5</span>
-                  {propertyInterest.showingDate && propertyInterest.showingTime ? (
-                    <span className="app-chip">
-                      Showing {formatDateTimeLabel(propertyInterest.showingDate, propertyInterest.showingTime)}
-                    </span>
-                  ) : null}
+
+                <div className="mt-3 grid gap-3 xl:grid-cols-2">
+                  {group.relatedInterests.map(({ lead, propertyInterest }) => {
+                    const showingLabel =
+                      propertyInterest.showingDate && propertyInterest.showingTime
+                        ? formatDateTimeLabel(propertyInterest.showingDate, propertyInterest.showingTime)
+                        : lead.showingDate && lead.showingTime
+                          ? formatDateTimeLabel(lead.showingDate, lead.showingTime)
+                          : "No showing scheduled";
+
+                    return (
+                      <article
+                        key={`${lead.id}-${propertyInterest.id}`}
+                        className="rounded-2xl border border-line/80 bg-white px-4 py-3"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-base font-semibold text-ink">{lead.fullName}</p>
+                            <p className="mt-1 text-sm text-slate-600">{lead.phone || lead.email}</p>
+                          </div>
+                          <span className="app-chip">Rating {propertyInterest.rating}/5</span>
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="app-chip">Showing {showingLabel}</span>
+                        </div>
+                        {propertyInterest.clientFeedback ? (
+                          <p className="mt-3 text-sm leading-6 text-slate-600">{propertyInterest.clientFeedback}</p>
+                        ) : null}
+                        {propertyInterest.agentNotes ? (
+                          <p className="mt-3 line-clamp-2 rounded-2xl bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-600">
+                            {propertyInterest.agentNotes}
+                          </p>
+                        ) : null}
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <LoadingLink href={`/leads/${lead.id}`} className="app-button-secondary">
+                            Open Lead
+                          </LoadingLink>
+                          <LoadingLink
+                            href={`/leads/${lead.id}/properties/${propertyInterest.id}`}
+                            className="app-button-secondary"
+                          >
+                            View Interest
+                          </LoadingLink>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
-                {propertyInterest.clientFeedback ? (
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{propertyInterest.clientFeedback}</p>
-                ) : null}
-                {propertyInterest.agentNotes ? (
-                  <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-sm leading-6 text-slate-600">
-                    {propertyInterest.agentNotes}
-                  </p>
-                ) : null}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <LoadingLink href={`/leads/${lead.id}`} className="app-button-secondary">
-                    View Lead
-                  </LoadingLink>
-                  <LoadingLink
-                    href={`/leads/${lead.id}/properties/${propertyInterest.id}`}
-                    className="app-button-secondary"
-                  >
-                    View Interest
-                  </LoadingLink>
-                </div>
-              </article>
+              </div>
             ))}
           </div>
         ) : (

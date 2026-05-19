@@ -44,6 +44,27 @@ Future work:
 
 - A dedicated follow-up task table may become useful later if agents need multiple open follow-ups per lead, ownership, reminders, or reporting. It is intentionally not added in this pass.
 
+## Property Decision Tracker - 2026-05-18
+
+Added:
+
+- Centralized default property decision statuses in `lib/property-decision-statuses.ts` so labels, tone, order, grouping, and normalization are not scattered across components.
+- Added renter decision statuses for Interested, Liked, Maybe, Rejected, Applying, Backup, and Needs second look while preserving legacy scheduled/toured/approved/closed records.
+- Added a compact Lead Detail Decision Tracker that groups attached properties by decision status and highlights a deterministic best-fit signal.
+- Added a property decision action on interested property cards and property reports. Updates persist through the existing `PropertyInterest.status` string field and log internal activity entries.
+- Property Detail now groups attached renters by decision status so an agent can see who is applying, liked, maybe, interested, rejected, backup, or needs a second look for that property.
+- Added documentation in `docs/property-decision-statuses.md` for the future user-customizable status settings model.
+
+Still needs QA:
+
+- Production click-through for each decision status: Interested, Liked, Maybe, Rejected, Applying, Backup, and Needs second look.
+- Confirm optional reason/note saves to the property record and appears in the Communication activity timeline newest-first.
+- Confirm Dashboard and Today remain compact when decision signals appear.
+
+Future work:
+
+- Add a real user settings screen and database-backed `PropertyDecisionStatusSetting` model only when agents need custom labels/statuses by workspace. No schema change was needed for this pass.
+
 ### 1. Production database migration path is still fragile
 
 - Severity: Critical

@@ -18,6 +18,8 @@ const toastMessages: Record<string, string> = {
   "property-listing-added": "Property listing added to inventory.",
   "property-duplicate": "This property may already exist. Review it before creating another copy.",
   "property-updated": "Property details updated.",
+  "property-decision-updated": "Property decision updated.",
+  "property-feedback-saved": "Property feedback saved.",
   "property-toured": "Property marked as toured.",
   "property-scheduled": "Property showing scheduled.",
   "property-rejected": "Property marked as rejected.",

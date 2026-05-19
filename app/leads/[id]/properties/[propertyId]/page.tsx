@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { PropertyBackLink } from "@/components/property-back-link";
+import { PropertyDecisionForm } from "@/components/property-decision-form";
 import { PropertyFitBadges } from "@/components/property-fit-badges";
 import { PropertyInterestForm } from "@/components/property-interest-form";
 import { PropertyInterestQuickActions } from "@/components/property-interest-quick-actions";
@@ -138,6 +139,14 @@ export default async function PropertyInterestDetailsPage({
                     next best suggested date and time.
                   </p>
                   <div className="mt-4">
+                    <div className="mb-4">
+                      <PropertyDecisionForm
+                        leadId={lead.id}
+                        propertyInterest={propertyInterest}
+                        redirectTo={`/leads/${lead.id}/properties/${propertyInterest.id}`}
+                        isPreviewReadonly={isPreviewReadonly}
+                      />
+                    </div>
                     <PropertyInterestQuickActions
                       leadId={lead.id}
                       propertyInterestId={propertyInterest.id}
