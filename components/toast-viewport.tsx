@@ -7,7 +7,7 @@ const toastMessages: Record<string, string> = {
   "lead-created": "Lead created successfully.",
   "lead-imported": "Imported lead created successfully.",
   "status-updated": "Lead status updated.",
-  "showing-scheduled": "Showing scheduled successfully.",
+  "showing-scheduled": "Showing scheduled.",
   "showing-confirmed": "Showing confirmed.",
   "showing-completed": "Showing completed.",
   "showing-no_show": "Showing marked no-show.",

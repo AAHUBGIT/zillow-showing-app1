@@ -22,7 +22,9 @@ import { leadPriorityOptions, leadSourceOptions, leadStatusOptions } from "./lea
 import { getPrismaClient } from "./prisma";
 import {
   findDuplicatePropertyListing,
+  normalizePropertyListingAddress,
   normalizePropertyListingStatus,
+  normalizePropertyListingUrl,
   propertyListingStatusOptions
 } from "./property-listing-utils";
 import { getPropertyListingByIdForUser, getPropertyListingsForUser } from "./property-listings";
@@ -1150,6 +1152,169 @@ export async function updateLeadSchedule(formData: FormData) {
         : "status-updated"
     )
   );
+}
+
+export async function schedulePropertyForLead(formData: FormData) {
+  const propertyListingId = getString(formData, "propertyListingId");
+  const leadId = getString(formData, "leadId");
+  const redirectTo = getSafePropertyListingRedirect(
+    formData,
+    propertyListingId ? `/properties/${propertyListingId}` : "/properties"
+  );
+  const showingDate = getString(formData, "showingDate");
+  const showingTime = getString(formData, "showingTime");
+  const allowPastShowingDate = getBoolean(formData, "showingDateAllowPastOverride");
+  const showingStatusValue = normalizeShowingStatus(getString(formData, "showingStatus"));
+  const showingStatus: ShowingStatus =
+    showingStatusValue === "confirmed" ? "confirmed" : "scheduled";
+  const showingNotes = getString(formData, "showingNotes");
+  const attachPropertyToLead = getBoolean(formData, "attachPropertyToLead");
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
+  }
+
+  if (
+    getRequiredTextError(propertyListingId) ||
+    getRequiredTextError(leadId) ||
+    getRequiredTextError(showingDate) ||
+    getRequiredTextError(showingTime) ||
+    !isIsoDate(showingDate) ||
+    !isTwentyFourHourTime(showingTime) ||
+    hasScheduleMismatch(showingDate, showingTime) ||
+    hasBlockedPastShowingDate(showingDate, allowPastShowingDate) ||
+    getMaxLengthError(showingNotes, fieldMaxLengths.agentNotes)
+  ) {
+    redirectValidation(redirectTo);
+  }
+
+  const prisma = getPrismaClient();
+  const [listing, lead] = await Promise.all([
+    getPropertyListingByIdForUser(sessionUser.id, propertyListingId),
+    prisma.lead.findUnique({
+      where: { id: leadId },
+      include: {
+        propertyInterests: true
+      }
+    })
+  ]).catch((error) => {
+    redirectSaveError(redirectTo, error);
+  });
+
+  if (!listing || !lead || lead.userId !== sessionUser.id) {
+    redirect(withToast(redirectTo, "save-error"));
+  }
+
+  const now = new Date().toISOString();
+  const propertyInterests = ((lead as unknown as LeadWithProperties).propertyInterests || []) as PropertyInterest[];
+  const normalizedListingAddress = normalizePropertyListingAddress(listing.address);
+  const normalizedListingUrl = normalizePropertyListingUrl(listing.listingUrl);
+  const existingPropertyInterest = propertyInterests.find((propertyInterest) => {
+    const sameAddress =
+      normalizedListingAddress &&
+      normalizePropertyListingAddress(propertyInterest.address) === normalizedListingAddress;
+    const sameListingUrl =
+      normalizedListingUrl &&
+      normalizePropertyListingUrl(propertyInterest.listingUrl) === normalizedListingUrl;
+
+    return sameAddress || sameListingUrl;
+  });
+  const propertyInterestWrites = [];
+
+  if (existingPropertyInterest) {
+    propertyInterestWrites.push(
+      prisma.propertyInterest.update({
+        where: { id: existingPropertyInterest.id },
+        data: {
+          status: "scheduled",
+          showingDate,
+          showingTime,
+          updatedAt: now
+        }
+      })
+    );
+  } else if (attachPropertyToLead) {
+    propertyInterestWrites.push(
+      prisma.propertyInterest.create({
+        data: {
+          id: crypto.randomUUID(),
+          leadId: lead.id,
+          address: listing.address,
+          listingTitle: listing.title,
+          source: normalizeLeadSource(listing.source),
+          listingUrl: listing.listingUrl,
+          rent: listing.price,
+          beds: listing.beds,
+          baths: listing.baths,
+          neighborhood: listing.neighborhood,
+          status: "scheduled",
+          rating: 3,
+          clientFeedback: "",
+          pros: "",
+          cons: "",
+          agentNotes: listing.notes,
+          showingDate,
+          showingTime,
+          createdAt: now,
+          updatedAt: now
+        }
+      })
+    );
+  }
+
+  try {
+    await prisma.$transaction([
+      prisma.lead.update({
+        where: { id: lead.id },
+        data: {
+          propertyAddress: listing.address,
+          status: lead.status === "closed" ? "closed" : "scheduled",
+          showingDate,
+          showingTime,
+          showingStatus,
+          showingOutcome: "",
+          showingOutcomeNotes: "",
+          showingCompletedAt: "",
+          showingCanceledReason: "",
+          routeNote: showingNotes || lead.routeNote,
+          ...getRouteResetData(lead, {
+            propertyAddress: listing.address,
+            showingDate,
+            showingTime
+          }),
+          updatedAt: now
+        }
+      }),
+      ...propertyInterestWrites,
+      buildCommunicationActivityWrite(
+        {
+          leadId: lead.id,
+          channel: "note",
+          direction: "internal",
+          subject: "Showing scheduled",
+          body: `Showing scheduled for ${listing.address} on ${showingDate} at ${showingTime}.${showingNotes ? ` ${showingNotes}` : ""}`,
+          outcome: listing.title
+        },
+        sessionUser.id,
+        now
+      )
+    ]);
+  } catch (error) {
+    redirectSaveError(redirectTo, error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath("/routes");
+  revalidatePath("/properties");
+  revalidatePath(`/properties/${listing.id}`);
+  revalidatePath(`/leads/${lead.id}`);
+  redirect(withToast(`${redirectTo}#showing-activity`, "showing-scheduled"));
 }
 
 function getLifecycleActivityText({

@@ -222,3 +222,13 @@ These were reported by QA and have been addressed in code, but should remain on 
 - Existing property notes are now surfaced as access, parking, and showing notes without adding schema fields.
 - Needs QA: open a property with renters, confirm grouping follows customized decision labels/order, confirm quick actions work, and confirm empty-state actions are useful on a property with no renters.
 - Future work: first-class Showing/TourStop model, stronger property-level showing history, dedicated access/parking fields, and a safer preselected "schedule this property for existing lead" flow.
+
+## Property-First Scheduling - 2026-05-19
+
+- Added a compact "Schedule this property" side panel from Property Detail.
+- The workflow searches existing leads by name, phone, email, or primary address, then schedules the current property as the selected lead's showing location.
+- Added attach-to-customer handling: default checked, avoids duplicates, and shows "Already attached" when the selected lead already has this property.
+- Scheduling updates lead showing fields, optionally creates or updates the matching PropertyInterest, writes an internal activity entry, and returns to the property page with a "Showing scheduled." toast.
+- Needs QA: schedule a property for a lead with no attached interest, repeat scheduling for the same lead to confirm no duplicate PropertyInterest, and verify Today/Routes/Lead Detail refresh correctly.
+- Limitation: this still uses lead-based showing fields, so each lead has one active scheduled showing. A first-class Showing/TourStop model is still needed for multi-property tours and durable showing history.
+- Future work: dedicated access/parking/showing-instruction fields on PropertyListing and a stronger preselected New Lead flow from property pages.

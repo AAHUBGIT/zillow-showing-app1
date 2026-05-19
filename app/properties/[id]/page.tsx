@@ -6,6 +6,7 @@ import { LeadSidePanel } from "@/components/lead-side-panel";
 import { LeadStatusBadge } from "@/components/lead-status-badge";
 import { LoadingLink } from "@/components/loading-link";
 import { PriorityBadge } from "@/components/priority-badge";
+import { PropertyFirstSchedulePanel } from "@/components/property-first-schedule-panel";
 import { PropertyDecisionForm } from "@/components/property-decision-form";
 import { PropertyListingEditForm } from "@/components/property-listing-edit-form";
 import { PropertyInterestStatusBadge } from "@/components/property-interest-status-badge";
@@ -413,9 +414,11 @@ export default async function PropertyListingDetailPage({
             <Link href="/properties" className="app-button-secondary">
               Back to Properties
             </Link>
-            <LoadingLink href="/leads/new" className="app-button-primary">
-              Schedule This Property
-            </LoadingLink>
+            <PropertyFirstSchedulePanel
+              listing={listing}
+              leads={leads}
+              isPreviewReadonly={isPreviewReadonly}
+            />
             <a href="#edit-property" className="app-button-secondary">
               Edit Property
             </a>
