@@ -213,3 +213,12 @@ These were reported by QA and have been addressed in code, but should remain on 
 - Follow-up dialogs can use the saved default follow-up timing.
 - Needs QA: rename "Maybe" to "Still thinking," hide "Backup," add "Tour again," save, confirm lead/property pages use the updated labels/order, then reset defaults.
 - Future work: deeper account settings, team-level settings, default landing redirect behavior, and first-class Showing model settings after the data model is upgraded.
+
+## Property Detail Command Center - 2026-05-19
+
+- Added a property-centered command summary with interested renter count, scheduled/completed showings, applying/rejected counts, needs-follow-up count, active interest count, and a deterministic next action.
+- Added a compact Renter Pipeline grouped by customizable property decision statuses from Workflow Settings, including contact actions, quick view, open lead, follow-up queue actions, and property decision updates.
+- Added a Showing Activity section that surfaces lead-based showings linked by property interest or matched primary address, including lifecycle status, outcome, cancellation reason, and lead quick view.
+- Existing property notes are now surfaced as access, parking, and showing notes without adding schema fields.
+- Needs QA: open a property with renters, confirm grouping follows customized decision labels/order, confirm quick actions work, and confirm empty-state actions are useful on a property with no renters.
+- Future work: first-class Showing/TourStop model, stronger property-level showing history, dedicated access/parking fields, and a safer preselected "schedule this property for existing lead" flow.
