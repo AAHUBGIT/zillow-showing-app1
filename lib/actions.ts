@@ -24,6 +24,7 @@ import {
   findDuplicatePropertyListing,
   normalizePropertyListingAddress,
   normalizePropertyListingStatus,
+  normalizePropertyListingType,
   normalizePropertyListingUrl,
   propertyListingStatusOptions
 } from "./property-listing-utils";
@@ -57,6 +58,7 @@ import {
   PropertyInterest,
   PropertyListing,
   PropertyListingStatus,
+  PropertyListingType,
   PropertyInterestStatus,
   ShowingOutcome,
   ShowingStatus
@@ -115,6 +117,10 @@ function getSource(formData: FormData) {
 
 function getPropertyListingStatus(formData: FormData): PropertyListingStatus {
   return normalizePropertyListingStatus(getString(formData, "status"));
+}
+
+function getPropertyListingType(formData: FormData): PropertyListingType {
+  return normalizePropertyListingType(getString(formData, "listingType"));
 }
 
 function getShowingStatus(formData: FormData): ShowingStatus {
@@ -2004,6 +2010,7 @@ export async function createPropertyListing(formData: FormData) {
   const beds = getString(formData, "beds");
   const baths = getString(formData, "baths");
   const neighborhood = getString(formData, "neighborhood");
+  const listingType = getPropertyListingType(formData);
   const source = getSource(formData);
   const listingUrl = getString(formData, "listingUrl");
   const notes = getString(formData, "notes");
@@ -2056,6 +2063,7 @@ export async function createPropertyListing(formData: FormData) {
         "address",
         "neighborhood",
         "price",
+        "listingType",
         "beds",
         "baths",
         "source",
@@ -2072,6 +2080,7 @@ export async function createPropertyListing(formData: FormData) {
         ${address},
         ${neighborhood},
         ${price},
+        ${listingType},
         ${beds},
         ${baths},
         ${source},
@@ -2111,6 +2120,7 @@ export async function updatePropertyListing(formData: FormData) {
   const beds = getString(formData, "beds");
   const baths = getString(formData, "baths");
   const neighborhood = getString(formData, "neighborhood");
+  const listingType = getPropertyListingType(formData);
   const source = getSource(formData);
   const listingUrl = getString(formData, "listingUrl");
   const notes = getString(formData, "notes");
@@ -2148,6 +2158,7 @@ export async function updatePropertyListing(formData: FormData) {
         "address" = ${address},
         "neighborhood" = ${neighborhood},
         "price" = ${price},
+        "listingType" = ${listingType},
         "beds" = ${beds},
         "baths" = ${baths},
         "source" = ${source},

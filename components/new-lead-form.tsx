@@ -459,7 +459,7 @@ export function NewLeadForm({
                 <p className="mt-2 text-sm font-semibold text-ink">{selectedShowingProperty.title}</p>
                 <p className="mt-1 text-sm leading-5 text-slate-600">{selectedShowingProperty.address}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <span className="app-chip">{formatPropertyListingPrice(selectedShowingProperty.price)}</span>
+                  <span className="app-chip">{formatPropertyListingPrice(selectedShowingProperty.price, selectedShowingProperty.listingType)}</span>
                   <span className="app-chip">{getPropertyListingLayout(selectedShowingProperty)}</span>
                 </div>
               </>

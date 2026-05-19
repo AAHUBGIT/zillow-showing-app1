@@ -84,6 +84,7 @@ model PropertyListing {
   address      String
   neighborhood String
   price        String
+  listingType  String @default("rental")
   beds         String
   baths        String
   source       String
@@ -95,6 +96,7 @@ model PropertyListing {
 
   @@index([userId, updatedAt])
   @@index([userId, status])
+  @@index([userId, listingType])
   @@index([userId, neighborhood])
 }
 

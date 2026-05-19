@@ -31,6 +31,8 @@ import {
   getPropertyListingLayout,
   getPropertyListingStatusLabel,
   getPropertyListingStatusTone,
+  getPropertyListingTypeLabel,
+  getPropertyListingTypeTone,
   normalizePropertyListingAddress,
   normalizePropertyListingUrl
 } from "@/lib/property-listing-utils";
@@ -403,7 +405,14 @@ export default async function PropertyListingDetailPage({
               >
                 {getPropertyListingStatusLabel(listing.status)}
               </span>
-              <span className="app-chip">{formatPropertyListingPrice(listing.price)}</span>
+              <span
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${getPropertyListingTypeTone(
+                  listing.listingType
+                )}`}
+              >
+                {getPropertyListingTypeLabel(listing.listingType)}
+              </span>
+              <span className="app-chip">{formatPropertyListingPrice(listing.price, listing.listingType)}</span>
               <span className="app-chip">{getPropertyListingLayout(listing)}</span>
               {listing.neighborhood ? <span className="app-chip">{listing.neighborhood}</span> : null}
               <span className="app-chip">{getSourceLabel(listing.source as LeadSource)}</span>

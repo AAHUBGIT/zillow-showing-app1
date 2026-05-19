@@ -4,6 +4,7 @@ import { PropertyFitBadges } from "@/components/property-fit-badges";
 import { PropertyRatingStars } from "@/components/property-rating-stars";
 import { formatDateTimeLabel } from "@/lib/date";
 import { getPropertyInterestSourceLabel } from "@/lib/property-interest-utils";
+import { getPropertyListingTypeLabel, getPropertyListingTypeTone } from "@/lib/property-listing-utils";
 import type { PropertyDecisionStatusConfig } from "@/lib/property-decision-statuses";
 import { LeadWithProperties, PropertyInterest } from "@/lib/types";
 
@@ -12,6 +13,7 @@ export function PropertyInterestCard({
   leadId,
   propertyInterest,
   decisionStatuses,
+  listingType,
   isTopRated = false,
   isPreviewReadonly = false
 }: {
@@ -19,6 +21,7 @@ export function PropertyInterestCard({
   leadId: string;
   propertyInterest: PropertyInterest;
   decisionStatuses?: PropertyDecisionStatusConfig[];
+  listingType?: string;
   isTopRated?: boolean;
   isPreviewReadonly?: boolean;
 }) {
@@ -37,6 +40,15 @@ export function PropertyInterestCard({
             {isTopRated ? (
               <span className="inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-800">
                 Top Rated
+              </span>
+            ) : null}
+            {listingType ? (
+              <span
+                className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${getPropertyListingTypeTone(
+                  listingType
+                )}`}
+              >
+                {getPropertyListingTypeLabel(listingType)}
               </span>
             ) : null}
           </div>

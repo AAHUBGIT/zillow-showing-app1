@@ -1,9 +1,15 @@
-import type { LeadSource, PropertyInterest, PropertyListing, PropertyListingStatus } from "./types";
+import type { LeadSource, PropertyInterest, PropertyListing, PropertyListingStatus, PropertyListingType } from "./types";
 
 export const propertyListingStatusOptions: PropertyListingStatus[] = [
   "available",
   "unavailable",
   "unknown"
+];
+
+export const propertyListingTypeOptions: PropertyListingType[] = [
+  "rental",
+  "sale",
+  "flexible"
 ];
 
 const propertyListingStatusTone: Record<PropertyListingStatus, string> = {
@@ -12,10 +18,22 @@ const propertyListingStatusTone: Record<PropertyListingStatus, string> = {
   unknown: "border-amber-200 bg-amber-50 text-amber-700"
 };
 
+const propertyListingTypeTone: Record<PropertyListingType, string> = {
+  rental: "border-blue-200 bg-blue-50 text-blue-700",
+  sale: "border-violet-200 bg-violet-50 text-violet-700",
+  flexible: "border-slate-200 bg-slate-100 text-slate-700"
+};
+
 export function normalizePropertyListingStatus(value: string): PropertyListingStatus {
   return propertyListingStatusOptions.includes(value as PropertyListingStatus)
     ? (value as PropertyListingStatus)
     : "unknown";
+}
+
+export function normalizePropertyListingType(value: string): PropertyListingType {
+  return propertyListingTypeOptions.includes(value as PropertyListingType)
+    ? (value as PropertyListingType)
+    : "rental";
 }
 
 export function normalizePropertyListingAddress(value: string) {
@@ -87,18 +105,61 @@ export function getPropertyListingStatusTone(status: string) {
   return propertyListingStatusTone[normalizePropertyListingStatus(status)];
 }
 
-export function formatPropertyListingPrice(value: string) {
+export function getPropertyListingTypeLabel(listingType: string) {
+  const normalized = normalizePropertyListingType(listingType);
+
+  if (normalized === "sale") {
+    return "Sale";
+  }
+
+  if (normalized === "flexible") {
+    return "Flexible";
+  }
+
+  return "Rental";
+}
+
+export function getPropertyListingTypeTone(listingType: string) {
+  return propertyListingTypeTone[normalizePropertyListingType(listingType)];
+}
+
+export function getPropertyListingPriceLabel(listingType: string) {
+  const normalized = normalizePropertyListingType(listingType);
+
+  if (normalized === "sale") {
+    return "Asking price";
+  }
+
+  if (normalized === "flexible") {
+    return "Price";
+  }
+
+  return "Monthly rent";
+}
+
+export function formatPropertyListingPrice(value: string, listingType = "rental") {
+  const normalizedType = normalizePropertyListingType(listingType);
   const numeric = Number(value.replace(/[^\d.]/g, ""));
 
   if (!Number.isFinite(numeric) || numeric <= 0) {
-    return "Price not set";
+    if (normalizedType === "sale") {
+      return "Asking price not set";
+    }
+
+    if (normalizedType === "flexible") {
+      return "Price TBD";
+    }
+
+    return "Rent not set";
   }
 
-  return new Intl.NumberFormat("en-US", {
+  const formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0
   }).format(numeric);
+
+  return normalizedType === "rental" ? `${formattedPrice}/mo` : formattedPrice;
 }
 
 export function getPropertyListingLayout(listing: Pick<PropertyListing, "beds" | "baths">) {

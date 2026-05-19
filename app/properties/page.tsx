@@ -9,8 +9,11 @@ import {
   getPropertyListingLayout,
   getPropertyListingStatusLabel,
   getPropertyListingStatusTone,
+  getPropertyListingTypeLabel,
+  getPropertyListingTypeTone,
   normalizePropertyListingAddress,
   normalizePropertyListingUrl,
+  propertyListingTypeOptions,
   propertyListingStatusOptions
 } from "@/lib/property-listing-utils";
 import { getPropertyListings } from "@/lib/property-listings";
@@ -23,6 +26,7 @@ type PropertySearchParams = {
   maxPrice?: string;
   beds?: string;
   status?: string;
+  listingType?: string;
 };
 
 function getParam(value: string | string[] | undefined) {
@@ -35,7 +39,8 @@ function getFilters(searchParams?: Record<string, string | string[] | undefined>
     neighborhood: getParam(searchParams?.neighborhood),
     maxPrice: getParam(searchParams?.maxPrice),
     beds: getParam(searchParams?.beds),
-    status: getParam(searchParams?.status)
+    status: getParam(searchParams?.status),
+    listingType: getParam(searchParams?.listingType)
   };
 }
 
@@ -50,6 +55,7 @@ function filterListings(listings: PropertyListing[], filters: PropertySearchPara
   const maxPrice = getNumericValue(filters.maxPrice || "");
   const beds = getNumericValue(filters.beds || "");
   const status = filters.status || "";
+  const listingType = filters.listingType || "";
 
   return listings.filter((listing) => {
     const searchableText = [listing.title, listing.address, listing.neighborhood]
@@ -62,6 +68,7 @@ function filterListings(listings: PropertyListing[], filters: PropertySearchPara
       (!query || searchableText.includes(query)) &&
       (!neighborhood || listing.neighborhood.toLowerCase() === neighborhood) &&
       (!status || listing.status === status) &&
+      (!listingType || listing.listingType === listingType) &&
       (maxPrice === null || listingPrice === null || listingPrice <= maxPrice) &&
       (beds === null || listingBeds === null || listingBeds >= beds)
     );
@@ -100,7 +107,7 @@ export default async function PropertiesPage({
           </a>
         </div>
 
-        <form className="mt-5 grid gap-4 border-t border-line/70 pt-5 lg:grid-cols-[1.4fr_1fr_0.8fr_0.8fr_0.8fr_auto] lg:items-end">
+        <form className="mt-5 grid gap-4 border-t border-line/70 pt-5 lg:grid-cols-[1.4fr_1fr_0.8fr_0.8fr_0.8fr_0.8fr_auto] lg:items-end">
           <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-slate-700">Search</span>
             <input
@@ -140,6 +147,18 @@ export default async function PropertiesPage({
               {propertyListingStatusOptions.map((status) => (
                 <option key={status} value={status}>
                   {getPropertyListingStatusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-2">
+            <span className="text-sm font-medium text-slate-700">Listing type</span>
+            <select name="listingType" defaultValue={filters.listingType} className="app-input">
+              <option value="">All types</option>
+              {propertyListingTypeOptions.map((listingType) => (
+                <option key={listingType} value={listingType}>
+                  {getPropertyListingTypeLabel(listingType)}
                 </option>
               ))}
             </select>
@@ -202,17 +221,26 @@ function PropertyListingCard({
           </Link>
           <p className="mt-1 text-sm leading-6 text-slate-600">{listing.address}</p>
         </div>
-        <span
-          className={`rounded-full border px-3 py-1 text-xs font-semibold ${getPropertyListingStatusTone(
-            listing.status
-          )}`}
-        >
-          {getPropertyListingStatusLabel(listing.status)}
-        </span>
+        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${getPropertyListingTypeTone(
+              listing.listingType
+            )}`}
+          >
+            {getPropertyListingTypeLabel(listing.listingType)}
+          </span>
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${getPropertyListingStatusTone(
+              listing.status
+            )}`}
+          >
+            {getPropertyListingStatusLabel(listing.status)}
+          </span>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <span className="app-chip">{formatPropertyListingPrice(listing.price)}</span>
+        <span className="app-chip">{formatPropertyListingPrice(listing.price, listing.listingType)}</span>
         <span className="app-chip">{getPropertyListingLayout(listing)}</span>
         {listing.neighborhood ? <span className="app-chip">{listing.neighborhood}</span> : null}
         <span className="app-chip">{getSourceLabel(listing.source as LeadSource)}</span>

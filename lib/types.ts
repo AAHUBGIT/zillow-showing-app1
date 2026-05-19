@@ -40,6 +40,7 @@ export type PropertyInterestStatus =
   | "closed"
   | (string & {});
 export type PropertyListingStatus = "available" | "unavailable" | "unknown";
+export type PropertyListingType = "rental" | "sale" | "flexible";
 export type CommunicationChannel = "call" | "text" | "email" | "note";
 export type CommunicationDirection = "outbound" | "inbound" | "internal";
 
@@ -115,6 +116,7 @@ export type PropertyListing = {
   address: string;
   neighborhood: string;
   price: string;
+  listingType: PropertyListingType;
   beds: string;
   baths: string;
   source: string;

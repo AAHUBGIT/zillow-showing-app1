@@ -155,7 +155,7 @@ export function LeadScheduleForm({
             label: selectedPropertyListing.title,
             address: selectedPropertyListing.address,
             detail: [
-              formatPropertyListingPrice(selectedPropertyListing.price),
+              formatPropertyListingPrice(selectedPropertyListing.price, selectedPropertyListing.listingType),
               getPropertyListingLayout(selectedPropertyListing),
               selectedPropertyListing.neighborhood
             ]

@@ -232,3 +232,14 @@ These were reported by QA and have been addressed in code, but should remain on 
 - Needs QA: schedule a property for a lead with no attached interest, repeat scheduling for the same lead to confirm no duplicate PropertyInterest, and verify Today/Routes/Lead Detail refresh correctly.
 - Limitation: this still uses lead-based showing fields, so each lead has one active scheduled showing. A first-class Showing/TourStop model is still needed for multi-property tours and durable showing history.
 - Future work: dedicated access/parking/showing-instruction fields on PropertyListing and a stronger preselected New Lead flow from property pages.
+
+## Listing Type Foundation - 2026-05-19
+
+- Added a lightweight PropertyListing listingType field for rental, sale, and flexible inventory records.
+- Add/Edit Property Listing forms now include Listing Type and adjust the price label between Monthly rent, Asking price, and Price.
+- Properties inventory cards and Property Detail Command Center show listing type badges and type-aware price formatting.
+- Properties inventory now includes a compact Listing type filter.
+- Property-first scheduling, attached renters, decisions, route activity, and follow-up workflows continue to use the same property records for rental and sale listings.
+- Needs QA: create rental, sale, and flexible listings; verify price wording on inventory, property detail, quick view, New Lead, and schedule flows; attach and schedule a sale property for a lead.
+- Future work: add a Workflow Settings default for new property listing type if users need sale-first or mixed workflows.
+- Do not build yet: full sales transaction workflow, offer/contract stages, inspections, mortgage, closing, commissions, MLS/Zillow integrations, or first-class Showing/TourStop.

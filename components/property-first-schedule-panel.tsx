@@ -125,7 +125,7 @@ export function PropertyFirstSchedulePanel({
             <p className="text-sm font-semibold text-ink">{listing.title}</p>
             <p className="mt-1 text-sm leading-6 text-slate-600">{listing.address}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="app-chip">{formatPropertyListingPrice(listing.price)}</span>
+              <span className="app-chip">{formatPropertyListingPrice(listing.price, listing.listingType)}</span>
               <span className="app-chip">{getPropertyListingLayout(listing)}</span>
               {listing.neighborhood ? <span className="app-chip">{listing.neighborhood}</span> : null}
             </div>

@@ -11,15 +11,19 @@ import { fieldMaxLengths, getMaxLengthError, getNumericError, sanitizeNumericInp
 import { getSourceLabel, leadSourceOptions } from "@/lib/lead-utils";
 import {
   findDuplicatePropertyListing,
+  getPropertyListingPriceLabel,
   getPropertyListingStatusLabel,
+  getPropertyListingTypeLabel,
+  propertyListingTypeOptions,
   propertyListingStatusOptions
 } from "@/lib/property-listing-utils";
 import type { PropertyWorkflowDraft } from "@/lib/property-workflow";
-import type { PropertyListing } from "@/lib/types";
+import type { PropertyListing, PropertyListingType } from "@/lib/types";
 
 type ListingField =
   | "title"
   | "address"
+  | "listingType"
   | "price"
   | "beds"
   | "baths"
@@ -36,6 +40,7 @@ type TouchedFields = Partial<Record<ListingField, boolean>>;
 const listingFieldNames: ListingField[] = [
   "title",
   "address",
+  "listingType",
   "price",
   "beds",
   "baths",
@@ -50,6 +55,7 @@ function getInitialValues(): ListingValues {
   return {
     title: "",
     address: "",
+    listingType: "rental",
     price: "",
     beds: "",
     baths: "",
@@ -69,6 +75,8 @@ function getFieldError(fieldName: ListingField, value: string) {
       return (!value.trim() ? "Address is required." : "") || getMaxLengthError(value, fieldMaxLengths.address);
     case "price":
       return getNumericError(value) || getMaxLengthError(value, fieldMaxLengths.rent);
+    case "listingType":
+      return propertyListingTypeOptions.includes(value as PropertyListingType) ? "" : "Choose a valid listing type.";
     case "beds":
       return getNumericError(value, false) || getMaxLengthError(value, fieldMaxLengths.beds);
     case "baths":
@@ -204,6 +212,10 @@ export function PropertyListingCreateForm({
         if (!draft.listingTitle && !next.title.trim()) {
           next.title = draft.address;
         }
+      }
+
+      if (draft.listingType !== undefined) {
+        next.listingType = draft.listingType;
       }
 
       if (draft.rent !== undefined) {
@@ -377,13 +389,22 @@ export function PropertyListingCreateForm({
           <div className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             <TextInput
               id={makeFieldId(baseId, "price")}
-              label="Price"
+              label={getPropertyListingPriceLabel(values.listingType)}
               name="price"
               value={values.price}
               inputMode="decimal"
               maxLength={fieldMaxLengths.rent}
               helpText="Numbers only, like 2640 or 2640.50."
               error={getVisibleError("price")}
+              onChange={updateField}
+              onBlur={markTouched}
+            />
+            <ListingTypeSelect
+              id={makeFieldId(baseId, "listingType")}
+              label="Listing Type"
+              name="listingType"
+              value={values.listingType}
+              error={getVisibleError("listingType")}
               onChange={updateField}
               onBlur={markTouched}
             />
@@ -535,6 +556,55 @@ function TextInput({
       />
       <p id={helpId} className="text-xs text-slate-500">
         {helpText}
+      </p>
+      <FieldError id={errorId} message={error} />
+    </div>
+  );
+}
+
+function ListingTypeSelect({
+  id,
+  label,
+  name,
+  value,
+  error,
+  onChange,
+  onBlur
+}: {
+  id: string;
+  label: string;
+  name: ListingField;
+  value: string;
+  error?: string;
+  onChange: (fieldName: ListingField, value: string) => void;
+  onBlur: (fieldName: ListingField) => void;
+}) {
+  const helpId = `${id}-help`;
+  const errorId = `${id}-error`;
+
+  return (
+    <div className="flex min-w-0 flex-col gap-2">
+      <label htmlFor={id} className="text-sm font-medium text-slate-700">
+        {label}
+      </label>
+      <select
+        id={id}
+        name={name}
+        value={value}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${helpId} ${errorId}` : helpId}
+        onChange={(event) => onChange(name, event.target.value)}
+        onBlur={() => onBlur(name)}
+        className={`app-input bg-white text-ink ${error ? "border-rose-300 focus:border-rose-400 focus:ring-rose-100" : ""}`}
+      >
+        {propertyListingTypeOptions.map((listingType) => (
+          <option key={listingType} value={listingType}>
+            {getPropertyListingTypeLabel(listingType)}
+          </option>
+        ))}
+      </select>
+      <p id={helpId} className="text-xs text-slate-500">
+        Optional. Rental is the default.
       </p>
       <FieldError id={errorId} message={error} />
     </div>

@@ -1,8 +1,9 @@
-import type { LeadSource, PropertyListing } from "./types";
+import type { LeadSource, PropertyListing, PropertyListingType } from "./types";
 
 export type PropertyWorkflowDraft = {
   listingTitle?: string;
   address?: string;
+  listingType?: PropertyListingType;
   rent?: string;
   beds?: string;
   baths?: string;
@@ -47,6 +48,7 @@ export function propertyListingToWorkflowDraft(listing: PropertyListing): Proper
   return {
     listingTitle: listing.title,
     address: listing.address,
+    listingType: listing.listingType,
     rent: listing.price,
     beds: listing.beds,
     baths: listing.baths,

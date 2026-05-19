@@ -24,6 +24,10 @@ import {
   isActivePropertyInterest,
   isRejectedPropertyInterest
 } from "@/lib/property-interest-utils";
+import {
+  normalizePropertyListingAddress,
+  normalizePropertyListingUrl
+} from "@/lib/property-listing-utils";
 import { getPropertyListings } from "@/lib/property-listings";
 import { getCommunicationWorkspace, getLeadById } from "@/lib/storage";
 import { getWorkflowSettingsForUser } from "@/lib/workflow-settings";
@@ -277,6 +281,7 @@ export default async function LeadDetailsPage({
                           lead={lead}
                           leadId={lead.id}
                           propertyInterest={propertyInterest}
+                          listingType={getMatchedPropertyListingType(propertyInterest, propertyListings)}
                           decisionStatuses={workflowSettings.decisionStatuses}
                           isTopRated={topRatedProperty?.id === propertyInterest.id}
                           isPreviewReadonly={isPreviewReadonly}
@@ -301,6 +306,7 @@ export default async function LeadDetailsPage({
                           lead={lead}
                           leadId={lead.id}
                           propertyInterest={propertyInterest}
+                          listingType={getMatchedPropertyListingType(propertyInterest, propertyListings)}
                           decisionStatuses={workflowSettings.decisionStatuses}
                           isPreviewReadonly={isPreviewReadonly}
                         />
@@ -402,4 +408,34 @@ function LeadWorkflowJumpBar() {
       </div>
     </nav>
   );
+}
+
+function getMatchedPropertyListingType(
+  propertyInterest: {
+    address: string;
+    listingUrl: string;
+    listingTitle: string;
+  },
+  propertyListings: Array<{
+    address: string;
+    listingUrl: string;
+    title: string;
+    listingType: string;
+  }>
+) {
+  const interestAddress = normalizePropertyListingAddress(propertyInterest.address);
+  const interestUrl = normalizePropertyListingUrl(propertyInterest.listingUrl);
+  const interestTitle = propertyInterest.listingTitle.trim().toLowerCase();
+  const match = propertyListings.find((listing) => {
+    const listingAddress = normalizePropertyListingAddress(listing.address);
+    const listingUrl = normalizePropertyListingUrl(listing.listingUrl);
+
+    return (
+      (interestAddress && listingAddress && interestAddress === listingAddress) ||
+      (interestUrl && listingUrl && interestUrl === listingUrl) ||
+      (interestTitle && listing.title.trim().toLowerCase() === interestTitle)
+    );
+  });
+
+  return match?.listingType || "";
 }

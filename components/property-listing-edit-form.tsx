@@ -1,12 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { InlineSpinner } from "@/components/inline-spinner";
 import { updatePropertyListing } from "@/lib/actions";
 import { fieldMaxLengths } from "@/lib/form-validation";
 import { getSourceLabel, leadSourceOptions } from "@/lib/lead-utils";
 import {
+  getPropertyListingPriceLabel,
   getPropertyListingStatusLabel,
+  getPropertyListingTypeLabel,
+  normalizePropertyListingType,
+  propertyListingTypeOptions,
   propertyListingStatusOptions
 } from "@/lib/property-listing-utils";
 import type { PropertyListing } from "@/lib/types";
@@ -22,6 +27,8 @@ export function PropertyListingEditForm({
   redirectTo?: string;
   buttonLabel?: string;
 }) {
+  const [listingType, setListingType] = useState(() => normalizePropertyListingType(listing.listingType));
+
   return (
     <form action={updatePropertyListing} className="mt-4 grid gap-4">
       <input type="hidden" name="id" value={listing.id} />
@@ -45,7 +52,22 @@ export function PropertyListingEditForm({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <EditField label="Price" name="price" defaultValue={listing.price} inputMode="decimal" maxLength={fieldMaxLengths.rent} />
+        <label className="flex min-w-0 flex-col gap-2">
+          <span className="text-sm font-medium text-slate-700">Listing Type</span>
+          <select
+            name="listingType"
+            value={listingType}
+            onChange={(event) => setListingType(normalizePropertyListingType(event.target.value))}
+            className="app-input bg-white text-ink"
+          >
+            {propertyListingTypeOptions.map((option) => (
+              <option key={option} value={option}>
+                {getPropertyListingTypeLabel(option)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <EditField label={getPropertyListingPriceLabel(listingType)} name="price" defaultValue={listing.price} inputMode="decimal" maxLength={fieldMaxLengths.rent} />
         <EditField label="Beds" name="beds" defaultValue={listing.beds} inputMode="numeric" maxLength={fieldMaxLengths.beds} />
         <EditField label="Baths" name="baths" defaultValue={listing.baths} inputMode="decimal" maxLength={fieldMaxLengths.baths} />
         <EditField label="Neighborhood" name="neighborhood" defaultValue={listing.neighborhood} maxLength={fieldMaxLengths.neighborhood} />
