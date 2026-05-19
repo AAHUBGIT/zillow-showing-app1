@@ -26,6 +26,7 @@ import {
 } from "@/lib/property-interest-utils";
 import { getPropertyListings } from "@/lib/property-listings";
 import { getCommunicationWorkspace, getLeadById } from "@/lib/storage";
+import { getWorkflowSettingsForUser } from "@/lib/workflow-settings";
 
 export default async function LeadDetailsPage({
   params
@@ -43,6 +44,7 @@ export default async function LeadDetailsPage({
     notFound();
   }
 
+  const workflowSettings = await getWorkflowSettingsForUser(lead.userId);
   const calendarUrl = buildGoogleCalendarUrl(lead);
   const isPreviewReadonly = isPreviewReadonlyMode();
   const activeProperties = lead.propertyInterests.filter(isActivePropertyInterest);
@@ -106,6 +108,7 @@ export default async function LeadDetailsPage({
               <FollowUpQueueActions
                 lead={lead}
                 redirectTo={`/leads/${lead.id}#follow-up`}
+                defaultNextFollowUpOption={workflowSettings.defaultFollowUpOption}
                 isPreviewReadonly={isPreviewReadonly}
                 variant="panel"
               />
@@ -211,7 +214,11 @@ export default async function LeadDetailsPage({
               </div>
             ) : (
               <div className="mt-5 space-y-5">
-                <PropertyDecisionTracker lead={lead} propertyInterests={lead.propertyInterests} />
+                <PropertyDecisionTracker
+                  lead={lead}
+                  propertyInterests={lead.propertyInterests}
+                  decisionStatuses={workflowSettings.decisionStatuses}
+                />
 
                 {topRatedProperty ? (
                   <div className="rounded-4xl border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.98),rgba(255,255,255,0.96))] p-5 shadow-soft">
@@ -244,7 +251,11 @@ export default async function LeadDetailsPage({
                       </div>
                       <div className="app-chip">Scroll sideways on mobile</div>
                     </div>
-                    <PropertyComparisonTable lead={lead} propertyInterests={comparisonProperties} />
+                    <PropertyComparisonTable
+                      lead={lead}
+                      propertyInterests={comparisonProperties}
+                      decisionStatuses={workflowSettings.decisionStatuses}
+                    />
                   </div>
                 ) : null}
 
@@ -266,6 +277,7 @@ export default async function LeadDetailsPage({
                           lead={lead}
                           leadId={lead.id}
                           propertyInterest={propertyInterest}
+                          decisionStatuses={workflowSettings.decisionStatuses}
                           isTopRated={topRatedProperty?.id === propertyInterest.id}
                           isPreviewReadonly={isPreviewReadonly}
                         />
@@ -289,6 +301,7 @@ export default async function LeadDetailsPage({
                           lead={lead}
                           leadId={lead.id}
                           propertyInterest={propertyInterest}
+                          decisionStatuses={workflowSettings.decisionStatuses}
                           isPreviewReadonly={isPreviewReadonly}
                         />
                       ))}
@@ -304,7 +317,7 @@ export default async function LeadDetailsPage({
           </div>
 
           <div id="smart-assist" className="scroll-mt-28">
-            <LeadAiInsights lead={lead} />
+            <LeadAiInsights lead={lead} decisionStatuses={workflowSettings.decisionStatuses} />
           </div>
 
           <div id="communication" className="scroll-mt-28">

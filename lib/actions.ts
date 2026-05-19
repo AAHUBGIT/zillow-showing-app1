@@ -27,10 +27,12 @@ import {
 } from "./property-listing-utils";
 import { getPropertyListingByIdForUser, getPropertyListingsForUser } from "./property-listings";
 import {
+  defaultPropertyDecisionStatuses,
   getDecisionStatusLabel,
   getDecisionStatusOptions,
   isDefaultDecisionStatus,
-  normalizeDecisionStatus
+  normalizeDecisionStatus,
+  type PropertyDecisionStatusConfig
 } from "./property-decision-statuses";
 import { propertyInterestStatusOptions } from "./property-interest-utils";
 import { isRouteReadyLead, sortRouteStops } from "./route-planner";
@@ -57,6 +59,15 @@ import {
   ShowingOutcome,
   ShowingStatus
 } from "./types";
+import {
+  buildDecisionStatusConfig,
+  createStatusSlug,
+  followUpDefaultOptions,
+  getWorkflowSettingsForUser,
+  serializeDecisionStatuses,
+  workflowDensityOptions,
+  workflowLandingPageOptions
+} from "./workflow-settings";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -154,10 +165,13 @@ function getPropertyInterestStatus(formData: FormData) {
   return propertyInterestStatusOptions.includes(value) ? value : "interested";
 }
 
-function getPropertyDecisionStatus(formData: FormData) {
+function getPropertyDecisionStatus(
+  formData: FormData,
+  decisionStatuses?: PropertyDecisionStatusConfig[]
+) {
   const rawValue = getString(formData, "decisionStatus");
-  const value = normalizeDecisionStatus(rawValue);
-  return rawValue && isDefaultDecisionStatus(value) ? value : "";
+  const value = normalizeDecisionStatus(rawValue, decisionStatuses);
+  return rawValue && isDefaultDecisionStatus(value, decisionStatuses) ? value : "";
 }
 
 function normalizeCommunicationChannel(value: string) {
@@ -448,6 +462,126 @@ export async function loginUser(formData: FormData) {
 export async function logoutUser() {
   await clearSessionCookie();
   redirect(withToast("/login", "logout-success"));
+}
+
+export async function saveWorkflowSettings(formData: FormData) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  if (!canUseDatabase()) {
+    redirect(
+      withToast("/settings", isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable")
+    );
+  }
+
+  const values = formData.getAll("statusValue").map((value) => String(value).trim());
+  const labels = formData.getAll("statusLabel").map((value) => String(value).trim());
+  const tones = formData.getAll("statusTone").map((value) => String(value).trim());
+  const orders = formData.getAll("statusOrder").map((value) => Number(String(value).trim()));
+  const terminalFlags = formData.getAll("statusTerminal").map((value) => String(value).trim());
+  const applyingFlags = formData.getAll("statusApplying").map((value) => String(value).trim());
+  const activeValues = new Set(formData.getAll("statusActive").map((value) => String(value).trim()));
+
+  if (values.length === 0 || values.length !== labels.length || values.length !== tones.length) {
+    redirectValidation("/settings");
+  }
+
+  const seenValues = new Set<string>();
+  const seenLabels = new Set<string>();
+  const defaultConfigMap = new Map(
+    defaultPropertyDecisionStatuses.map((status) => [status.value, status])
+  );
+  const decisionStatuses: PropertyDecisionStatusConfig[] = [];
+
+  for (const [index, value] of values.entries()) {
+    const label = labels[index];
+    const normalizedLabel = label.toLowerCase();
+    const order = Number.isFinite(orders[index]) ? orders[index] : (index + 1) * 10;
+    const defaultConfig = defaultConfigMap.get(value as PropertyInterestStatus);
+
+    if (
+      !value ||
+      !label ||
+      !/^[a-z0-9_]{2,60}$/.test(value) ||
+      createStatusSlug(label).length < 2 ||
+      seenValues.has(value) ||
+      seenLabels.has(normalizedLabel)
+    ) {
+      redirectValidation("/settings");
+    }
+
+    seenValues.add(value);
+    seenLabels.add(normalizedLabel);
+    decisionStatuses.push(
+      buildDecisionStatusConfig({
+        value,
+        label,
+        tone: tones[index],
+        order,
+        isActive: activeValues.has(value),
+        defaultConfig: {
+          ...(defaultConfig || defaultPropertyDecisionStatuses[0]),
+          isTerminal: defaultConfig?.isTerminal || terminalFlags[index] === "true",
+          isApplying: defaultConfig?.isApplying || applyingFlags[index] === "true"
+        } as PropertyDecisionStatusConfig | undefined
+      })
+    );
+  }
+
+  if (!decisionStatuses.some((status) => status.isActive)) {
+    redirectValidation("/settings");
+  }
+
+  const defaultFollowUpOption = getString(formData, "defaultFollowUpOption");
+  const defaultDensity = getString(formData, "defaultDensity");
+  const defaultLandingPage = getString(formData, "defaultLandingPage");
+
+  if (
+    !followUpDefaultOptions.some((option) => option.value === defaultFollowUpOption) ||
+    !workflowDensityOptions.some((option) => option.value === defaultDensity) ||
+    !workflowLandingPageOptions.some((option) => option.value === defaultLandingPage)
+  ) {
+    redirectValidation("/settings");
+  }
+
+  const prisma = getPrismaClient();
+  const now = new Date().toISOString();
+
+  try {
+    await prisma.workflowSettings.upsert({
+      where: { userId: sessionUser.id },
+      update: {
+        decisionStatusesJson: serializeDecisionStatuses(decisionStatuses),
+        defaultFollowUpOption,
+        defaultDensity,
+        defaultLandingPage,
+        hideLeadCaptureBeta: getBoolean(formData, "hideLeadCaptureBeta"),
+        updatedAt: now
+      },
+      create: {
+        id: crypto.randomUUID(),
+        userId: sessionUser.id,
+        decisionStatusesJson: serializeDecisionStatuses(decisionStatuses),
+        defaultFollowUpOption,
+        defaultDensity,
+        defaultLandingPage,
+        hideLeadCaptureBeta: getBoolean(formData, "hideLeadCaptureBeta"),
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+  } catch (error) {
+    redirectSaveError("/settings", error);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/today");
+  revalidatePath("/properties");
+  revalidatePath("/settings");
+  redirect(withToast("/settings", "workflow-settings-saved"));
 }
 
 export async function createLead(formData: FormData) {
@@ -2376,7 +2510,6 @@ export async function updatePropertyDecision(formData: FormData) {
   const sessionUser = await getSessionUser();
   const leadId = getString(formData, "leadId");
   const propertyInterestId = getString(formData, "propertyInterestId");
-  const decisionStatus = getPropertyDecisionStatus(formData);
   const reason = getString(formData, "decisionReason");
   const note = getString(formData, "decisionNote");
   const fallbackRedirect = `/leads/${leadId}`;
@@ -2390,9 +2523,12 @@ export async function updatePropertyDecision(formData: FormData) {
     redirect(withToast(redirectTo, isPreviewReadonlyMode() ? "preview-readonly" : "database-unavailable"));
   }
 
+  const workflowSettings = await getWorkflowSettingsForUser(sessionUser.id);
+  const decisionStatus = getPropertyDecisionStatus(formData, workflowSettings.decisionStatuses);
+
   if (
     !decisionStatus ||
-    !getDecisionStatusOptions().some((status) => status.value === decisionStatus) ||
+    !getDecisionStatusOptions(workflowSettings.decisionStatuses).some((status) => status.value === decisionStatus) ||
     getMaxLengthError(reason, fieldMaxLengths.communicationOutcome) ||
     getMaxLengthError(note, fieldMaxLengths.agentNotes)
   ) {
@@ -2418,7 +2554,7 @@ export async function updatePropertyDecision(formData: FormData) {
   }
 
   const updatedAt = new Date().toISOString();
-  const statusLabel = getDecisionStatusLabel(decisionStatus);
+  const statusLabel = getDecisionStatusLabel(decisionStatus, workflowSettings.decisionStatuses);
   const propertyTitle = propertyInterest.listingTitle || propertyInterest.address;
   const decisionNote = buildPropertyDecisionNote({
     statusLabel,

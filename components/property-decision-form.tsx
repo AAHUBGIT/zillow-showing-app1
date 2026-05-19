@@ -11,7 +11,8 @@ import {
   getDecisionStatusLabel,
   getDecisionStatusOptions,
   isDefaultDecisionStatus,
-  normalizeDecisionStatus
+  normalizeDecisionStatus,
+  type PropertyDecisionStatusConfig
 } from "@/lib/property-decision-statuses";
 import type { PropertyInterest, PropertyInterestStatus } from "@/lib/types";
 
@@ -48,15 +49,20 @@ export function PropertyDecisionForm({
   leadId,
   propertyInterest,
   redirectTo,
+  decisionStatuses,
   isPreviewReadonly = false
 }: {
   leadId: string;
   propertyInterest: PropertyInterest;
   redirectTo: string;
+  decisionStatuses?: PropertyDecisionStatusConfig[];
   isPreviewReadonly?: boolean;
 }) {
-  const currentStatus = normalizeDecisionStatus(propertyInterest.status);
-  const initialSelectedStatus = isDefaultDecisionStatus(currentStatus) ? currentStatus : "interested";
+  const currentStatus = normalizeDecisionStatus(propertyInterest.status, decisionStatuses);
+  const options = getDecisionStatusOptions(decisionStatuses);
+  const initialSelectedStatus = isDefaultDecisionStatus(currentStatus, decisionStatuses)
+    ? currentStatus
+    : options[0]?.value || "interested";
   const [isOpen, setIsOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<PropertyInterestStatus>(initialSelectedStatus);
   const reasonOptions = useMemo(
@@ -67,7 +73,7 @@ export function PropertyDecisionForm({
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <PropertyInterestStatusBadge status={currentStatus} />
+        <PropertyInterestStatusBadge status={currentStatus} decisionStatuses={decisionStatuses} />
         <TooltipShell
           disabled={isPreviewReadonly}
           message="This preview workspace is read-only. Use a live workspace to update property decisions."
@@ -126,7 +132,7 @@ export function PropertyDecisionForm({
                   onChange={(event) => setSelectedStatus(event.target.value as PropertyInterestStatus)}
                   className="app-input"
                 >
-                  {getDecisionStatusOptions().map((status) => (
+                  {options.map((status) => (
                     <option key={status.value} value={status.value}>
                       {status.label}
                     </option>
@@ -155,7 +161,7 @@ export function PropertyDecisionForm({
                   rows={4}
                   maxLength={fieldMaxLengths.agentNotes}
                   className="app-input min-h-[120px] resize-y"
-                  placeholder={`What changed about ${getDecisionStatusLabel(selectedStatus).toLowerCase()}?`}
+                  placeholder={`What changed about ${getDecisionStatusLabel(selectedStatus, decisionStatuses).toLowerCase()}?`}
                 />
               </label>
 

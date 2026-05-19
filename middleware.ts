@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const protectedPaths = ["/", "/today", "/routes", "/properties", "/lead-capture", "/import", "/leads"];
+const protectedPaths = ["/", "/today", "/routes", "/properties", "/settings", "/lead-capture", "/import", "/leads"];
 // Inbound email is intentionally public because providers cannot hold a user session;
 // the route enforces its own webhook secret.
 const publicApiPaths = ["/api/inbound-email"];

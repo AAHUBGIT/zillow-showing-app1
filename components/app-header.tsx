@@ -7,8 +7,9 @@ import { InlineSpinner } from "@/components/inline-spinner";
 import { LoadingLink } from "@/components/loading-link";
 import { logoutUser } from "@/lib/actions";
 import { SessionUser } from "@/lib/auth";
+import type { WorkflowDefaultDensity } from "@/lib/workflow-settings";
 
-type WorkflowDensity = "compact" | "comfortable";
+type WorkflowDensity = WorkflowDefaultDensity;
 
 const navItems = [
   { href: "/today", label: "Today", description: "Daily work queue" },
@@ -22,14 +23,16 @@ const workflowDensityStorageKey = "showings-crm:workflow-density";
 
 export function AppHeader({
   isPreviewReadonly = false,
-  sessionUser
+  sessionUser,
+  defaultDensity = "compact"
 }: {
   isPreviewReadonly?: boolean;
   sessionUser: SessionUser | null;
+  defaultDensity?: WorkflowDensity;
 }) {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [workflowDensity, setWorkflowDensity] = useState<WorkflowDensity>("compact");
+  const [workflowDensity, setWorkflowDensity] = useState<WorkflowDensity>(defaultDensity);
   const isLoginPage = pathname === "/login";
   const showWorkspaceHero = false;
 
@@ -56,8 +59,10 @@ export function AppHeader({
 
     if (storedDensity === "comfortable" || storedDensity === "compact") {
       setWorkflowDensity(storedDensity);
+    } else {
+      setWorkflowDensity(defaultDensity);
     }
-  }, []);
+  }, [defaultDensity]);
 
   useEffect(() => {
     document.documentElement.dataset.workflowDensity = workflowDensity;
@@ -186,6 +191,17 @@ export function AppHeader({
           </div>
 
           <div className="mt-auto space-y-2 border-t border-line/80 pt-4">
+            <LoadingLink
+              href="/settings"
+              aria-current={isActive("/settings") ? "page" : undefined}
+              className={`flex w-full items-center rounded-2xl px-3 py-2.5 text-sm font-semibold transition ${
+                isActive("/settings")
+                  ? "bg-accentSoft text-accent"
+                  : "text-slate-600 hover:bg-accentSoft hover:text-accent"
+              }`}
+            >
+              Settings
+            </LoadingLink>
             <LoadingLink href="/leads/new" className="app-button-primary w-full px-4 py-2.5">
               Add Lead
             </LoadingLink>
@@ -238,6 +254,19 @@ export function AppHeader({
                   {item.label}
                 </LoadingLink>
               ))}
+              {sessionUser ? (
+                <LoadingLink
+                  href="/settings"
+                  aria-current={isActive("/settings") ? "page" : undefined}
+                  className={`rounded-full px-4 py-2 text-sm font-medium shadow-sm transition ${
+                    isActive("/settings")
+                      ? "border border-transparent bg-[linear-gradient(135deg,#0f172a,#2563eb)] text-white"
+                      : "border border-slate-200/90 bg-white/95 text-slate-700 hover:border-accent hover:text-accent"
+                  }`}
+                >
+                  Settings
+                </LoadingLink>
+              ) : null}
             </nav>
 
             {sessionUser ? (

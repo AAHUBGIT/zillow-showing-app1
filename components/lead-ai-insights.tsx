@@ -4,9 +4,16 @@ import { PropertyInterestStatusBadge } from "@/components/property-interest-stat
 import { PropertyRatingStars } from "@/components/property-rating-stars";
 import { getLeadAiInsights } from "@/lib/ai-insights";
 import { buildEmailHref, buildTextHref } from "@/lib/contact-actions";
+import type { PropertyDecisionStatusConfig } from "@/lib/property-decision-statuses";
 import { LeadWithProperties } from "@/lib/types";
 
-export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
+export function LeadAiInsights({
+  lead,
+  decisionStatuses
+}: {
+  lead: LeadWithProperties;
+  decisionStatuses?: PropertyDecisionStatusConfig[];
+}) {
   const insights = getLeadAiInsights(lead);
   const phone = lead.phone.trim();
   const email = lead.email.trim();
@@ -127,7 +134,10 @@ export function LeadAiInsights({ lead }: { lead: LeadWithProperties }) {
                 <p className="text-base font-semibold tracking-tight text-ink">
                   {insights.recommendedProperty.property.listingTitle}
                 </p>
-                <PropertyInterestStatusBadge status={insights.recommendedProperty.property.status} />
+                <PropertyInterestStatusBadge
+                  status={insights.recommendedProperty.property.status}
+                  decisionStatuses={decisionStatuses}
+                />
               </div>
               <p className="mt-2 text-sm text-slate-600">
                 {insights.recommendedProperty.property.address}

@@ -11,7 +11,8 @@ import { getSourceLabel } from "@/lib/lead-utils";
 import {
   getAllDecisionStatusOptions,
   isDecisionStatusTerminal,
-  normalizeDecisionStatus
+  normalizeDecisionStatus,
+  type PropertyDecisionStatusConfig
 } from "@/lib/property-decision-statuses";
 import { buildGoogleMapsSearchLink } from "@/lib/property-interest-utils";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@/lib/property-listing-utils";
 import { getPropertyListingByIdForUser } from "@/lib/property-listings";
 import { getLeads } from "@/lib/storage";
+import { getWorkflowSettingsForUser } from "@/lib/workflow-settings";
 import type { LeadSource, LeadWithProperties, PropertyInterest, PropertyListing } from "@/lib/types";
 
 type RelatedInterest = {
@@ -117,13 +119,17 @@ function getUniqueLeadCount(relatedInterests: RelatedInterest[], showingRows: Sh
   ]).size;
 }
 
-function groupRelatedInterestsByDecisionStatus(relatedInterests: RelatedInterest[]) {
-  return getAllDecisionStatusOptions()
+function groupRelatedInterestsByDecisionStatus(
+  relatedInterests: RelatedInterest[],
+  decisionStatuses?: PropertyDecisionStatusConfig[]
+) {
+  return getAllDecisionStatusOptions(decisionStatuses)
     .sort((first, second) => first.order - second.order)
     .map((config) => ({
       config,
       relatedInterests: relatedInterests.filter(
-        ({ propertyInterest }) => normalizeDecisionStatus(propertyInterest.status) === config.value
+        ({ propertyInterest }) =>
+          normalizeDecisionStatus(propertyInterest.status, decisionStatuses) === config.value
       )
     }))
     .filter((group) => group.relatedInterests.length > 0);
@@ -141,9 +147,10 @@ export default async function PropertyListingDetailPage({
     redirect("/login");
   }
 
-  const [listing, leads] = await Promise.all([
+  const [listing, leads, workflowSettings] = await Promise.all([
     getPropertyListingByIdForUser(sessionUser.id, id),
-    getLeads()
+    getLeads(),
+    getWorkflowSettingsForUser(sessionUser.id)
   ]);
 
   if (!listing) {
@@ -155,9 +162,12 @@ export default async function PropertyListingDetailPage({
   const uniqueLeadCount = getUniqueLeadCount(relatedInterests, showingRows);
   const isPreviewReadonly = isPreviewReadonlyMode();
   const activeInterestCount = relatedInterests.filter(
-    ({ propertyInterest }) => !isDecisionStatusTerminal(propertyInterest.status)
+    ({ propertyInterest }) => !isDecisionStatusTerminal(propertyInterest.status, workflowSettings.decisionStatuses)
   ).length;
-  const relatedInterestGroups = groupRelatedInterestsByDecisionStatus(relatedInterests);
+  const relatedInterestGroups = groupRelatedInterestsByDecisionStatus(
+    relatedInterests,
+    workflowSettings.decisionStatuses
+  );
 
   return (
     <main className="space-y-6">
@@ -306,7 +316,10 @@ export default async function PropertyListingDetailPage({
             {relatedInterestGroups.map((group) => (
               <div key={group.config.value} className="rounded-3xl border border-line/80 bg-slate-50/80 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <PropertyInterestStatusBadge status={group.config.value} />
+                  <PropertyInterestStatusBadge
+                    status={group.config.value}
+                    decisionStatuses={workflowSettings.decisionStatuses}
+                  />
                   <span className="app-chip">
                     {group.relatedInterests.length} {group.relatedInterests.length === 1 ? "renter" : "renters"}
                   </span>

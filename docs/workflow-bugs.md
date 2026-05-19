@@ -204,3 +204,12 @@ These were reported by QA and have been addressed in code, but should remain on 
 - Why it matters: The page and API foundation exist, but no real inbound provider is connected.
 - Current limitation: It should not be sold or presented as automatic capture until Postmark/SendGrid/Mailgun routing is configured and QA-tested.
 - Recommended future fix: Keep it hidden or positioned as beta until the provider webhook, auth secret, dedupe behavior, and low-confidence review queue are proven.
+
+## Workflow Settings Foundation - 2026-05-19
+
+- Added a persisted Workflow Settings foundation with decision-status customization, follow-up defaults, app preferences, and beta feature visibility.
+- Property decision statuses can now be renamed, reordered, hidden, reset to defaults, and extended with custom statuses while keeping stable saved status values.
+- Decision Tracker, property decision dropdowns, and Property Detail renter grouping now read saved workflow settings when available and fall back to defaults if settings are missing or invalid.
+- Follow-up dialogs can use the saved default follow-up timing.
+- Needs QA: rename "Maybe" to "Still thinking," hide "Backup," add "Tour again," save, confirm lead/property pages use the updated labels/order, then reset defaults.
+- Future work: deeper account settings, team-level settings, default landing redirect behavior, and first-class Showing model settings after the data model is upgraded.

@@ -3,16 +3,19 @@ import { PropertyInterestStatusBadge } from "@/components/property-interest-stat
 import { getPropertyPreferenceFit } from "@/lib/client-preferences";
 import {
   groupPropertyInterestsByDecisionStatus,
-  isDecisionStatusTerminal
+  isDecisionStatusTerminal,
+  type PropertyDecisionStatusConfig
 } from "@/lib/property-decision-statuses";
 import type { LeadWithProperties, PropertyInterest } from "@/lib/types";
 
 export function PropertyDecisionTracker({
   lead,
-  propertyInterests
+  propertyInterests,
+  decisionStatuses
 }: {
   lead: LeadWithProperties;
   propertyInterests: PropertyInterest[];
+  decisionStatuses?: PropertyDecisionStatusConfig[];
 }) {
   if (propertyInterests.length === 0) {
     return (
@@ -28,7 +31,7 @@ export function PropertyDecisionTracker({
   }
 
   const scoredProperties = propertyInterests
-    .filter((propertyInterest) => !isDecisionStatusTerminal(propertyInterest.status))
+    .filter((propertyInterest) => !isDecisionStatusTerminal(propertyInterest.status, decisionStatuses))
     .map((propertyInterest) => ({
       propertyInterest,
       fit: getPropertyPreferenceFit(propertyInterest, lead)
@@ -41,7 +44,7 @@ export function PropertyDecisionTracker({
       return second.propertyInterest.rating - first.propertyInterest.rating;
     });
   const bestFitId = scoredProperties[0]?.propertyInterest.id || "";
-  const groups = groupPropertyInterestsByDecisionStatus(propertyInterests).filter(
+  const groups = groupPropertyInterestsByDecisionStatus(propertyInterests, decisionStatuses).filter(
     (group) => group.interests.length > 0
   );
 
@@ -72,7 +75,10 @@ export function PropertyDecisionTracker({
           >
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                <PropertyInterestStatusBadge status={group.config.value} />
+                <PropertyInterestStatusBadge
+                  status={group.config.value}
+                  decisionStatuses={decisionStatuses}
+                />
                 <span className="text-sm font-semibold text-ink">
                   {group.interests.length} {group.interests.length === 1 ? "property" : "properties"}
                 </span>

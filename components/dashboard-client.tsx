@@ -17,7 +17,9 @@ import {
   leadSourceOptions,
   leadStatusOptions
 } from "@/lib/lead-utils";
+import type { PropertyDecisionStatusConfig } from "@/lib/property-decision-statuses";
 import { FollowUpState, LeadPriority, LeadSource, LeadStatus, LeadWithProperties } from "@/lib/types";
+import type { FollowUpDefaultOption } from "@/lib/workflow-settings";
 
 type StatusFilter = "all" | LeadStatus;
 type PriorityFilter = "all" | LeadPriority;
@@ -27,9 +29,13 @@ type StatQuickFilter = "all" | "scheduled" | "closed" | "overdue" | "highPriorit
 
 export function DashboardClient({
   leads,
+  defaultNextFollowUpOption = "tomorrow",
+  decisionStatuses,
   isPreviewReadonly = false
 }: {
   leads: LeadWithProperties[];
+  defaultNextFollowUpOption?: FollowUpDefaultOption;
+  decisionStatuses?: PropertyDecisionStatusConfig[];
   isPreviewReadonly?: boolean;
 }) {
   const [search, setSearch] = useState("");
@@ -437,7 +443,13 @@ export function DashboardClient({
 
                   <div className="grid gap-4 xl:grid-cols-2">
                     {filteredLeads.map((lead) => (
-                      <LeadCard key={lead.id} lead={lead} isPreviewReadonly={isPreviewReadonly} />
+                      <LeadCard
+                        key={lead.id}
+                        lead={lead}
+                        defaultNextFollowUpOption={defaultNextFollowUpOption}
+                        decisionStatuses={decisionStatuses}
+                        isPreviewReadonly={isPreviewReadonly}
+                      />
                     ))}
                   </div>
                 </>

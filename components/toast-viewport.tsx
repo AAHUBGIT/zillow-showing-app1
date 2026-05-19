@@ -41,6 +41,7 @@ const toastMessages: Record<string, string> = {
   "activity-logged": "Activity logged.",
   "message-copied": "Message copied",
   "template-saved": "Communication template saved.",
+  "workflow-settings-saved": "Workflow settings saved.",
   "login-success": "Logged in successfully.",
   "logout-success": "Logged out successfully.",
   "login-error": "That email or password did not match.",

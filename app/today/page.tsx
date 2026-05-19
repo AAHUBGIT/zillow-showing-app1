@@ -11,11 +11,13 @@ import { getBedroomBathroomLabel, getBudgetLabel, getPreScreenStatus } from "@/l
 import { getCommunicationChannelLabel } from "@/lib/communication";
 import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/contact-actions";
 import { formatDateLabel, formatDateTimeLabel, formatTimeForManualEntry } from "@/lib/date";
+import { getSessionUser } from "@/lib/auth";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
 import { getFollowUpActionLabels, getPrimaryFollowUpLabel } from "@/lib/follow-up-workflow";
 import { buildGoogleMapsSearchLink } from "@/lib/property-interest-utils";
 import { isRouteReadyLead, sortRouteStops } from "@/lib/route-planner";
 import { getEffectiveShowingStatus, isTerminalShowingStatus } from "@/lib/showing-lifecycle";
+import { getWorkflowSettingsForUser, type FollowUpDefaultOption } from "@/lib/workflow-settings";
 import { getLeads } from "@/lib/storage";
 import { LeadWithProperties } from "@/lib/types";
 
@@ -42,7 +44,8 @@ export default async function TodayPage({
 }: {
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
-  const leads = await getLeads();
+  const [leads, sessionUser] = await Promise.all([getLeads(), getSessionUser()]);
+  const workflowSettings = await getWorkflowSettingsForUser(sessionUser?.id);
   const today = getTodayIsoDate(appTimeZone);
   const selectedDate = getSelectedIsoDate(searchParams, today);
   const selectedDateLabel = formatDateLabel(selectedDate);
@@ -210,6 +213,7 @@ export default async function TodayPage({
             showFollowUpDate
             allowMarkFollowedUp
             isPreviewReadonly={isPreviewReadonly}
+            defaultNextFollowUpOption={workflowSettings.defaultFollowUpOption}
           />
         </CommandSection>
 
@@ -226,6 +230,7 @@ export default async function TodayPage({
             selectedDate={selectedDate}
             allowMarkFollowedUp
             isPreviewReadonly={isPreviewReadonly}
+            defaultNextFollowUpOption={workflowSettings.defaultFollowUpOption}
           />
         </CommandSection>
       </section>
@@ -428,13 +433,15 @@ function LeadList({
   selectedDate,
   showFollowUpDate = false,
   allowMarkFollowedUp = false,
-  isPreviewReadonly = false
+  isPreviewReadonly = false,
+  defaultNextFollowUpOption = "tomorrow"
 }: {
   leads: LeadWithProperties[];
   selectedDate: string;
   showFollowUpDate?: boolean;
   allowMarkFollowedUp?: boolean;
   isPreviewReadonly?: boolean;
+  defaultNextFollowUpOption?: FollowUpDefaultOption;
 }) {
   return (
     <div className="grid gap-2.5">
@@ -472,6 +479,7 @@ function LeadList({
                       <FollowUpQueueActions
                         lead={lead}
                         redirectTo={redirectTo}
+                        defaultNextFollowUpOption={defaultNextFollowUpOption}
                         isPreviewReadonly={isPreviewReadonly}
                         variant="queue"
                       />

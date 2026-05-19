@@ -5,19 +5,26 @@ import {
   getDecisionStatusOrder,
   getDecisionStatusTone,
   isDecisionStatusTerminal,
-  normalizeDecisionStatus
+  normalizeDecisionStatus,
+  type PropertyDecisionStatusConfig
 } from "./property-decision-statuses";
 
 export const propertyInterestStatusOptions: PropertyInterestStatus[] = getAllDecisionStatusOptions().map(
   (status) => status.value
 );
 
-export function getPropertyInterestStatusLabel(status: PropertyInterestStatus) {
-  return getDecisionStatusLabel(status);
+export function getPropertyInterestStatusLabel(
+  status: PropertyInterestStatus,
+  decisionStatuses?: PropertyDecisionStatusConfig[]
+) {
+  return getDecisionStatusLabel(status, decisionStatuses);
 }
 
-export function getPropertyInterestStatusTone(status: PropertyInterestStatus) {
-  return getDecisionStatusTone(status);
+export function getPropertyInterestStatusTone(
+  status: PropertyInterestStatus,
+  decisionStatuses?: PropertyDecisionStatusConfig[]
+) {
+  return getDecisionStatusTone(status, decisionStatuses);
 }
 
 export function normalizePropertyInterestStatus(status: string): PropertyInterestStatus {

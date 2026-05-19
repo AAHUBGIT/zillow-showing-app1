@@ -37,7 +37,8 @@ export type PropertyInterestStatus =
   | "backup"
   | "needs_second_look"
   | "approved"
-  | "closed";
+  | "closed"
+  | (string & {});
 export type PropertyListingStatus = "available" | "unavailable" | "unknown";
 export type CommunicationChannel = "call" | "text" | "email" | "note";
 export type CommunicationDirection = "outbound" | "inbound" | "internal";

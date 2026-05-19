@@ -160,3 +160,15 @@ model InboundEmail {
   @@index([inboxSlug, createdAt])
   @@index([parseStatus, createdAt])
 }
+
+model WorkflowSettings {
+  id                    String  @id
+  userId                String  @unique
+  decisionStatusesJson  String  @default("")
+  defaultFollowUpOption String  @default("tomorrow")
+  defaultDensity        String  @default("compact")
+  defaultLandingPage    String  @default("dashboard")
+  hideLeadCaptureBeta   Boolean @default(false)
+  createdAt             String
+  updatedAt             String
+}

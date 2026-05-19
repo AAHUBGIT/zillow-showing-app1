@@ -12,8 +12,10 @@ import { buildCallHref, buildLeadEmailHref, buildLeadTextHref } from "@/lib/cont
 import { formatDateLabel, formatDateTimeLabel } from "@/lib/date";
 import { getFollowUpActionLabels } from "@/lib/follow-up-workflow";
 import { getSourceLabel } from "@/lib/lead-utils";
+import type { PropertyDecisionStatusConfig } from "@/lib/property-decision-statuses";
 import { getPropertyInterestCountLabel, getPropertyInterestStatusLabel } from "@/lib/property-interest-utils";
 import { LeadWithProperties } from "@/lib/types";
+import type { FollowUpDefaultOption } from "@/lib/workflow-settings";
 import { FollowUpBadge } from "./follow-up-badge";
 import { LeadStatusForm } from "./lead-status-form";
 import { PriorityBadge } from "./priority-badge";
@@ -22,9 +24,13 @@ import { SourceBadge } from "./source-badge";
 
 export function LeadCard({
   lead,
+  defaultNextFollowUpOption = "tomorrow",
+  decisionStatuses,
   isPreviewReadonly = false
 }: {
   lead: LeadWithProperties;
+  defaultNextFollowUpOption?: FollowUpDefaultOption;
+  decisionStatuses?: PropertyDecisionStatusConfig[];
   isPreviewReadonly?: boolean;
 }) {
   const propertyCount = lead.propertyInterests.length;
@@ -62,7 +68,7 @@ export function LeadCard({
         <PriorityBadge priority={lead.priority} />
         <SourceBadge source={lead.source} />
         <FollowUpBadge nextFollowUpDate={lead.nextFollowUpDate} />
-        <PropertySummaryChip lead={lead} />
+        <PropertySummaryChip lead={lead} decisionStatuses={decisionStatuses} />
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -115,6 +121,7 @@ export function LeadCard({
               <FollowUpQueueActions
                 lead={lead}
                 redirectTo={pathname}
+                defaultNextFollowUpOption={defaultNextFollowUpOption}
                 isPreviewReadonly={isPreviewReadonly}
                 variant="card"
               />
@@ -147,7 +154,7 @@ export function LeadCard({
                 redirectTo={pathname}
                 isPreviewReadonly={isPreviewReadonly}
               />
-              <PropertySummaryCard lead={lead} />
+              <PropertySummaryCard lead={lead} decisionStatuses={decisionStatuses} />
               <InfoRow
                 label="Showing"
                 value={
@@ -189,18 +196,30 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PropertySummaryChip({ lead }: { lead: LeadWithProperties }) {
+function PropertySummaryChip({
+  lead,
+  decisionStatuses
+}: {
+  lead: LeadWithProperties;
+  decisionStatuses?: PropertyDecisionStatusConfig[];
+}) {
   const countLabel = getPropertyInterestCountLabel(lead.propertyInterests.length);
 
   return (
     <span className="group/property relative inline-flex" tabIndex={0}>
       <span className="app-chip cursor-help">{countLabel}</span>
-      <PropertySummaryTooltip lead={lead} />
+      <PropertySummaryTooltip lead={lead} decisionStatuses={decisionStatuses} />
     </span>
   );
 }
 
-function PropertySummaryCard({ lead }: { lead: LeadWithProperties }) {
+function PropertySummaryCard({
+  lead,
+  decisionStatuses
+}: {
+  lead: LeadWithProperties;
+  decisionStatuses?: PropertyDecisionStatusConfig[];
+}) {
   return (
     <div className="rounded-2xl border border-line/70 bg-white/80 px-4 py-3">
       <div className="flex items-start justify-between gap-3">
@@ -216,14 +235,20 @@ function PropertySummaryCard({ lead }: { lead: LeadWithProperties }) {
           <span className="rounded-full border border-line bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
             Summary
           </span>
-          <PropertySummaryTooltip lead={lead} />
+          <PropertySummaryTooltip lead={lead} decisionStatuses={decisionStatuses} />
         </span>
       </div>
     </div>
   );
 }
 
-function PropertySummaryTooltip({ lead }: { lead: LeadWithProperties }) {
+function PropertySummaryTooltip({
+  lead,
+  decisionStatuses
+}: {
+  lead: LeadWithProperties;
+  decisionStatuses?: PropertyDecisionStatusConfig[];
+}) {
   const properties = lead.propertyInterests.slice(0, 4);
   const remaining = lead.propertyInterests.length - properties.length;
 
@@ -246,7 +271,7 @@ function PropertySummaryTooltip({ lead }: { lead: LeadWithProperties }) {
                   .join(" - ") || property.address}
               </span>
               <span className="mt-1 block text-[11px] font-semibold text-slate-500">
-                {getPropertyInterestStatusLabel(property.status)}
+                {getPropertyInterestStatusLabel(property.status, decisionStatuses)}
               </span>
             </span>
           ))}

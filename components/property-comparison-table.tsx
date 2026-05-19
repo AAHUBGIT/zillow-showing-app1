@@ -4,11 +4,13 @@ import { useMemo, useState, type ReactNode } from "react";
 import { PropertyInterestStatusBadge } from "@/components/property-interest-status-badge";
 import { PropertyRatingStars } from "@/components/property-rating-stars";
 import { getPropertyPreferenceFit } from "@/lib/client-preferences";
+import type { PropertyDecisionStatusConfig } from "@/lib/property-decision-statuses";
 import { LeadWithProperties, PropertyInterest } from "@/lib/types";
 
 type PropertyComparisonTableProps = {
   lead: LeadWithProperties;
   propertyInterests: PropertyInterest[];
+  decisionStatuses?: PropertyDecisionStatusConfig[];
 };
 
 type SortMode = "rating" | "price-low" | "price-high";
@@ -39,13 +41,6 @@ const comparisonRows: Array<{
     render: (propertyInterest) => propertyInterest.neighborhood || "Not added"
   },
   {
-    key: "status",
-    label: "Status",
-    render: (propertyInterest) => (
-      <PropertyInterestStatusBadge status={propertyInterest.status} />
-    )
-  },
-  {
     key: "rating",
     label: "Rating",
     render: (propertyInterest) => <PropertyRatingStars rating={propertyInterest.rating} />
@@ -74,11 +69,22 @@ const sortOptions: Array<{ mode: SortMode; label: string }> = [
 
 export function PropertyComparisonTable({
   lead,
-  propertyInterests
+  propertyInterests,
+  decisionStatuses
 }: PropertyComparisonTableProps) {
   const [sortMode, setSortMode] = useState<SortMode>("rating");
   const bestRating = Math.max(...propertyInterests.map((propertyInterest) => propertyInterest.rating));
   const rows = [
+    {
+      key: "status",
+      label: "Status",
+      render: (propertyInterest: PropertyInterest) => (
+        <PropertyInterestStatusBadge
+          status={propertyInterest.status}
+          decisionStatuses={decisionStatuses}
+        />
+      )
+    },
     {
       key: "fit",
       label: "Fit",
@@ -178,7 +184,10 @@ export function PropertyComparisonTable({
                       </div>
                       <p className="text-xs leading-5 text-slate-500">{propertyInterest.address}</p>
                       <div className="flex flex-wrap items-center gap-2">
-                        <PropertyInterestStatusBadge status={propertyInterest.status} />
+                        <PropertyInterestStatusBadge
+                          status={propertyInterest.status}
+                          decisionStatuses={decisionStatuses}
+                        />
                         <PropertyRatingStars rating={propertyInterest.rating} />
                       </div>
                     </div>

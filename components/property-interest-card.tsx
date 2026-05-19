@@ -4,18 +4,21 @@ import { PropertyFitBadges } from "@/components/property-fit-badges";
 import { PropertyRatingStars } from "@/components/property-rating-stars";
 import { formatDateTimeLabel } from "@/lib/date";
 import { getPropertyInterestSourceLabel } from "@/lib/property-interest-utils";
+import type { PropertyDecisionStatusConfig } from "@/lib/property-decision-statuses";
 import { LeadWithProperties, PropertyInterest } from "@/lib/types";
 
 export function PropertyInterestCard({
   lead,
   leadId,
   propertyInterest,
+  decisionStatuses,
   isTopRated = false,
   isPreviewReadonly = false
 }: {
   lead: LeadWithProperties;
   leadId: string;
   propertyInterest: PropertyInterest;
+  decisionStatuses?: PropertyDecisionStatusConfig[];
   isTopRated?: boolean;
   isPreviewReadonly?: boolean;
 }) {
@@ -43,6 +46,7 @@ export function PropertyInterestCard({
           leadId={leadId}
           propertyInterest={propertyInterest}
           redirectTo={`/leads/${leadId}#decision-tracker`}
+          decisionStatuses={decisionStatuses}
           isPreviewReadonly={isPreviewReadonly}
         />
       </div>

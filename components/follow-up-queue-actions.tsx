@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { updateFollowUpQueue } from "@/lib/actions";
 import type { LeadWithProperties } from "@/lib/types";
+import type { FollowUpDefaultOption } from "@/lib/workflow-settings";
 
 type DialogType = "followed_up" | "snooze" | "no_answer" | "add_note" | "set_date";
 type Variant = "queue" | "panel" | "card";
@@ -31,11 +32,13 @@ const snoozeOptions = nextFollowUpOptions.filter((option) => option.value !== "n
 export function FollowUpQueueActions({
   lead,
   redirectTo,
+  defaultNextFollowUpOption = "tomorrow",
   isPreviewReadonly = false,
   variant = "queue"
 }: {
   lead: LeadWithProperties;
   redirectTo: string;
+  defaultNextFollowUpOption?: FollowUpDefaultOption;
   isPreviewReadonly?: boolean;
   variant?: Variant;
 }) {
@@ -114,6 +117,7 @@ export function FollowUpQueueActions({
           dialog={dialog}
           lead={lead}
           redirectTo={redirectTo}
+          defaultNextFollowUpOption={defaultNextFollowUpOption}
           isPreviewReadonly={isPreviewReadonly}
           onClose={() => setDialog(null)}
         />
@@ -155,16 +159,24 @@ function FollowUpDialog({
   dialog,
   lead,
   redirectTo,
+  defaultNextFollowUpOption,
   isPreviewReadonly,
   onClose
 }: {
   dialog: DialogType;
   lead: LeadWithProperties;
   redirectTo: string;
+  defaultNextFollowUpOption: FollowUpDefaultOption;
   isPreviewReadonly: boolean;
   onClose: () => void;
 }) {
-  const [nextChoice, setNextChoice] = useState(dialog === "snooze" ? "tomorrow" : "tomorrow");
+  const initialNextChoice =
+    dialog === "snooze" || dialog === "no_answer"
+      ? defaultNextFollowUpOption === "none"
+        ? "tomorrow"
+        : defaultNextFollowUpOption
+      : defaultNextFollowUpOption;
+  const [nextChoice, setNextChoice] = useState<string>(initialNextChoice);
   const title =
     dialog === "followed_up"
       ? "Log follow-up"

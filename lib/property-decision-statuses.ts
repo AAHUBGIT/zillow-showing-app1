@@ -22,12 +22,44 @@ export type PropertyDecisionStatusConfig = {
   isLegacyWorkflow?: boolean;
 };
 
+export const propertyDecisionToneClasses: Record<PropertyDecisionTone, string> = {
+  blue: "border-blue-200 bg-blue-50 text-blue-700",
+  emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  amber: "border-amber-200 bg-amber-50 text-amber-700",
+  rose: "border-rose-200 bg-rose-50 text-rose-700",
+  purple: "border-purple-200 bg-purple-50 text-purple-700",
+  slate: "border-slate-200 bg-slate-100 text-slate-700",
+  orange: "border-orange-200 bg-orange-50 text-orange-700",
+  indigo: "border-indigo-200 bg-indigo-50 text-indigo-700"
+};
+
+export const propertyDecisionToneOptions: Array<{ value: PropertyDecisionTone; label: string }> = [
+  { value: "blue", label: "Blue" },
+  { value: "emerald", label: "Emerald" },
+  { value: "amber", label: "Amber" },
+  { value: "rose", label: "Rose" },
+  { value: "purple", label: "Purple" },
+  { value: "slate", label: "Slate" },
+  { value: "orange", label: "Orange" },
+  { value: "indigo", label: "Indigo" }
+];
+
+export function getDecisionToneClassName(tone: string): string {
+  return propertyDecisionToneClasses[normalizeDecisionTone(tone)];
+}
+
+export function normalizeDecisionTone(tone: string): PropertyDecisionTone {
+  return propertyDecisionToneOptions.some((option) => option.value === tone)
+    ? (tone as PropertyDecisionTone)
+    : "slate";
+}
+
 export const defaultPropertyDecisionStatuses: PropertyDecisionStatusConfig[] = [
   {
     value: "interested",
     label: "Interested",
     tone: "blue",
-    className: "border-blue-200 bg-blue-50 text-blue-700",
+    className: propertyDecisionToneClasses.blue,
     order: 10,
     isActive: true
   },
@@ -35,7 +67,7 @@ export const defaultPropertyDecisionStatuses: PropertyDecisionStatusConfig[] = [
     value: "liked",
     label: "Liked",
     tone: "emerald",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: propertyDecisionToneClasses.emerald,
     order: 20,
     isActive: true
   },
@@ -43,7 +75,7 @@ export const defaultPropertyDecisionStatuses: PropertyDecisionStatusConfig[] = [
     value: "maybe",
     label: "Maybe",
     tone: "amber",
-    className: "border-amber-200 bg-amber-50 text-amber-700",
+    className: propertyDecisionToneClasses.amber,
     order: 30,
     isActive: true
   },
@@ -51,7 +83,7 @@ export const defaultPropertyDecisionStatuses: PropertyDecisionStatusConfig[] = [
     value: "rejected",
     label: "Rejected",
     tone: "rose",
-    className: "border-rose-200 bg-rose-50 text-rose-700",
+    className: propertyDecisionToneClasses.rose,
     order: 40,
     isActive: true,
     isTerminal: true
@@ -60,7 +92,7 @@ export const defaultPropertyDecisionStatuses: PropertyDecisionStatusConfig[] = [
     value: "applying",
     label: "Applying",
     tone: "purple",
-    className: "border-purple-200 bg-purple-50 text-purple-700",
+    className: propertyDecisionToneClasses.purple,
     order: 50,
     isActive: true,
     isApplying: true
@@ -69,7 +101,7 @@ export const defaultPropertyDecisionStatuses: PropertyDecisionStatusConfig[] = [
     value: "backup",
     label: "Backup",
     tone: "slate",
-    className: "border-slate-200 bg-slate-100 text-slate-700",
+    className: propertyDecisionToneClasses.slate,
     order: 60,
     isActive: true
   },
@@ -77,7 +109,7 @@ export const defaultPropertyDecisionStatuses: PropertyDecisionStatusConfig[] = [
     value: "needs_second_look",
     label: "Needs second look",
     tone: "orange",
-    className: "border-orange-200 bg-orange-50 text-orange-700",
+    className: propertyDecisionToneClasses.orange,
     order: 70,
     isActive: true
   }
@@ -88,7 +120,7 @@ const legacyWorkflowStatuses: PropertyDecisionStatusConfig[] = [
     value: "scheduled",
     label: "Scheduled",
     tone: "indigo",
-    className: "border-indigo-200 bg-indigo-50 text-indigo-700",
+    className: propertyDecisionToneClasses.indigo,
     order: 15,
     isActive: true,
     isLegacyWorkflow: true
@@ -97,7 +129,7 @@ const legacyWorkflowStatuses: PropertyDecisionStatusConfig[] = [
     value: "toured",
     label: "Toured",
     tone: "emerald",
-    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    className: propertyDecisionToneClasses.emerald,
     order: 25,
     isActive: true,
     isLegacyWorkflow: true
@@ -116,7 +148,7 @@ const legacyWorkflowStatuses: PropertyDecisionStatusConfig[] = [
     value: "closed",
     label: "Closed",
     tone: "slate",
-    className: "border-slate-200 bg-slate-100 text-slate-700",
+    className: propertyDecisionToneClasses.slate,
     order: 80,
     isActive: false,
     isTerminal: true,
@@ -124,61 +156,149 @@ const legacyWorkflowStatuses: PropertyDecisionStatusConfig[] = [
   }
 ];
 
-const decisionStatuses = [...defaultPropertyDecisionStatuses, ...legacyWorkflowStatuses];
-const statusMap = new Map(decisionStatuses.map((status) => [status.value, status]));
+const fallbackDecisionStatuses = [...defaultPropertyDecisionStatuses, ...legacyWorkflowStatuses];
 
-export function getDecisionStatusOptions() {
-  return defaultPropertyDecisionStatuses.filter((status) => status.isActive);
+function humanizeStatusValue(value: string) {
+  return value
+    .split(/[_\-\s]+/)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ") || "Interested";
 }
 
-export function getAllDecisionStatusOptions() {
-  return decisionStatuses;
+function buildUnknownStatusConfig(value: string): PropertyDecisionStatusConfig {
+  return {
+    value: value as PropertyInterestStatus,
+    label: humanizeStatusValue(value),
+    tone: "slate",
+    className: propertyDecisionToneClasses.slate,
+    order: 999,
+    isActive: false
+  };
 }
 
-export function normalizeDecisionStatus(value: string): PropertyInterestStatus {
-  return statusMap.has(value as PropertyInterestStatus)
-    ? (value as PropertyInterestStatus)
-    : "interested";
+function normalizeStatusConfig(config: PropertyDecisionStatusConfig): PropertyDecisionStatusConfig {
+  const tone = normalizeDecisionTone(config.tone);
+
+  return {
+    ...config,
+    label: config.label.trim() || humanizeStatusValue(config.value),
+    tone,
+    className: getDecisionToneClassName(tone),
+    order: Number.isFinite(config.order) ? config.order : 999,
+    isActive: Boolean(config.isActive)
+  };
 }
 
-export function getDecisionStatusConfig(value: string) {
-  return statusMap.get(normalizeDecisionStatus(value)) || defaultPropertyDecisionStatuses[0];
+export function getAllDecisionStatusOptions(statuses?: PropertyDecisionStatusConfig[]) {
+  const configured = statuses?.length ? statuses : defaultPropertyDecisionStatuses;
+  const statusMap = new Map<PropertyInterestStatus, PropertyDecisionStatusConfig>();
+
+  for (const status of configured.map(normalizeStatusConfig)) {
+    statusMap.set(status.value, status);
+  }
+
+  for (const legacyStatus of legacyWorkflowStatuses) {
+    if (!statusMap.has(legacyStatus.value)) {
+      statusMap.set(legacyStatus.value, legacyStatus);
+    }
+  }
+
+  return Array.from(statusMap.values()).sort((first, second) => first.order - second.order);
 }
 
-export function getDecisionStatusLabel(value: string) {
-  return getDecisionStatusConfig(value).label;
+export function getDecisionStatusOptions(statuses?: PropertyDecisionStatusConfig[]) {
+  return getAllDecisionStatusOptions(statuses).filter(
+    (status) => status.isActive && !status.isLegacyWorkflow
+  );
 }
 
-export function getDecisionStatusTone(value: string) {
-  return getDecisionStatusConfig(value).className;
+export function normalizeDecisionStatus(
+  value: string,
+  statuses?: PropertyDecisionStatusConfig[]
+): PropertyInterestStatus {
+  const normalizedValue = value.trim() as PropertyInterestStatus;
+
+  if (!normalizedValue) {
+    return "interested";
+  }
+
+  return normalizedValue;
 }
 
-export function getDecisionStatusOrder(value: string) {
-  return getDecisionStatusConfig(value).order;
+export function getDecisionStatusConfig(
+  value: string,
+  statuses?: PropertyDecisionStatusConfig[]
+) {
+  const normalizedValue = normalizeDecisionStatus(value, statuses);
+  const configuredStatus = getAllDecisionStatusOptions(statuses).find(
+    (status) => status.value === normalizedValue
+  );
+
+  return configuredStatus || buildUnknownStatusConfig(normalizedValue);
 }
 
-export function isDecisionStatusTerminal(value: string) {
-  return Boolean(getDecisionStatusConfig(value).isTerminal);
+export function getDecisionStatusLabel(value: string, statuses?: PropertyDecisionStatusConfig[]) {
+  return getDecisionStatusConfig(value, statuses).label;
 }
 
-export function isDecisionStatusApplying(value: string) {
-  return Boolean(getDecisionStatusConfig(value).isApplying);
+export function getDecisionStatusTone(value: string, statuses?: PropertyDecisionStatusConfig[]) {
+  return getDecisionStatusConfig(value, statuses).className;
 }
 
-export function isDefaultDecisionStatus(value: string) {
-  return getDecisionStatusOptions().some((status) => status.value === value);
+export function getDecisionStatusOrder(value: string, statuses?: PropertyDecisionStatusConfig[]) {
+  return getDecisionStatusConfig(value, statuses).order;
+}
+
+export function isDecisionStatusTerminal(value: string, statuses?: PropertyDecisionStatusConfig[]) {
+  return Boolean(getDecisionStatusConfig(value, statuses).isTerminal);
+}
+
+export function isDecisionStatusApplying(value: string, statuses?: PropertyDecisionStatusConfig[]) {
+  return Boolean(getDecisionStatusConfig(value, statuses).isApplying);
+}
+
+export function isDefaultDecisionStatus(value: string, statuses?: PropertyDecisionStatusConfig[]) {
+  return getDecisionStatusOptions(statuses).some((status) => status.value === value);
 }
 
 export function groupPropertyInterestsByDecisionStatus<
   T extends Pick<PropertyInterest, "status">
->(interests: T[]) {
-  return getAllDecisionStatusOptions()
-    .sort((first, second) => first.order - second.order)
-    .map((config) => ({
-      status: config.value,
-      config,
-      interests: interests.filter(
-        (interest) => normalizeDecisionStatus(interest.status) === config.value
-      )
-    }));
+>(interests: T[], statuses?: PropertyDecisionStatusConfig[]) {
+  const knownGroups = getAllDecisionStatusOptions(statuses).map((config) => ({
+    status: config.value,
+    config,
+    interests: interests.filter(
+      (interest) => normalizeDecisionStatus(interest.status, statuses) === config.value
+    )
+  }));
+
+  const knownValues = new Set(knownGroups.map((group) => group.status));
+  const unknownGroups = Array.from(
+    new Set(interests.map((interest) => normalizeDecisionStatus(interest.status, statuses)))
+  )
+    .filter((status) => !knownValues.has(status))
+    .map((status) => {
+      const config = buildUnknownStatusConfig(status);
+
+      return {
+        status,
+        config,
+        interests: interests.filter(
+          (interest) => normalizeDecisionStatus(interest.status, statuses) === status
+        )
+      };
+    });
+
+  return [...knownGroups, ...unknownGroups].sort(
+    (first, second) => first.config.order - second.config.order
+  );
+}
+
+export function getDefaultWorkflowDecisionStatuses() {
+  return defaultPropertyDecisionStatuses.map((status) => ({ ...status }));
+}
+
+export function getFallbackDecisionStatuses() {
+  return fallbackDecisionStatuses.map((status) => ({ ...status }));
 }

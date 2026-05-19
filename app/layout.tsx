@@ -7,6 +7,7 @@ import { KeyboardShortcutsGuard } from "@/components/keyboard-shortcuts-guard";
 import { ToastViewport } from "@/components/toast-viewport";
 import { getSessionUser } from "@/lib/auth";
 import { isPreviewReadonlyMode } from "@/lib/deployment";
+import { getWorkflowSettingsForUser } from "@/lib/workflow-settings";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -26,6 +27,7 @@ export default async function RootLayout({
 }>) {
   const previewReadonly = isPreviewReadonlyMode();
   const sessionUser = await getSessionUser();
+  const workflowSettings = await getWorkflowSettingsForUser(sessionUser?.id);
 
   return (
     <html lang="en">
@@ -39,7 +41,11 @@ export default async function RootLayout({
             Skip to main content
           </a>
 
-          <AppHeader isPreviewReadonly={previewReadonly} sessionUser={sessionUser} />
+          <AppHeader
+            isPreviewReadonly={previewReadonly}
+            sessionUser={sessionUser}
+            defaultDensity={workflowSettings.defaultDensity}
+          />
 
           <div id="main-content" tabIndex={-1} className="pb-8">
             {children}

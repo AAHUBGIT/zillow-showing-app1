@@ -17,6 +17,7 @@ import {
   getSuggestedPropertyShowing
 } from "@/lib/property-interest-utils";
 import { getLeadById, getPropertyInterestById } from "@/lib/storage";
+import { getWorkflowSettingsForUser } from "@/lib/workflow-settings";
 
 export default async function PropertyInterestDetailsPage({
   params
@@ -33,6 +34,7 @@ export default async function PropertyInterestDetailsPage({
     notFound();
   }
 
+  const workflowSettings = await getWorkflowSettingsForUser(lead.userId);
   const isPreviewReadonly = isPreviewReadonlyMode();
   const mapsLink = buildGoogleMapsSearchLink(propertyInterest.address);
   const dirtyScope = `property-${lead.id}-${propertyInterest.id}`;
@@ -57,7 +59,10 @@ export default async function PropertyInterestDetailsPage({
                 </h1>
                 <p className="mt-2 text-sm text-slate-500">{propertyInterest.address}</p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <PropertyInterestStatusBadge status={propertyInterest.status} />
+                  <PropertyInterestStatusBadge
+                    status={propertyInterest.status}
+                    decisionStatuses={workflowSettings.decisionStatuses}
+                  />
                   <div className="app-chip">{getPropertyInterestSourceLabel(propertyInterest.source)}</div>
                   {propertyInterest.neighborhood ? <div className="app-chip">{propertyInterest.neighborhood}</div> : null}
                   <PropertyRatingStars rating={propertyInterest.rating} />
@@ -144,6 +149,7 @@ export default async function PropertyInterestDetailsPage({
                         leadId={lead.id}
                         propertyInterest={propertyInterest}
                         redirectTo={`/leads/${lead.id}/properties/${propertyInterest.id}`}
+                        decisionStatuses={workflowSettings.decisionStatuses}
                         isPreviewReadonly={isPreviewReadonly}
                       />
                     </div>
