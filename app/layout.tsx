@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
 import { Suspense } from "react";
 import { AppFooter } from "@/components/app-footer";
 import { AppHeader } from "@/components/app-header";
@@ -10,10 +9,6 @@ import { isPreviewReadonlyMode } from "@/lib/deployment";
 import { getWorkflowSettingsForUser } from "@/lib/workflow-settings";
 import "./globals.css";
 
-const manrope = Manrope({
-  subsets: ["latin"],
-  display: "swap"
-});
 
 export const metadata: Metadata = {
   title: "Showings CRM",
@@ -31,7 +26,7 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className={manrope.className}>
+      <body className="font-sans">
         <KeyboardShortcutsGuard />
         <div className={sessionUser ? "app-shell app-shell-with-sidebar" : "app-shell"}>
           <a
